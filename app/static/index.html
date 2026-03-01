@@ -81,7 +81,8 @@
       margin-top: 18px;
     }
 
-    input {
+    input,
+    select {
       flex: 1 1 220px;
       border: 1px solid var(--border);
       background: rgba(255, 255, 255, 0.95);
@@ -111,6 +112,17 @@
       margin-top: 12px;
       font-size: 0.95rem;
       color: var(--muted);
+    }
+
+    .error-banner {
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(153, 27, 27, 0.14);
+      background: rgba(254, 226, 226, 0.9);
+      color: #991b1b;
+      font-weight: 600;
+      line-height: 1.5;
     }
 
     .grid {
@@ -190,6 +202,59 @@
       font-size: 1.2rem;
       margin-bottom: 4px;
     }
+
+    #portfolio[data-theme="modern"] {
+      --preview-card: rgba(255, 255, 255, 0.84);
+      --preview-border: rgba(17, 24, 39, 0.12);
+      --preview-shadow: 0 20px 44px rgba(15, 23, 42, 0.14);
+      --preview-accent: #0f766e;
+      --preview-accent-2: #1d4ed8;
+      --preview-project: rgba(255, 255, 255, 0.72);
+      --preview-stat: rgba(16, 35, 63, 0.06);
+      --preview-tag-bg: rgba(15, 118, 110, 0.08);
+      --preview-tag-text: #0f766e;
+    }
+
+    #portfolio[data-theme="minimal"] {
+      --preview-card: rgba(255, 255, 255, 0.98);
+      --preview-border: rgba(15, 23, 42, 0.08);
+      --preview-shadow: none;
+      --preview-accent: #111827;
+      --preview-accent-2: #111827;
+      --preview-project: #fafaf9;
+      --preview-stat: #f5f5f4;
+      --preview-tag-bg: #f5f5f4;
+      --preview-tag-text: #292524;
+    }
+
+    #portfolio .panel {
+      background: var(--preview-card);
+      border-color: var(--preview-border);
+      box-shadow: var(--preview-shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    #portfolio .project {
+      background: var(--preview-project);
+      border-color: var(--preview-border);
+    }
+
+    #portfolio .tag {
+      background: var(--preview-tag-bg);
+      color: var(--preview-tag-text);
+    }
+
+    #portfolio .stat {
+      background: var(--preview-stat);
+    }
+
+    #portfolio a {
+      color: var(--preview-accent-2);
+    }
+
+    #portfolio[data-theme="minimal"] h2 {
+      letter-spacing: -0.02em;
+    }
   </style>
 </head>
 <body>
@@ -204,9 +269,14 @@
         <h2>Build Portfolio</h2>
         <form id="builder-form">
           <input id="username" name="username" placeholder="GitHub username" autocomplete="off" required>
+          <select id="theme" name="theme" aria-label="Portfolio theme">
+            <option value="modern">Modern</option>
+            <option value="minimal">Minimal</option>
+          </select>
           <button id="submit-button" type="submit">Generate</button>
         </form>
         <div id="status" class="status"></div>
+        <div id="error-banner" class="error-banner" hidden></div>
       </div>
     </section>
 
@@ -216,19 +286,23 @@
   <script>
     const form = document.getElementById("builder-form");
     const usernameInput = document.getElementById("username");
+    const themeInput = document.getElementById("theme");
     const submitButton = document.getElementById("submit-button");
     const statusEl = document.getElementById("status");
+    const errorBannerEl = document.getElementById("error-banner");
     const portfolioEl = document.getElementById("portfolio");
 
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       const username = usernameInput.value.trim();
+      const theme = themeInput.value;
       if (!username) {
-        setStatus("Enter a GitHub username.");
+        showError("Enter a GitHub username.");
         return;
       }
 
       setLoading(true);
+      clearError();
       setStatus("Fetching GitHub profile...");
 
       try {
@@ -240,7 +314,7 @@
 
         const profilePayload = await profileResponse.json();
         if (!profileResponse.ok) {
-          throw new Error(profilePayload.detail || "Failed to fetch profile.");
+          throw new Error(getErrorMessage(profilePayload, "Failed to fetch profile."));
         }
 
         setStatus("Generating portfolio...");
@@ -248,20 +322,20 @@
         const generateResponse = await fetch("/api/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(profilePayload),
+          body: JSON.stringify({ ...profilePayload, theme }),
         });
 
         const portfolioPayload = await generateResponse.json();
         if (!generateResponse.ok) {
-          throw new Error(portfolioPayload.detail || "Failed to generate portfolio.");
+          throw new Error(getErrorMessage(portfolioPayload, "Failed to generate portfolio."));
         }
 
-        renderPortfolio(profilePayload, portfolioPayload);
+        renderPortfolio(profilePayload, portfolioPayload, theme);
         setStatus("Portfolio generated.");
       } catch (error) {
         portfolioEl.hidden = true;
         portfolioEl.innerHTML = "";
-        setStatus(error.message);
+        showError(error.message);
       } finally {
         setLoading(false);
       }
@@ -276,9 +350,22 @@
       statusEl.textContent = message;
     }
 
-    function renderPortfolio(profileData, portfolioData) {
+    function clearError() {
+      errorBannerEl.hidden = true;
+      errorBannerEl.textContent = "";
+    }
+
+    function showError(message) {
+      setStatus("Request failed.");
+      errorBannerEl.hidden = false;
+      errorBannerEl.textContent = message;
+    }
+
+    function renderPortfolio(profileData, portfolioData, selectedTheme) {
       const { profile } = profileData;
+      clearError();
       portfolioEl.hidden = false;
+      portfolioEl.dataset.theme = portfolioData.theme || selectedTheme;
       portfolioEl.innerHTML = `
         <section class="panel wide">
           <p>${portfolioData.hero.title}</p>
@@ -336,6 +423,16 @@
 
     function renderTag(value) {
       return `<span class="tag">${escapeHtml(value)}</span>`;
+    }
+
+    function getErrorMessage(payload, fallbackMessage) {
+      if (payload && payload.error && payload.error.message) {
+        return payload.error.message;
+      }
+      if (payload && payload.detail) {
+        return payload.detail;
+      }
+      return fallbackMessage;
     }
 
     function escapeHtml(value) {
