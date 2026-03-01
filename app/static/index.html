@@ -31,7 +31,7 @@
     }
 
     .page {
-      width: min(1080px, calc(100% - 32px));
+      width: min(1180px, calc(100% - 32px));
       margin: 0 auto;
       padding: 32px 0 56px;
     }
@@ -53,7 +53,7 @@
       padding: 24px;
     }
 
-    h1, h2, h3, p {
+    h1, h2, h3, p, label {
       margin: 0;
     }
 
@@ -69,12 +69,18 @@
       margin-bottom: 16px;
     }
 
+    h3 {
+      font-size: 1rem;
+      margin-bottom: 10px;
+    }
+
     p {
       color: var(--muted);
       line-height: 1.6;
     }
 
-    form {
+    form,
+    .inline-actions {
       display: flex;
       gap: 12px;
       flex-wrap: wrap;
@@ -82,13 +88,26 @@
     }
 
     input,
-    select {
-      flex: 1 1 220px;
+    select,
+    textarea {
+      width: 100%;
       border: 1px solid var(--border);
       background: rgba(255, 255, 255, 0.95);
       border-radius: 14px;
       padding: 14px 16px;
       font-size: 1rem;
+      font-family: inherit;
+      color: var(--text);
+    }
+
+    form input,
+    form select {
+      flex: 1 1 220px;
+    }
+
+    textarea {
+      min-height: 108px;
+      resize: vertical;
     }
 
     button {
@@ -100,6 +119,11 @@
       color: white;
       background: linear-gradient(135deg, var(--accent), var(--accent-2));
       cursor: pointer;
+    }
+
+    button.secondary {
+      background: rgba(16, 35, 63, 0.08);
+      color: var(--text);
     }
 
     button:disabled {
@@ -125,7 +149,38 @@
       line-height: 1.5;
     }
 
-    .grid {
+    .workspace {
+      display: grid;
+      gap: 20px;
+      grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+      align-items: start;
+    }
+
+    .editor {
+      display: grid;
+      gap: 14px;
+      position: sticky;
+      top: 20px;
+    }
+
+    .editor-section {
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.66);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+    }
+
+    .field {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .field small {
+      color: var(--muted);
+    }
+
+    .preview-grid {
       display: grid;
       gap: 20px;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -170,6 +225,12 @@
       border: 1px solid rgba(15, 23, 42, 0.08);
     }
 
+    .project-editor {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(15, 23, 42, 0.08);
+    }
+
     .project-header {
       display: flex;
       justify-content: space-between;
@@ -203,6 +264,12 @@
       margin-bottom: 4px;
     }
 
+    .muted-note {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+
     #portfolio[data-theme="modern"] {
       --preview-card: rgba(255, 255, 255, 0.84);
       --preview-border: rgba(17, 24, 39, 0.12);
@@ -227,7 +294,7 @@
       --preview-tag-text: #292524;
     }
 
-    #portfolio .panel {
+    #portfolio .preview-panel {
       background: var(--preview-card);
       border-color: var(--preview-border);
       box-shadow: var(--preview-shadow);
@@ -252,8 +319,14 @@
       color: var(--preview-accent-2);
     }
 
-    #portfolio[data-theme="minimal"] h2 {
-      letter-spacing: -0.02em;
+    @media (max-width: 980px) {
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+
+      .editor {
+        position: static;
+      }
     }
   </style>
 </head>
@@ -262,8 +335,8 @@
     <section class="hero">
       <div class="panel">
         <p>GitHub profile to portfolio</p>
-        <h1>Generate a portfolio draft in seconds.</h1>
-        <p>Enter a GitHub username. The app fetches public profile data, selects project highlights, and renders an editable portfolio structure.</p>
+        <h1>Generate, edit, and export a portfolio draft.</h1>
+        <p>Enter a GitHub username. The app fetches public profile data, builds a portfolio draft, lets you revise the content, then exports the saved version as HTML or ZIP.</p>
       </div>
       <div class="panel">
         <h2>Build Portfolio</h2>
@@ -280,7 +353,7 @@
       </div>
     </section>
 
-    <section id="portfolio" class="grid" hidden></section>
+    <section id="portfolio" hidden></section>
   </main>
 
   <script>
@@ -291,6 +364,23 @@
     const statusEl = document.getElementById("status");
     const errorBannerEl = document.getElementById("error-banner");
     const portfolioEl = document.getElementById("portfolio");
+
+    const appState = {
+      profileData: null,
+      generatedPortfolio: null,
+      draftPortfolio: null,
+      savedPortfolio: null,
+      hasUnsavedChanges: false,
+    };
+
+    themeInput.addEventListener("change", () => {
+      if (!appState.draftPortfolio) {
+        return;
+      }
+      updateDraft(() => {
+        appState.draftPortfolio.theme = themeInput.value;
+      });
+    });
 
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -330,8 +420,14 @@
           throw new Error(getErrorMessage(portfolioPayload, "Failed to generate portfolio."));
         }
 
-        renderPortfolio(profilePayload, portfolioPayload, theme);
-        setStatus("Portfolio generated.");
+        appState.profileData = profilePayload;
+        appState.generatedPortfolio = deepClone(portfolioPayload);
+        appState.draftPortfolio = deepClone(portfolioPayload);
+        appState.savedPortfolio = deepClone(portfolioPayload);
+        appState.hasUnsavedChanges = false;
+
+        renderWorkspace();
+        setStatus("Portfolio generated. Edit the fields, then save before exporting.");
       } catch (error) {
         portfolioEl.hidden = true;
         portfolioEl.innerHTML = "";
@@ -361,68 +457,375 @@
       errorBannerEl.textContent = message;
     }
 
-    function renderPortfolio(profileData, portfolioData, selectedTheme) {
-      const { profile } = profileData;
-      clearError();
+    function renderWorkspace() {
+      if (!appState.draftPortfolio || !appState.savedPortfolio || !appState.profileData) {
+        portfolioEl.hidden = true;
+        portfolioEl.innerHTML = "";
+        return;
+      }
+
+      const draft = appState.draftPortfolio;
+      const saved = appState.savedPortfolio;
+      const profile = appState.profileData.profile;
+
       portfolioEl.hidden = false;
-      portfolioEl.dataset.theme = portfolioData.theme || selectedTheme;
+      portfolioEl.dataset.theme = saved.theme || themeInput.value;
       portfolioEl.innerHTML = `
-        <section class="panel wide">
-          <p>${portfolioData.hero.title}</p>
-          <h2>${escapeHtml(portfolioData.hero.content.headline)}</h2>
-          <p>${escapeHtml(portfolioData.hero.content.subheadline)}</p>
+        <div class="workspace">
+          <section class="panel editor">
+            <div>
+              <h2>Edit Content</h2>
+              <p>Changes apply to the draft immediately. Use Save Edits to update the exportable portfolio state.</p>
+            </div>
+            <div class="inline-actions">
+              <button id="save-edits" type="button">Save Edits</button>
+              <button id="reset-edits" class="secondary" type="button">Reset</button>
+            </div>
+            <div class="inline-actions">
+              <button id="export-html" type="button">Export HTML</button>
+              <button id="export-zip" class="secondary" type="button">Export ZIP</button>
+            </div>
+            <p class="muted-note">HTML and ZIP are available now. PDF export is not included in this phase.</p>
+            <div class="editor-section">
+              <h3>${escapeHtml(draft.hero.title)}</h3>
+              <label class="field">
+                <span>Headline</span>
+                <input id="hero-headline" value="${escapeHtml(draft.hero.content.headline || "")}">
+              </label>
+              <label class="field">
+                <span>Subheadline</span>
+                <textarea id="hero-subheadline">${escapeHtml(draft.hero.content.subheadline || "")}</textarea>
+              </label>
+            </div>
+            <div class="editor-section">
+              <h3>${escapeHtml(draft.about.title)}</h3>
+              <label class="field">
+                <span>Name</span>
+                <input id="about-name" value="${escapeHtml(draft.about.content.name || "")}">
+              </label>
+              <label class="field">
+                <span>Summary points</span>
+                <textarea id="about-summary">${escapeHtml((draft.about.content.summary || []).join("\n"))}</textarea>
+                <small>Use one line per summary point.</small>
+              </label>
+            </div>
+            <div class="editor-section">
+              <h3>${escapeHtml(draft.skills.title)}</h3>
+              <label class="field">
+                <span>Highlighted skills</span>
+                <textarea id="skills-highlighted">${escapeHtml((draft.skills.content.highlighted || []).join(", "))}</textarea>
+                <small>Use commas to separate skills.</small>
+              </label>
+            </div>
+            <div class="editor-section">
+              <h3>${escapeHtml(draft.contact.title)}</h3>
+              <label class="field">
+                <span>GitHub URL</span>
+                <input id="contact-github" value="${escapeHtml(draft.contact.content.github || profile.html_url || "")}">
+              </label>
+              <label class="field">
+                <span>Blog</span>
+                <input id="contact-blog" value="${escapeHtml(draft.contact.content.blog || "")}">
+              </label>
+              <label class="field">
+                <span>Email</span>
+                <input id="contact-email" value="${escapeHtml(draft.contact.content.email || "")}">
+              </label>
+              <label class="field">
+                <span>Location</span>
+                <input id="contact-location" value="${escapeHtml(draft.contact.content.location || "")}">
+              </label>
+            </div>
+            <div class="editor-section">
+              <h3>${escapeHtml(draft.projects.title)}</h3>
+              ${renderProjectEditors(draft.projects.content.items || [])}
+            </div>
+          </section>
+
+          <section class="preview-grid">
+            ${renderPreview(saved, profile)}
+          </section>
+        </div>
+      `;
+
+      bindEditorEvents();
+    }
+
+    function bindEditorEvents() {
+      document.getElementById("hero-headline").addEventListener("input", (event) => {
+        updateDraft(() => {
+          appState.draftPortfolio.hero.content.headline = event.target.value;
+        });
+      });
+
+      document.getElementById("hero-subheadline").addEventListener("input", (event) => {
+        updateDraft(() => {
+          appState.draftPortfolio.hero.content.subheadline = event.target.value;
+        });
+      });
+
+      document.getElementById("about-name").addEventListener("input", (event) => {
+        updateDraft(() => {
+          appState.draftPortfolio.about.content.name = event.target.value;
+        });
+      });
+
+      document.getElementById("about-summary").addEventListener("input", (event) => {
+        updateDraft(() => {
+          appState.draftPortfolio.about.content.summary = splitLines(event.target.value);
+        });
+      });
+
+      document.getElementById("skills-highlighted").addEventListener("input", (event) => {
+        updateDraft(() => {
+          appState.draftPortfolio.skills.content.highlighted = splitCsv(event.target.value);
+        });
+      });
+
+      document.getElementById("contact-github").addEventListener("input", (event) => {
+        updateDraft(() => {
+          appState.draftPortfolio.contact.content.github = event.target.value;
+        });
+      });
+
+      document.getElementById("contact-blog").addEventListener("input", (event) => {
+        updateDraft(() => {
+          appState.draftPortfolio.contact.content.blog = event.target.value;
+        });
+      });
+
+      document.getElementById("contact-email").addEventListener("input", (event) => {
+        updateDraft(() => {
+          appState.draftPortfolio.contact.content.email = event.target.value;
+        });
+      });
+
+      document.getElementById("contact-location").addEventListener("input", (event) => {
+        updateDraft(() => {
+          appState.draftPortfolio.contact.content.location = event.target.value;
+        });
+      });
+
+      document.querySelectorAll("[data-project-index]").forEach((element) => {
+        element.addEventListener("input", (event) => {
+          const index = Number(event.target.dataset.projectIndex);
+          const field = event.target.dataset.projectField;
+          updateDraft(() => {
+            if (!appState.draftPortfolio.projects.content.items[index]) {
+              return;
+            }
+            appState.draftPortfolio.projects.content.items[index][field] = event.target.value;
+          });
+        });
+      });
+
+      document.getElementById("save-edits").addEventListener("click", () => {
+        appState.savedPortfolio = deepClone(appState.draftPortfolio);
+        appState.savedPortfolio.theme = themeInput.value;
+        appState.hasUnsavedChanges = false;
+        renderWorkspace();
+        setStatus("Edits saved. Export uses the current saved version.");
+      });
+
+      document.getElementById("reset-edits").addEventListener("click", () => {
+        appState.draftPortfolio = deepClone(appState.generatedPortfolio);
+        appState.savedPortfolio = deepClone(appState.generatedPortfolio);
+        appState.hasUnsavedChanges = false;
+        renderWorkspace();
+        setStatus("Draft reset to the generated portfolio.");
+      });
+
+      document.getElementById("export-html").addEventListener("click", () => {
+        exportPortfolio("html");
+      });
+
+      document.getElementById("export-zip").addEventListener("click", () => {
+        exportPortfolio("zip");
+      });
+    }
+
+    function updateDraft(mutate) {
+      mutate();
+      appState.draftPortfolio.theme = themeInput.value;
+      appState.hasUnsavedChanges = true;
+      setStatus("Draft updated. Save edits to refresh the preview and export state.");
+    }
+
+    async function exportPortfolio(format) {
+      if (!appState.savedPortfolio) {
+        showError("Generate and save a portfolio before exporting.");
+        return;
+      }
+
+      clearError();
+      const endpoint = format === "zip" ? "/api/export/zip" : "/api/export/html";
+      setStatus(`Preparing ${format.toUpperCase()} export...`);
+
+      try {
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            portfolio: appState.savedPortfolio,
+            filename: buildExportFilename(),
+          }),
+        });
+
+        if (!response.ok) {
+          const payload = await parseErrorPayload(response);
+          throw new Error(getErrorMessage(payload, `Failed to export ${format.toUpperCase()}.`));
+        }
+
+        const blob = await response.blob();
+        triggerDownload(blob, readDownloadName(response.headers.get("Content-Disposition"), format));
+        setStatus(`${format.toUpperCase()} export downloaded.`);
+      } catch (error) {
+        showError(error.message);
+      }
+    }
+
+    function triggerDownload(blob, fileName) {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function renderPreview(portfolioData, profile) {
+      return `
+        <section class="panel preview-panel wide">
+          <p>${escapeHtml(portfolioData.hero.title)}</p>
+          <h2>${escapeHtml(portfolioData.hero.content.headline || "")}</h2>
+          <p>${escapeHtml(portfolioData.hero.content.subheadline || "")}</p>
           <div class="stats">
             ${renderStat("Repos", portfolioData.hero.content.stats.public_repos)}
             ${renderStat("Followers", portfolioData.hero.content.stats.followers)}
             ${renderStat("Following", portfolioData.hero.content.stats.following)}
           </div>
         </section>
-        <section class="panel">
-          <p>${portfolioData.about.title}</p>
-          <h2>${escapeHtml(portfolioData.about.content.name)}</h2>
-          <ul>${portfolioData.about.content.summary.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+        <section class="panel preview-panel">
+          <p>${escapeHtml(portfolioData.about.title)}</p>
+          <h2>${escapeHtml(portfolioData.about.content.name || "")}</h2>
+          <ul>${(portfolioData.about.content.summary || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("") || "<li>Details coming soon.</li>"}</ul>
         </section>
-        <section class="panel">
-          <p>${portfolioData.skills.title}</p>
+        <section class="panel preview-panel">
+          <p>${escapeHtml(portfolioData.skills.title)}</p>
           <h2>Highlighted Skills</h2>
-          <div class="tags">${portfolioData.skills.content.highlighted.map(renderTag).join("") || "<span class='tag'>No detected skills yet</span>"}</div>
+          <div class="tags">${(portfolioData.skills.content.highlighted || []).map(renderTag).join("") || "<span class='tag'>No detected skills yet</span>"}</div>
         </section>
-        <section class="panel wide">
-          <p>${portfolioData.projects.title}</p>
+        <section class="panel preview-panel wide">
+          <p>${escapeHtml(portfolioData.projects.title)}</p>
           <h2>Featured Work</h2>
           <div class="project-list">
-            ${portfolioData.projects.content.items.map((project) => `
+            ${(portfolioData.projects.content.items || []).map((project) => `
               <article class="project">
                 <div class="project-header">
-                  <strong>${escapeHtml(project.name)}</strong>
-                  <a href="${project.url}" target="_blank" rel="noreferrer">Repository</a>
+                  <strong>${escapeHtml(project.name || "Untitled project")}</strong>
+                  ${safeInlineLink(project.url, "Repository")}
                 </div>
-                <p>${escapeHtml(project.description)}</p>
+                <p>${escapeHtml(project.description || "Project details coming soon.")}</p>
                 <div class="tags">
                   ${project.language ? renderTag(project.language) : ""}
-                  ${project.topics.map(renderTag).join("")}
+                  ${(project.topics || []).map(renderTag).join("")}
                 </div>
               </article>
             `).join("") || "<p>No repositories available.</p>"}
           </div>
         </section>
-        <section class="panel wide">
-          <p>${portfolioData.contact.title}</p>
+        <section class="panel preview-panel wide">
+          <p>${escapeHtml(portfolioData.contact.title)}</p>
           <h2>Contact</h2>
-          <p><a href="${profile.html_url}" target="_blank" rel="noreferrer">${escapeHtml(profile.html_url)}</a></p>
-          ${portfolioData.contact.content.blog ? `<p><a href="${profile.blog}" target="_blank" rel="noreferrer">${escapeHtml(profile.blog)}</a></p>` : ""}
+          ${safeLinkLine(portfolioData.contact.content.github || profile.html_url, portfolioData.contact.content.github || profile.html_url)}
+          ${safeLinkLine(portfolioData.contact.content.blog, portfolioData.contact.content.blog)}
           ${portfolioData.contact.content.email ? `<p>${escapeHtml(portfolioData.contact.content.email)}</p>` : ""}
           ${portfolioData.contact.content.location ? `<p>${escapeHtml(portfolioData.contact.content.location)}</p>` : ""}
         </section>
       `;
     }
 
+    function renderProjectEditors(projects) {
+      if (!projects.length) {
+        return "<p>No repositories available to edit.</p>";
+      }
+
+      return projects.map((project, index) => `
+        <div class="project-editor">
+          <label class="field">
+            <span>Project ${index + 1} name</span>
+            <input data-project-index="${index}" data-project-field="name" value="${escapeHtml(project.name || "")}">
+          </label>
+          <label class="field">
+            <span>Description</span>
+            <textarea data-project-index="${index}" data-project-field="description">${escapeHtml(project.description || "")}</textarea>
+          </label>
+        </div>
+      `).join("");
+    }
+
     function renderStat(label, value) {
-      return `<div class="stat"><strong>${escapeHtml(String(value))}</strong><span>${escapeHtml(label)}</span></div>`;
+      return `<div class="stat"><strong>${escapeHtml(String(value ?? 0))}</strong><span>${escapeHtml(label)}</span></div>`;
     }
 
     function renderTag(value) {
       return `<span class="tag">${escapeHtml(value)}</span>`;
+    }
+
+    function safeInlineLink(href, label) {
+      if (!href || !/^https?:\/\//.test(href)) {
+        return "";
+      }
+      return `<a href="${escapeHtml(href)}" target="_blank" rel="noreferrer">${escapeHtml(label)}</a>`;
+    }
+
+    function safeLinkLine(href, label) {
+      const link = safeInlineLink(href, label);
+      return link ? `<p>${link}</p>` : "";
+    }
+
+    function splitLines(value) {
+      return value
+        .split("\n")
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+
+    function splitCsv(value) {
+      return value
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+
+    function buildExportFilename() {
+      const source = appState.savedPortfolio?.about?.content?.name
+        || appState.profileData?.profile?.username
+        || "portfolio";
+
+      return source
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 64) || "portfolio";
+    }
+
+    function readDownloadName(contentDisposition, format) {
+      const match = contentDisposition && contentDisposition.match(/filename="([^"]+)"/);
+      if (match && match[1]) {
+        return match[1];
+      }
+      return `${buildExportFilename()}.${format}`;
+    }
+
+    async function parseErrorPayload(response) {
+      const contentType = response.headers.get("Content-Type") || "";
+      if (contentType.includes("application/json")) {
+        return response.json();
+      }
+      return { detail: await response.text() };
     }
 
     function getErrorMessage(payload, fallbackMessage) {
@@ -435,8 +838,12 @@
       return fallbackMessage;
     }
 
+    function deepClone(value) {
+      return JSON.parse(JSON.stringify(value));
+    }
+
     function escapeHtml(value) {
-      return value
+      return String(value)
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;")
