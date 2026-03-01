@@ -117,6 +117,15 @@ curl -X POST http://127.0.0.1:8000/api/export/zip \
 
 PDF export is not implemented in this phase. HTML and ZIP are complete and supported.
 
+## Future Enhancements (Planned)
+- PDF export endpoint and one-click download from UI
+- Persistent save/load for edited portfolio drafts
+- Custom section ordering and drag-drop editor
+- More portfolio themes and dark/light presets
+- Social/contact block customization (X, LinkedIn, portfolio links)
+- End-to-end browser test suite (Playwright)
+- Optional auth + user workspace for multiple saved portfolios
+
 ## Test
 
 Run the test suite:
