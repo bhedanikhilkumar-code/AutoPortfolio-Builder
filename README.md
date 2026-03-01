@@ -134,14 +134,15 @@ This app can be deployed to any platform that supports ASGI applications.
 Recommended production start command:
 
 ```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+uvicorn app.main:app --host 0.0.0.0 --port $PORT
 ```
 
 Deployment checklist:
 1. Use Python 3.12 or later in a clean environment.
 2. Install dependencies with `pip install -r requirements.txt`.
-3. Expose port `8000` or map your platform port to the Uvicorn process.
+3. Ensure your platform injects `PORT` (Render does this automatically).
 4. Ensure outbound access to `api.github.com`, since profile generation depends on the GitHub API.
+5. This repo includes `render.yaml`, `Procfile`, and `runtime.txt` for smoother Render deployment.
 
 ## Notes
 - If `GITHUB_TOKEN` is set, the backend sends authenticated GitHub API requests with `Authorization: Bearer ...`.
