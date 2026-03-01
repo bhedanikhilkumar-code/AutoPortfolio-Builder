@@ -70,6 +70,17 @@ class PortfolioResponse(BaseModel):
     contact: PortfolioSection
 
 
+ExportFilename = Annotated[
+    str,
+    Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_-]+$"),
+]
+
+
+class ExportRequest(BaseModel):
+    portfolio: PortfolioResponse
+    filename: ExportFilename | None = None
+
+
 class APIError(BaseModel):
     code: str
     message: str

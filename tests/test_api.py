@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+from io import BytesIO
+from zipfile import ZipFile
+
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from app.main import app, get_github_service
-from app.schemas import GitHubProfile, ProfileResponse, RepoSummary
+from app.schemas import GenerateRequest, GitHubProfile, ProfileResponse, RepoSummary
 from app.services.github import GitHubService
+from app.services.portfolio import generate_portfolio
 
 
 class StubGitHubService:
@@ -141,3 +145,129 @@ def test_github_service_skips_authorization_without_token(monkeypatch) -> None:
     service = GitHubService()
 
     assert "Authorization" not in service._build_headers()
+
+
+def test_generate_endpoint_handles_empty_repositories() -> None:
+    payload = {
+        "profile": {
+            "username": "solo",
+            "name": None,
+            "bio": None,
+            "avatar_url": None,
+            "html_url": "https://github.com/solo",
+            "blog": None,
+            "location": None,
+            "email": None,
+            "public_repos": 0,
+            "followers": 0,
+            "following": 0,
+        },
+        "repos": [],
+        "theme": "modern",
+    }
+
+    response = client.post("/api/generate", json=payload)
+
+    assert response.status_code == 200
+    portfolio = response.json()
+    assert portfolio["hero"]["content"]["headline"] == "solo builds software that ships."
+    assert portfolio["about"]["content"]["summary"] == ["Getting started with open source projects on GitHub"]
+    assert portfolio["projects"]["content"]["items"] == []
+    assert portfolio["skills"]["content"]["highlighted"] == []
+
+
+def test_generate_portfolio_uses_topics_when_languages_are_missing() -> None:
+    portfolio = generate_portfolio(
+        GenerateRequest(
+            profile=GitHubProfile(
+                username="builder",
+                name="Builder",
+                bio=None,
+                avatar_url=None,
+                html_url="https://github.com/builder",
+                blog=None,
+                location=None,
+                email=None,
+                public_repos=1,
+                followers=0,
+                following=0,
+            ),
+            repos=[
+                RepoSummary(
+                    name="toolkit",
+                    description=None,
+                    html_url="https://github.com/builder/toolkit",
+                    language=None,
+                    topics=["cli", "automation", "cli"],
+                )
+            ],
+        )
+    )
+
+    assert portfolio.skills.content["languages"] == []
+    assert portfolio.skills.content["highlighted"][:2] == ["cli", "automation"]
+
+
+def test_export_html_endpoint_returns_downloadable_file() -> None:
+    profile_payload = client.post("/api/profile", json={"username": "octocat"}).json()
+    portfolio_payload = client.post("/api/generate", json=profile_payload).json()
+    portfolio_payload["hero"]["content"]["headline"] = "Custom export headline"
+
+    response = client.post(
+        "/api/export/html",
+        json={"portfolio": portfolio_payload, "filename": "ada-portfolio"},
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert response.headers["content-disposition"] == 'attachment; filename="ada-portfolio.html"'
+    assert "Custom export headline" in response.text
+    assert "<!DOCTYPE html>" in response.text
+
+
+def test_export_zip_endpoint_returns_archive_with_expected_files() -> None:
+    profile_payload = client.post("/api/profile", json={"username": "octocat"}).json()
+    portfolio_payload = client.post("/api/generate", json=profile_payload).json()
+
+    response = client.post("/api/export/zip", json={"portfolio": portfolio_payload})
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/zip"
+
+    archive = ZipFile(BytesIO(response.content))
+
+    assert sorted(archive.namelist()) == ["index.html", "portfolio.json"]
+    assert "Ada Lovelace builds software that ships." in archive.read("index.html").decode("utf-8")
+    assert '"theme": "modern"' in archive.read("portfolio.json").decode("utf-8")
+
+
+def test_export_endpoint_validates_filename() -> None:
+    profile_payload = client.post("/api/profile", json={"username": "octocat"}).json()
+    portfolio_payload = client.post("/api/generate", json=profile_payload).json()
+
+    response = client.post(
+        "/api/export/html",
+        json={"portfolio": portfolio_payload, "filename": "invalid file"},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "validation_error"
+
+
+def test_full_profile_generate_edit_export_flow() -> None:
+    profile_response = client.post("/api/profile", json={"username": "octocat"})
+    assert profile_response.status_code == 200
+
+    generated_response = client.post("/api/generate", json={**profile_response.json(), "theme": "minimal"})
+    assert generated_response.status_code == 200
+
+    edited_portfolio = generated_response.json()
+    edited_portfolio["about"]["content"]["name"] = "Ada Lovelace, FRS"
+    edited_portfolio["contact"]["content"]["email"] = "hello@example.dev"
+
+    export_response = client.post("/api/export/html", json={"portfolio": edited_portfolio})
+
+    assert export_response.status_code == 200
+    assert export_response.headers["content-disposition"] == 'attachment; filename="ada-lovelace-frs.html"'
+    assert "Ada Lovelace, FRS" in export_response.text
+    assert "hello@example.dev" in export_response.text

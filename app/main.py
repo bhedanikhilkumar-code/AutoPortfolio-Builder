@@ -4,11 +4,12 @@ from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from app.schemas import (
     ErrorResponse,
+    ExportRequest,
     GenerateRequest,
     HealthResponse,
     PortfolioResponse,
@@ -16,7 +17,12 @@ from app.schemas import (
     ProfileResponse,
 )
 from app.services.github import GitHubService
-from app.services.portfolio import generate_portfolio
+from app.services.portfolio import (
+    build_export_filename,
+    build_portfolio_zip,
+    generate_portfolio,
+    render_portfolio_html,
+)
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -63,6 +69,26 @@ def create_app() -> FastAPI:
     @app.post("/api/generate", response_model=PortfolioResponse)
     async def generate(payload: GenerateRequest) -> PortfolioResponse:
         return generate_portfolio(payload)
+
+    @app.post("/api/export/html")
+    async def export_html(payload: ExportRequest) -> Response:
+        filename = build_export_filename(payload)
+        html_document = render_portfolio_html(payload.portfolio)
+        return Response(
+            content=html_document,
+            media_type="text/html; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="{filename}.html"'},
+        )
+
+    @app.post("/api/export/zip")
+    async def export_zip(payload: ExportRequest) -> Response:
+        filename = build_export_filename(payload)
+        archive_bytes = build_portfolio_zip(payload)
+        return Response(
+            content=archive_bytes,
+            media_type="application/zip",
+            headers={"Content-Disposition": f'attachment; filename="{filename}.zip"'},
+        )
 
     return app
 
