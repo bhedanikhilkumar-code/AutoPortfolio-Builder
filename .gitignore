@@ -1,5 +1,7 @@
 .venv/
 __pycache__/
+.pytest_cache/
+pytest-cache-files-*/
 node_modules/
 .next/
 dist/
