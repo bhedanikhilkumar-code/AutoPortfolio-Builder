@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import Depends, FastAPI
-from fastapi.responses import FileResponse
+from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.schemas import (
+    ErrorResponse,
     GenerateRequest,
     HealthResponse,
     PortfolioResponse,
@@ -29,6 +31,20 @@ def create_app() -> FastAPI:
     app = FastAPI(title="AutoPortfolio Builder", version="0.1.0")
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
+    @app.exception_handler(HTTPException)
+    async def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse:
+        return _error_response(exc.status_code, _status_code_to_error_code(exc.status_code), str(exc.detail))
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_exception_handler(_: Request, exc: RequestValidationError) -> JSONResponse:
+        first_error = exc.errors()[0] if exc.errors() else None
+        message = first_error.get("msg", "Request validation failed.") if first_error else "Request validation failed."
+        return _error_response(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "validation_error",
+            message,
+        )
+
     @app.get("/", include_in_schema=False)
     async def index() -> FileResponse:
         return FileResponse(STATIC_DIR / "index.html")
@@ -49,6 +65,20 @@ def create_app() -> FastAPI:
         return generate_portfolio(payload)
 
     return app
+
+
+def _error_response(status_code: int, code: str, message: str) -> JSONResponse:
+    payload = ErrorResponse.model_validate({"error": {"code": code, "message": message}})
+    return JSONResponse(status_code=status_code, content=payload.model_dump())
+
+
+def _status_code_to_error_code(status_code: int) -> str:
+    codes = {
+        status.HTTP_404_NOT_FOUND: "not_found",
+        status.HTTP_422_UNPROCESSABLE_ENTITY: "validation_error",
+        status.HTTP_502_BAD_GATEWAY: "upstream_error",
+    }
+    return codes.get(status_code, "request_error")
 
 
 app = create_app()

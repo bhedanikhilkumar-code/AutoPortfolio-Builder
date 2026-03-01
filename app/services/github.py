@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+import os
+from dataclasses import dataclass, field
 
 import httpx
 from fastapi import HTTPException, status
@@ -14,15 +15,12 @@ GITHUB_API_BASE = "https://api.github.com"
 @dataclass(slots=True)
 class GitHubService:
     timeout_seconds: float = 10.0
+    github_token: str | None = field(default_factory=lambda: os.getenv("GITHUB_TOKEN"))
 
     async def fetch_profile(self, username: str) -> ProfileResponse:
-        headers = {
-            "Accept": "application/vnd.github+json",
-            "User-Agent": "AutoPortfolio-Builder",
-        }
         async with httpx.AsyncClient(
             base_url=GITHUB_API_BASE,
-            headers=headers,
+            headers=self._build_headers(),
             timeout=self.timeout_seconds,
         ) as client:
             user_response = await self._get(client, f"/users/{username}")
@@ -66,6 +64,15 @@ class GitHubService:
         ]
         return ProfileResponse(profile=profile, repos=repos)
 
+    def _build_headers(self) -> dict[str, str]:
+        headers = {
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "AutoPortfolio-Builder",
+        }
+        if self.github_token:
+            headers["Authorization"] = f"Bearer {self.github_token}"
+        return headers
+
     async def _get(
         self,
         client: httpx.AsyncClient,
@@ -85,7 +92,10 @@ class GitHubService:
             if exc.response.status_code == status.HTTP_403_FORBIDDEN:
                 raise HTTPException(
                     status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail="GitHub API rate limited or unavailable.",
+                    detail=(
+                        "GitHub API rate limited or unavailable. "
+                        "Set GITHUB_TOKEN to increase the rate limit."
+                    ),
                 ) from exc
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,

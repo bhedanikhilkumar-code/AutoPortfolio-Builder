@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from app.main import app, get_github_service
 from app.schemas import GitHubProfile, ProfileResponse, RepoSummary
+from app.services.github import GitHubService
 
 
 class StubGitHubService:
@@ -48,6 +50,11 @@ class StubGitHubService:
         )
 
 
+class FailingGitHubService:
+    async def fetch_profile(self, username: str) -> ProfileResponse:
+        raise HTTPException(status_code=404, detail="GitHub user not found.")
+
+
 client = TestClient(app)
 
 
@@ -83,7 +90,8 @@ def test_generate_endpoint_builds_portfolio_sections() -> None:
 
     assert response.status_code == 200
     payload = response.json()
-    assert set(payload.keys()) == {"hero", "about", "projects", "skills", "contact"}
+    assert set(payload.keys()) == {"theme", "hero", "about", "projects", "skills", "contact"}
+    assert payload["theme"] == "modern"
     assert payload["hero"]["content"]["headline"] == "Ada Lovelace builds software that ships."
     assert payload["projects"]["content"]["items"][0]["name"] == "engine"
     assert "Python" in payload["skills"]["content"]["highlighted"]
@@ -93,3 +101,43 @@ def test_profile_endpoint_validates_username() -> None:
     response = client.post("/api/profile", json={"username": "not valid"})
 
     assert response.status_code == 422
+    assert response.json()["error"]["code"] == "validation_error"
+
+
+def test_generate_endpoint_accepts_selected_theme() -> None:
+    profile_payload = client.post("/api/profile", json={"username": "octocat"}).json()
+
+    response = client.post("/api/generate", json={**profile_payload, "theme": "minimal"})
+
+    assert response.status_code == 200
+    assert response.json()["theme"] == "minimal"
+
+
+def test_profile_endpoint_returns_consistent_error_payload() -> None:
+    app.dependency_overrides[get_github_service] = lambda: FailingGitHubService()
+
+    response = client.post("/api/profile", json={"username": "ghost"})
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "error": {
+            "code": "not_found",
+            "message": "GitHub user not found.",
+        }
+    }
+
+
+def test_github_service_reads_token_from_environment(monkeypatch) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "secret-token")
+
+    service = GitHubService()
+
+    assert service._build_headers()["Authorization"] == "Bearer secret-token"
+
+
+def test_github_service_skips_authorization_without_token(monkeypatch) -> None:
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+
+    service = GitHubService()
+
+    assert "Authorization" not in service._build_headers()

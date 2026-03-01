@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -9,8 +9,12 @@ class HealthResponse(BaseModel):
     status: str
 
 
+ThemeMode = Literal["modern", "minimal"]
+GitHubUsername = Annotated[str, Field(min_length=1, max_length=39, pattern=r"^[A-Za-z0-9-]+$")]
+
+
 class ProfileRequest(BaseModel):
-    username: str = Field(min_length=1, max_length=39, pattern=r"^[A-Za-z0-9-]+$")
+    username: GitHubUsername
 
 
 class RepoSummary(BaseModel):
@@ -47,6 +51,7 @@ class ProfileResponse(BaseModel):
 class GenerateRequest(BaseModel):
     profile: GitHubProfile
     repos: list[RepoSummary]
+    theme: ThemeMode = "modern"
 
 
 class PortfolioSection(BaseModel):
@@ -57,8 +62,18 @@ class PortfolioSection(BaseModel):
 
 
 class PortfolioResponse(BaseModel):
+    theme: ThemeMode
     hero: PortfolioSection
     about: PortfolioSection
     projects: PortfolioSection
     skills: PortfolioSection
     contact: PortfolioSection
+
+
+class APIError(BaseModel):
+    code: str
+    message: str
+
+
+class ErrorResponse(BaseModel):
+    error: APIError

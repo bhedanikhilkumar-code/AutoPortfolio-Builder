@@ -38,6 +38,7 @@ def generate_portfolio(payload: GenerateRequest) -> PortfolioResponse:
     ]
 
     return PortfolioResponse(
+        theme=payload.theme,
         hero=PortfolioSection(
             title="Hero",
             content={
