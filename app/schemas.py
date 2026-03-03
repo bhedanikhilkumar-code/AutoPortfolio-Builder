@@ -81,6 +81,18 @@ class ExportRequest(BaseModel):
     filename: ExportFilename | None = None
 
 
+class ShareRequest(BaseModel):
+    portfolio: PortfolioResponse
+    filename: ExportFilename | None = None
+    use_short_link: bool = True
+
+
+class ShareResponse(BaseModel):
+    share_id: str
+    resume_url: str
+    share_url: str
+
+
 class APIError(BaseModel):
     code: str
     message: str

@@ -256,6 +256,46 @@ def test_export_pdf_endpoint_returns_downloadable_file() -> None:
     assert response.content.startswith(b"%PDF")
 
 
+def test_share_endpoint_returns_resume_link(monkeypatch) -> None:
+    profile_payload = client.post("/api/profile", json={"username": "octocat"}).json()
+    portfolio_payload = client.post("/api/generate", json=profile_payload).json()
+
+    async def no_shortener(_: str) -> str | None:
+        return None
+
+    monkeypatch.setattr("app.main._shorten_url", no_shortener)
+
+    response = client.post(
+        "/api/share",
+        json={"portfolio": portfolio_payload, "filename": "ada-portfolio", "use_short_link": True},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["share_id"]
+    assert payload["resume_url"].endswith(f"/resume/{payload['share_id']}")
+    assert payload["share_url"] == payload["resume_url"]
+
+
+def test_shared_resume_endpoint_renders_portfolio(monkeypatch) -> None:
+    profile_payload = client.post("/api/profile", json={"username": "octocat"}).json()
+    portfolio_payload = client.post("/api/generate", json=profile_payload).json()
+
+    async def no_shortener(_: str) -> str | None:
+        return None
+
+    monkeypatch.setattr("app.main._shorten_url", no_shortener)
+
+    share_response = client.post("/api/share", json={"portfolio": portfolio_payload})
+    share_id = share_response.json()["share_id"]
+
+    response = client.get(f"/resume/{share_id}")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert "Ada Lovelace builds software that ships." in response.text
+
+
 def test_export_endpoint_validates_filename() -> None:
     profile_payload = client.post("/api/profile", json={"username": "octocat"}).json()
     portfolio_payload = client.post("/api/generate", json=profile_payload).json()

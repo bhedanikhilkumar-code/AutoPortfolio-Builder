@@ -373,8 +373,6 @@
       hasUnsavedChanges: false,
     };
 
-    loadSharedPortfolioFromLocation();
-
     themeInput.addEventListener("change", () => {
       if (!appState.draftPortfolio) {
         return;
@@ -489,9 +487,9 @@
               <button id="export-pdf" class="secondary" type="button">Export PDF</button>
             </div>
             <div class="inline-actions">
-              <button id="copy-share-link" class="secondary" type="button">Copy Share Link</button>
+              <button id="copy-share-link" class="secondary" type="button">Copy Resume Link</button>
             </div>
-            <p class="muted-note">Share links include the currently saved portfolio state. Large drafts may exceed browser URL limits.</p>
+            <p class="muted-note">Share creates a separate resume page and tries to return a short link.</p>
             <div class="editor-section">
               <h3>${escapeHtml(draft.hero.title)}</h3>
               <label class="field">
@@ -855,141 +853,30 @@
       return `${buildExportFilename()}.${format}`;
     }
 
-    function buildShareUrl() {
-      const encodedPayload = encodeSharePayload({
-        portfolio: appState.savedPortfolio,
-        profile: appState.profileData?.profile || null,
-      });
-      const shareUrl = `${window.location.origin}${window.location.pathname}#share=${encodedPayload}`;
-
-      if (shareUrl.length > 7500) {
-        throw new Error("This portfolio is too large to fit in a share link. Trim project content and try again.");
-      }
-
-      return shareUrl;
-    }
-
-    function loadSharedPortfolioFromLocation() {
-      const encodedPayload = readSharePayloadToken();
-      if (!encodedPayload) {
-        return;
-      }
-
-      try {
-        const sharePayload = decodeSharePayload(encodedPayload);
-        if (!isValidSharedPortfolio(sharePayload.portfolio)) {
-          throw new Error("This share link is missing required portfolio data.");
-        }
-
-        const profile = normalizeSharedProfile(sharePayload.profile, sharePayload.portfolio);
-        appState.profileData = { profile, repos: [] };
-        appState.generatedPortfolio = deepClone(sharePayload.portfolio);
-        appState.draftPortfolio = deepClone(sharePayload.portfolio);
-        appState.savedPortfolio = deepClone(sharePayload.portfolio);
-        appState.hasUnsavedChanges = false;
-        themeInput.value = sharePayload.portfolio.theme || "modern";
-
-        renderWorkspace();
-        setStatus("Shared portfolio loaded.");
-      } catch (error) {
-        showError(error.message || "Invalid share link.");
-      }
-    }
-
-    function readSharePayloadToken() {
-      const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "";
-      if (hash.startsWith("share=")) {
-        return hash.slice("share=".length);
-      }
-
-      const params = new URLSearchParams(window.location.search);
-      return params.get("share");
-    }
-
-    function encodeSharePayload(payload) {
-      const json = JSON.stringify(payload);
-      const bytes = new TextEncoder().encode(json);
-
-      if (bytes.length > 5000) {
-        throw new Error("This portfolio is too large to fit in a share link. Trim project content and try again.");
-      }
-
-      let binary = "";
-      bytes.forEach((byte) => {
-        binary += String.fromCharCode(byte);
+    async function buildShareUrl() {
+      const response = await fetch("/api/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          portfolio: appState.savedPortfolio,
+          filename: buildExportFilename(),
+          use_short_link: true,
+        }),
       });
 
-      return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/g, "");
-    }
-
-    function decodeSharePayload(encodedPayload) {
-      const normalized = encodedPayload.replaceAll("-", "+").replaceAll("_", "/");
-      const padded = normalized + "=".repeat((4 - (normalized.length % 4 || 4)) % 4);
-      let binary;
-
-      try {
-        binary = atob(padded);
-      } catch (error) {
-        throw new Error("This share link is not valid base64 data.");
+      if (!response.ok) {
+        const payload = await parseErrorPayload(response);
+        throw new Error(getErrorMessage(payload, "Failed to create share link."));
       }
 
-      const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
-
-      try {
-        return JSON.parse(new TextDecoder().decode(bytes));
-      } catch (error) {
-        throw new Error("This share link does not contain valid portfolio data.");
-      }
-    }
-
-    function isValidSharedPortfolio(portfolio) {
-      return Boolean(
-        portfolio
-        && typeof portfolio === "object"
-        && portfolio.hero
-        && portfolio.about
-        && portfolio.projects
-        && portfolio.skills
-        && portfolio.contact
-      );
-    }
-
-    function normalizeSharedProfile(profile, portfolio) {
-      const fallbackName = portfolio?.about?.content?.name || "Shared Portfolio";
-
-      if (profile && typeof profile === "object") {
-        return {
-          username: String(profile.username || fallbackName).trim() || "shared-portfolio",
-          name: profile.name || fallbackName,
-          bio: profile.bio || null,
-          avatar_url: profile.avatar_url || null,
-          html_url: profile.html_url || "",
-          blog: profile.blog || null,
-          location: profile.location || portfolio?.contact?.content?.location || null,
-          email: profile.email || portfolio?.contact?.content?.email || null,
-          public_repos: Number(profile.public_repos || 0),
-          followers: Number(profile.followers || 0),
-          following: Number(profile.following || 0),
-        };
-      }
-
-      return {
-        username: "shared-portfolio",
-        name: fallbackName,
-        bio: null,
-        avatar_url: null,
-        html_url: "",
-        blog: portfolio?.contact?.content?.blog || null,
-        location: portfolio?.contact?.content?.location || null,
-        email: portfolio?.contact?.content?.email || null,
-        public_repos: Number(portfolio?.hero?.content?.stats?.public_repos || 0),
-        followers: Number(portfolio?.hero?.content?.stats?.followers || 0),
-        following: Number(portfolio?.hero?.content?.stats?.following || 0),
-      };
+      const payload = await response.json();
+      return payload.share_url || payload.resume_url;
     }
 
     function getActiveProfile() {
-      return appState.profileData?.profile || normalizeSharedProfile(null, appState.savedPortfolio);
+      return appState.profileData?.profile || {
+        html_url: "",
+      };
     }
 
     async function writeToClipboard(value) {
