@@ -18,21 +18,19 @@ class GitHubService:
     github_token: str | None = field(default_factory=lambda: os.getenv("GITHUB_TOKEN"))
 
     async def fetch_profile(self, username: str) -> ProfileResponse:
-        async with httpx.AsyncClient(
-            base_url=GITHUB_API_BASE,
-            headers=self._build_headers(),
-            timeout=self.timeout_seconds,
-        ) as client:
-            user_response = await self._get(client, f"/users/{username}")
-            repo_response = await self._get(
-                client,
-                f"/users/{username}/repos",
-                params={
-                    "sort": "updated",
-                    "per_page": 100,
-                    "type": "owner",
-                },
+        try:
+            user_response, repo_response = await self._fetch_profile_payload(
+                username,
+                headers=self._build_headers(include_token=True),
             )
+        except HTTPException as exc:
+            if self.github_token and exc.status_code == status.HTTP_502_BAD_GATEWAY:
+                user_response, repo_response = await self._fetch_profile_payload(
+                    username,
+                    headers=self._build_headers(include_token=False),
+                )
+            else:
+                raise
 
         profile = GitHubProfile(
             username=user_response["login"],
@@ -64,12 +62,34 @@ class GitHubService:
         ]
         return ProfileResponse(profile=profile, repos=repos)
 
-    def _build_headers(self) -> dict[str, str]:
+    async def _fetch_profile_payload(
+        self,
+        username: str,
+        headers: dict[str, str],
+    ) -> tuple[dict, list]:
+        async with httpx.AsyncClient(
+            base_url=GITHUB_API_BASE,
+            headers=headers,
+            timeout=self.timeout_seconds,
+        ) as client:
+            user_response = await self._get(client, f"/users/{username}")
+            repo_response = await self._get(
+                client,
+                f"/users/{username}/repos",
+                params={
+                    "sort": "updated",
+                    "per_page": 100,
+                    "type": "owner",
+                },
+            )
+        return user_response, repo_response
+
+    def _build_headers(self, *, include_token: bool = True) -> dict[str, str]:
         headers = {
             "Accept": "application/vnd.github+json",
             "User-Agent": "AutoPortfolio-Builder",
         }
-        if self.github_token:
+        if include_token and self.github_token:
             headers["Authorization"] = f"Bearer {self.github_token}"
         return headers
 
