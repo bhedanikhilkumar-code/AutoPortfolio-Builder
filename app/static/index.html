@@ -720,7 +720,7 @@
       clearError();
 
       try {
-        const shareUrl = buildShareUrl();
+        const shareUrl = await buildShareUrl();
         await writeToClipboard(shareUrl);
         setStatus("Share link copied to clipboard.");
       } catch (error) {
