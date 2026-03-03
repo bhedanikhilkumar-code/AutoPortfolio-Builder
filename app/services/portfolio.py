@@ -536,28 +536,34 @@ def _pdf_text(value: object) -> str:
 
 
 def _pdf_section_title(pdf: FPDF, text: object) -> None:
+    pdf.set_x(pdf.l_margin)
     pdf.set_font("Helvetica", "B", 22)
     pdf.multi_cell(0, 10, _pdf_text(text))
 
 
 def _pdf_section_label(pdf: FPDF, text: object) -> None:
+    pdf.set_x(pdf.l_margin)
     pdf.set_font("Helvetica", "B", 14)
     pdf.multi_cell(0, 8, _pdf_text(text))
 
 
 def _pdf_paragraph(pdf: FPDF, text: object) -> None:
+    pdf.set_x(pdf.l_margin)
     pdf.set_font("Helvetica", size=11)
     pdf.multi_cell(0, 6, _pdf_text(text))
 
 
 def _pdf_bullet(pdf: FPDF, text: object) -> None:
+    pdf.set_x(pdf.l_margin)
     pdf.set_font("Helvetica", size=11)
     pdf.multi_cell(0, 6, f"- {_pdf_text(text)}")
 
 
 def _pdf_project(pdf: FPDF, name: object, details: object) -> None:
+    pdf.set_x(pdf.l_margin)
     pdf.set_font("Helvetica", "B", 12)
     pdf.multi_cell(0, 7, _pdf_text(name))
+    pdf.set_x(pdf.l_margin)
     pdf.set_font("Helvetica", size=11)
     pdf.multi_cell(0, 6, _pdf_text(details))
     _pdf_spacer(pdf, 1)
