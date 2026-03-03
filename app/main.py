@@ -21,6 +21,7 @@ from app.services.portfolio import (
     build_export_filename,
     build_portfolio_zip,
     generate_portfolio,
+    render_portfolio_pdf,
     render_portfolio_html,
 )
 
@@ -88,6 +89,16 @@ def create_app() -> FastAPI:
             content=archive_bytes,
             media_type="application/zip",
             headers={"Content-Disposition": f'attachment; filename="{filename}.zip"'},
+        )
+
+    @app.post("/api/export/pdf")
+    async def export_pdf(payload: ExportRequest) -> Response:
+        filename = build_export_filename(payload)
+        pdf_bytes = render_portfolio_pdf(payload.portfolio)
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{filename}.pdf"'},
         )
 
     return app

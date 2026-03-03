@@ -241,6 +241,21 @@ def test_export_zip_endpoint_returns_archive_with_expected_files() -> None:
     assert '"theme": "modern"' in archive.read("portfolio.json").decode("utf-8")
 
 
+def test_export_pdf_endpoint_returns_downloadable_file() -> None:
+    profile_payload = client.post("/api/profile", json={"username": "octocat"}).json()
+    portfolio_payload = client.post("/api/generate", json=profile_payload).json()
+
+    response = client.post(
+        "/api/export/pdf",
+        json={"portfolio": portfolio_payload, "filename": "ada-portfolio"},
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert response.headers["content-disposition"] == 'attachment; filename="ada-portfolio.pdf"'
+    assert response.content.startswith(b"%PDF")
+
+
 def test_export_endpoint_validates_filename() -> None:
     profile_payload = client.post("/api/profile", json={"username": "octocat"}).json()
     portfolio_payload = client.post("/api/generate", json=profile_payload).json()

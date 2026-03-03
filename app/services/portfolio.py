@@ -5,6 +5,11 @@ from html import escape
 from io import BytesIO
 from zipfile import ZIP_DEFLATED, ZipFile
 
+try:
+    from fpdf import FPDF
+except ModuleNotFoundError:  # pragma: no cover - exercised only when dependency is absent.
+    FPDF = None
+
 from app.schemas import ExportRequest, GenerateRequest, PortfolioResponse, PortfolioSection, RepoSummary
 
 
@@ -370,6 +375,76 @@ def build_portfolio_zip(payload: ExportRequest) -> bytes:
     return buffer.getvalue()
 
 
+def render_portfolio_pdf(portfolio: PortfolioResponse) -> bytes:
+    if FPDF is None:
+        return _render_portfolio_pdf_fallback(portfolio)
+
+    hero = portfolio.hero.content
+    about = portfolio.about.content
+    skills = portfolio.skills.content
+    projects_items = portfolio.projects.content.get("items") or []
+    contact = portfolio.contact.content
+
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+    pdf.set_title(_pdf_text(about.get("name") or hero.get("headline") or "Portfolio"))
+    pdf.set_author(_pdf_text(contact.get("github") or "AutoPortfolio Builder"))
+    pdf.set_margins(15, 15, 15)
+
+    _pdf_section_title(pdf, about.get("name") or "Portfolio")
+    _pdf_paragraph(pdf, hero.get("headline"))
+    _pdf_paragraph(pdf, hero.get("subheadline"))
+
+    _pdf_spacer(pdf, 2)
+    _pdf_section_label(pdf, "About")
+    about_points = about.get("summary") or []
+    if about_points:
+        for point in about_points:
+            _pdf_bullet(pdf, point)
+    else:
+        _pdf_bullet(pdf, "Details coming soon.")
+
+    _pdf_spacer(pdf, 2)
+    _pdf_section_label(pdf, "Skills")
+    highlighted_skills = [str(item).strip() for item in skills.get("highlighted") or [] if str(item).strip()]
+    _pdf_paragraph(pdf, ", ".join(highlighted_skills) if highlighted_skills else "No skills listed.")
+
+    _pdf_spacer(pdf, 2)
+    _pdf_section_label(pdf, "Top Projects")
+    if projects_items:
+        for project in projects_items[:4]:
+            if not isinstance(project, dict):
+                continue
+            project_name = project.get("name") or "Untitled project"
+            description = project.get("description") or "Project details coming soon."
+            details = [description]
+            if project.get("language"):
+                details.append(f"Language: {project['language']}")
+            if project.get("url"):
+                details.append(f"Repository: {project['url']}")
+            _pdf_project(pdf, project_name, " | ".join(details))
+    else:
+        _pdf_paragraph(pdf, "No featured projects yet.")
+
+    _pdf_spacer(pdf, 2)
+    _pdf_section_label(pdf, "Contact")
+    contact_lines = [
+        f"GitHub: {contact.get('github')}" if contact.get("github") else "",
+        f"Blog: {contact.get('blog')}" if contact.get("blog") else "",
+        f"Email: {contact.get('email')}" if contact.get("email") else "",
+        f"Location: {contact.get('location')}" if contact.get("location") else "",
+    ]
+    for line in contact_lines:
+        if line:
+            _pdf_bullet(pdf, line)
+    if not any(contact_lines):
+        _pdf_paragraph(pdf, "No contact details listed.")
+
+    output = pdf.output()
+    return bytes(output) if not isinstance(output, bytes) else output
+
+
 def _render_stat(label: str, value: object) -> str:
     return (
         f"<div class=\"stat\"><strong>{_safe_text(value)}</strong>"
@@ -454,3 +529,140 @@ def _safe_url(value: object) -> str:
     if text.startswith(("http://", "https://", "mailto:")):
         return escape(text, quote=True)
     return ""
+
+
+def _pdf_text(value: object) -> str:
+    return str(value or "").strip().encode("latin-1", "replace").decode("latin-1")
+
+
+def _pdf_section_title(pdf: FPDF, text: object) -> None:
+    pdf.set_font("Helvetica", "B", 22)
+    pdf.multi_cell(0, 10, _pdf_text(text))
+
+
+def _pdf_section_label(pdf: FPDF, text: object) -> None:
+    pdf.set_font("Helvetica", "B", 14)
+    pdf.multi_cell(0, 8, _pdf_text(text))
+
+
+def _pdf_paragraph(pdf: FPDF, text: object) -> None:
+    pdf.set_font("Helvetica", size=11)
+    pdf.multi_cell(0, 6, _pdf_text(text))
+
+
+def _pdf_bullet(pdf: FPDF, text: object) -> None:
+    pdf.set_font("Helvetica", size=11)
+    pdf.multi_cell(0, 6, f"- {_pdf_text(text)}")
+
+
+def _pdf_project(pdf: FPDF, name: object, details: object) -> None:
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.multi_cell(0, 7, _pdf_text(name))
+    pdf.set_font("Helvetica", size=11)
+    pdf.multi_cell(0, 6, _pdf_text(details))
+    _pdf_spacer(pdf, 1)
+
+
+def _pdf_spacer(pdf: FPDF, height: int) -> None:
+    pdf.ln(height)
+
+
+def _render_portfolio_pdf_fallback(portfolio: PortfolioResponse) -> bytes:
+    lines = _collect_pdf_lines(portfolio)
+    text_commands: list[str] = ["BT", "/F1 12 Tf", "14 TL", "50 792 Td"]
+
+    for index, line in enumerate(lines):
+        if index:
+            text_commands.append("T*")
+        text_commands.append(f"({_pdf_escape(line)}) Tj")
+
+    text_commands.append("ET")
+    stream = "\n".join(text_commands).encode("latin-1", "replace")
+
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+        b"<< /Length " + str(len(stream)).encode("ascii") + b" >>\nstream\n" + stream + b"\nendstream",
+    ]
+
+    buffer = BytesIO()
+    buffer.write(b"%PDF-1.4\n")
+    offsets = [0]
+
+    for index, obj in enumerate(objects, start=1):
+        offsets.append(buffer.tell())
+        buffer.write(f"{index} 0 obj\n".encode("ascii"))
+        buffer.write(obj)
+        buffer.write(b"\nendobj\n")
+
+    xref_position = buffer.tell()
+    buffer.write(f"xref\n0 {len(objects) + 1}\n".encode("ascii"))
+    buffer.write(b"0000000000 65535 f \n")
+    for offset in offsets[1:]:
+        buffer.write(f"{offset:010d} 00000 n \n".encode("ascii"))
+    buffer.write(
+        f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref_position}\n%%EOF".encode("ascii")
+    )
+
+    return buffer.getvalue()
+
+
+def _collect_pdf_lines(portfolio: PortfolioResponse) -> list[str]:
+    hero = portfolio.hero.content
+    about = portfolio.about.content
+    skills = portfolio.skills.content
+    projects_items = portfolio.projects.content.get("items") or []
+    contact = portfolio.contact.content
+
+    lines = [
+        _pdf_text(about.get("name") or "Portfolio"),
+        _pdf_text(hero.get("headline")),
+        _pdf_text(hero.get("subheadline")),
+        "",
+        "About",
+    ]
+
+    about_points = about.get("summary") or ["Details coming soon."]
+    lines.extend(f"- {_pdf_text(point)}" for point in about_points)
+    lines.extend(["", "Skills"])
+
+    highlighted_skills = [str(item).strip() for item in skills.get("highlighted") or [] if str(item).strip()]
+    lines.append(_pdf_text(", ".join(highlighted_skills) if highlighted_skills else "No skills listed."))
+    lines.extend(["", "Top Projects"])
+
+    if projects_items:
+        for project in projects_items[:4]:
+            if not isinstance(project, dict):
+                continue
+            lines.append(_pdf_text(project.get("name") or "Untitled project"))
+            lines.append(_pdf_text(project.get("description") or "Project details coming soon."))
+            if project.get("language"):
+                lines.append(_pdf_text(f"Language: {project['language']}"))
+            if project.get("url"):
+                lines.append(_pdf_text(f"Repository: {project['url']}"))
+            lines.append("")
+    else:
+        lines.append("No featured projects yet.")
+        lines.append("")
+
+    lines.append("Contact")
+    contact_lines = [
+        f"GitHub: {contact.get('github')}" if contact.get("github") else "",
+        f"Blog: {contact.get('blog')}" if contact.get("blog") else "",
+        f"Email: {contact.get('email')}" if contact.get("email") else "",
+        f"Location: {contact.get('location')}" if contact.get("location") else "",
+    ]
+
+    non_empty_contact_lines = [line for line in contact_lines if line]
+    if non_empty_contact_lines:
+        lines.extend(_pdf_text(f"- {line}") for line in non_empty_contact_lines)
+    else:
+        lines.append("No contact details listed.")
+
+    return lines
+
+
+def _pdf_escape(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
