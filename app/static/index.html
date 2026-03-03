@@ -7,15 +7,18 @@
   <style>
     :root {
       color-scheme: light;
-      --bg: linear-gradient(135deg, #f3efe6 0%, #d7e4f5 50%, #f7fafc 100%);
-      --card: rgba(255, 255, 255, 0.82);
-      --border: rgba(17, 24, 39, 0.12);
-      --text: #10233f;
-      --muted: #475569;
-      --accent: #0f766e;
-      --accent-2: #1d4ed8;
-      --shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
-      --radius: 22px;
+      --bg: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+      --card: rgba(255, 255, 255, 0.92);
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --muted: #64748b;
+      --accent: #7c3aed;
+      --accent-2: #22c55e;
+      --danger: #ef4444;
+      --danger-hover: #dc2626;
+      --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+      --radius: 12px;
+      --transition: 200ms ease;
     }
 
     * {
@@ -51,6 +54,13 @@
       border-radius: var(--radius);
       box-shadow: var(--shadow);
       padding: 24px;
+      transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
+    }
+
+    .panel:hover {
+      transform: translateY(-3px);
+      border-color: #c4b5fd;
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
     }
 
     h1, h2, h3, p, label {
@@ -92,17 +102,26 @@
     textarea {
       width: 100%;
       border: 1px solid var(--border);
-      background: rgba(255, 255, 255, 0.95);
-      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.98);
+      border-radius: 12px;
       padding: 14px 16px;
       font-size: 1rem;
       font-family: inherit;
       color: var(--text);
+      transition: border-color var(--transition), box-shadow var(--transition), transform var(--transition);
     }
 
     form input,
     form select {
       flex: 1 1 220px;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
     }
 
     textarea {
@@ -112,18 +131,32 @@
 
     button {
       border: 0;
-      border-radius: 14px;
+      border-radius: 12px;
       padding: 14px 18px;
       font-size: 1rem;
       font-weight: 700;
       color: white;
       background: linear-gradient(135deg, var(--accent), var(--accent-2));
       cursor: pointer;
+      box-shadow: 0 6px 16px rgba(124, 58, 237, 0.25);
+      transition: transform var(--transition), box-shadow var(--transition), filter var(--transition), background var(--transition);
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 22px rgba(124, 58, 237, 0.3);
+      filter: saturate(1.05);
+    }
+
+    button:active {
+      transform: translateY(1px);
+      box-shadow: 0 4px 10px rgba(124, 58, 237, 0.2);
     }
 
     button.secondary {
-      background: rgba(16, 35, 63, 0.08);
+      background: rgba(15, 23, 42, 0.06);
       color: var(--text);
+      box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
     }
 
     button:disabled {
@@ -141,10 +174,10 @@
     .error-banner {
       margin-top: 14px;
       padding: 14px 16px;
-      border-radius: 16px;
-      border: 1px solid rgba(153, 27, 27, 0.14);
+      border-radius: 12px;
+      border: 1px solid rgba(239, 68, 68, 0.3);
       background: rgba(254, 226, 226, 0.9);
-      color: #991b1b;
+      color: var(--danger);
       font-weight: 600;
       line-height: 1.5;
     }
@@ -165,9 +198,16 @@
 
     .editor-section {
       padding: 16px;
-      border-radius: 18px;
-      background: rgba(255, 255, 255, 0.66);
-      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid var(--border);
+      transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
+    }
+
+    .editor-section:hover {
+      transform: translateY(-2px);
+      border-color: #c4b5fd;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
     }
 
     .field {
@@ -220,9 +260,16 @@
 
     .project {
       padding: 18px;
-      border-radius: 18px;
-      background: rgba(255, 255, 255, 0.72);
-      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.88);
+      border: 1px solid var(--border);
+      transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
+    }
+
+    .project:hover {
+      transform: translateY(-2px);
+      border-color: #c4b5fd;
+      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.1);
     }
 
     .project-editor {
