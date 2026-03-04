@@ -46,6 +46,7 @@ usernameInput.addEventListener("input", () => {
   if (!incoming || incoming === (appState.username || "").toLowerCase()) return;
   appState.profileData = null;
   appState.variants = { 1: null, 2: null, 3: null };
+  resetGenerateButton();
 });
 
 form.addEventListener("submit", async (event) => {
@@ -80,12 +81,14 @@ form.addEventListener("submit", async (event) => {
 
     activateVariant(variantId);
     setStatus(`Draft variation ${variantId}/3 generated. Tries used: ${activeTry}/3`);
+    setGenerateButtonGenerated();
   } catch (error) {
     portfolioEl.hidden = true;
     portfolioEl.innerHTML = "";
     showError(error.message);
+    setGenerateButtonFailed();
   } finally {
-    setLoading(false);
+    setLoading(false, { preserveLabel: true });
   }
 });
 
@@ -131,7 +134,29 @@ function activateVariant(variantId) {
   renderWorkspace();
 }
 
-function setLoading(isLoading) { submitButton.disabled = isLoading; submitButton.textContent = isLoading ? "Working..." : "Generate"; }
+function setLoading(isLoading, options = {}) {
+  const { preserveLabel = false } = options;
+  submitButton.disabled = isLoading;
+  if (!preserveLabel) {
+    submitButton.textContent = isLoading ? "Generating..." : "Generate";
+  }
+}
+
+function setGenerateButtonGenerated() {
+  submitButton.disabled = false;
+  submitButton.textContent = "Generated ✅";
+}
+
+function setGenerateButtonFailed() {
+  submitButton.disabled = false;
+  submitButton.textContent = "Failed — Try again";
+}
+
+function resetGenerateButton() {
+  submitButton.disabled = false;
+  submitButton.textContent = "Generate";
+}
+
 function setStatus(message) { statusEl.textContent = message; }
 function clearError() { errorBannerEl.hidden = true; errorBannerEl.textContent = ""; }
 function showError(message) { setStatus("Request failed."); errorBannerEl.hidden = false; errorBannerEl.textContent = message; }
@@ -231,18 +256,19 @@ function bindEditorEvents() {
         return;
       }
 
-      setLoading(true);
+      setLoading(true, { preserveLabel: true });
       try {
         const nextTry = activeTry + 1;
         const generated = await generateVariant(appState.profileData, themeInput.value, variantId, nextTry);
         appState.variants[variantId] = { portfolio: deepClone(generated), tryIndex: nextTry, generatedAt: Date.now() };
         appState.triesByUsername[username.toLowerCase()] = nextTry;
         activateVariant(variantId);
+        setGenerateButtonGenerated();
         setStatus(`Draft variation ${variantId}/3 generated. Tries used: ${nextTry}/3`);
       } catch (error) {
         showError(error.message);
       } finally {
-        setLoading(false);
+        setLoading(false, { preserveLabel: true });
       }
     });
   });
@@ -260,7 +286,7 @@ function bindEditorEvents() {
         setStatus("Try limit reached for this username in this session (3/3).");
         return;
       }
-      setLoading(true);
+      setLoading(true, { preserveLabel: true });
       try {
         const nextTry = activeTry + 1;
         const variantId = appState.selectedVariantId || 1;
@@ -268,11 +294,12 @@ function bindEditorEvents() {
         appState.variants[variantId] = { portfolio: deepClone(generated), tryIndex: nextTry, generatedAt: Date.now() };
         appState.triesByUsername[username.toLowerCase()] = nextTry;
         activateVariant(variantId);
+        setGenerateButtonGenerated();
         setStatus(`Regenerated variation ${variantId}/3. Tries used: ${nextTry}/3`);
       } catch (error) {
         showError(error.message);
       } finally {
-        setLoading(false);
+        setLoading(false, { preserveLabel: true });
       }
     });
   }
