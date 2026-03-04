@@ -43,16 +43,16 @@ body { position: relative; overflow-x: hidden; }
 
 #bg-animation {
   z-index: 0;
-  background: #020617;
+  background: #000000;
 }
 
 .bg-overlay {
   z-index: 1;
   backdrop-filter: blur(0.6px);
   background:
-    radial-gradient(circle at 50% 48%, rgba(56, 189, 248, 0.14), rgba(8, 47, 73, 0.1) 20%, transparent 48%),
-    radial-gradient(circle at 50% 50%, transparent 35%, rgba(2, 6, 23, 0.38) 78%, rgba(2, 6, 23, 0.65) 100%),
-    linear-gradient(160deg, rgba(15, 23, 42, 0.1), rgba(2, 6, 23, 0.4));
+    radial-gradient(circle at 50% 48%, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03) 20%, transparent 48%),
+    radial-gradient(circle at 50% 50%, transparent 35%, rgba(0, 0, 0, 0.42) 78%, rgba(0, 0, 0, 0.72) 100%),
+    linear-gradient(160deg, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.46));
 }
 
 .page {

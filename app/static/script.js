@@ -482,7 +482,7 @@ function setupWarpBackground() {
   function frame(now = 0) {
     const pulse = audioReactive ? (0.85 + Math.abs(Math.sin(now * 0.0037)) * 0.65) : 1;
 
-    ctx.fillStyle = "rgba(2, 6, 23, 0.13)";
+    ctx.fillStyle = "rgba(0, 0, 0, 0.16)";
     ctx.fillRect(0, 0, width, height);
 
     for (let i = 0; i < streaks.length; i += 1) {
@@ -505,15 +505,13 @@ function setupWarpBackground() {
       const ty = y - sin * tailLen;
 
       const alpha = Math.min(0.95, 0.08 + distFactor * 0.98) * s.glow;
-      const hueMix = Math.min(1, distFactor * 1.2);
-      const r = Math.round(40 + 30 * hueMix);
-      const g = Math.round(185 + 50 * hueMix);
-      const b = Math.round(255);
+      const whiteMix = Math.min(1, distFactor * 1.2);
+      const w = Math.round(190 + 65 * whiteMix);
 
-      ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      ctx.strokeStyle = `rgba(${w}, ${w}, ${w}, ${alpha})`;
       ctx.lineWidth = s.widthPx * (0.75 + distFactor * 1.25) * (audioReactive ? 1.2 : 1);
       ctx.lineCap = "round";
-      ctx.shadowColor = audioReactive ? "rgba(56,189,248,1)" : "rgba(34,211,238,0.9)";
+      ctx.shadowColor = audioReactive ? "rgba(255,255,255,1)" : "rgba(255,255,255,0.9)";
       ctx.shadowBlur = 8 + distFactor * 16;
 
       ctx.beginPath();
@@ -524,7 +522,7 @@ function setupWarpBackground() {
       if (distFactor > 0.76 && Math.random() < 0.035) {
         ctx.beginPath();
         ctx.arc(x, y, Math.max(0.8, s.widthPx * 0.7), 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(125, 247, 255, ${Math.min(0.9, alpha + 0.1)})`;
+        ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(0.92, alpha + 0.12)})`;
         ctx.shadowBlur = 20;
         ctx.fill();
       }
