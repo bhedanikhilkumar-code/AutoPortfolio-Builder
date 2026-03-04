@@ -42,12 +42,12 @@ body { position: relative; overflow-x: hidden; }
 }
 
 #bg-animation {
-  z-index: -1;
+  z-index: 0;
   background: #020617;
 }
 
 .bg-overlay {
-  z-index: 0;
+  z-index: 1;
   backdrop-filter: blur(1px);
   background:
     radial-gradient(circle at 50% 45%, rgba(56, 189, 248, 0.12), transparent 46%),
@@ -59,7 +59,7 @@ body { position: relative; overflow-x: hidden; }
   margin: 0 auto;
   padding: 36px 0 56px;
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
 
 .hero {
