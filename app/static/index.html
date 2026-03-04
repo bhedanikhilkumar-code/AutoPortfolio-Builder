@@ -4,6 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AutoPortfolio Builder</title>
+  <meta name="description" content="Generate a premium developer portfolio from your GitHub profile. Edit, export, and share instantly.">
+  <meta name="theme-color" content="#020617">
+  <meta property="og:title" content="AutoPortfolio Builder">
+  <meta property="og:description" content="Generate, edit, and export a modern developer portfolio in seconds.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
@@ -12,12 +18,12 @@
 
   <main class="page">
     <section class="hero">
-      <div class="panel glass-card">
-        <p>GitHub profile to portfolio</p>
-        <h1>Generate, edit, and export a portfolio draft.</h1>
-        <p>Enter a GitHub username. The app fetches public profile data, builds a portfolio draft, lets you revise the content, then exports or shares the saved version as HTML, ZIP, or PDF.</p>
+      <div class="panel glass-card reveal" data-reveal="up">
+        <p class="hero-eyebrow">GitHub profile to portfolio</p>
+        <h1>Generate <span class="grad-text">cinematic</span> portfolio pages in seconds.</h1>
+        <p id="hero-rotator" class="hero-rotator">AI Portfolio. Auto-built. Always fresh.</p>
       </div>
-      <div class="panel glass-card">
+      <div class="panel glass-card reveal" data-reveal="up">
         <h2>Build Portfolio</h2>
         <form id="builder-form">
           <input id="username" name="username" placeholder="GitHub username" autocomplete="off" required>
@@ -25,7 +31,7 @@
             <option value="modern">Modern</option>
             <option value="minimal">Minimal</option>
           </select>
-          <button id="submit-button" class="btn-primary" type="submit">Generate</button>
+          <button id="submit-button" class="btn-primary magnetic" type="submit">Generate</button>
         </form>
         <div id="status" class="status"></div>
         <div id="error-banner" class="error-banner" hidden></div>
@@ -34,6 +40,8 @@
 
     <section id="portfolio" hidden></section>
   </main>
+
+  <a class="floating-cta magnetic" href="#builder-form">⚡ Build Now</a>
 
   <script src="/static/script.js" defer></script>
 </body>
