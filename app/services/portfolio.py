@@ -314,6 +314,10 @@ def render_portfolio_html(portfolio: PortfolioResponse) -> str:
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{display_name}</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/assets/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="64x64" href="/static/assets/favicon-64.png">
+  <link rel="shortcut icon" href="/static/assets/favicon.ico">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/assets/apple-touch-icon.png">
   <style>
     :root {{
       --bg: linear-gradient(135deg, #f3efe6 0%, #d7e4f5 50%, #f7fafc 100%);
