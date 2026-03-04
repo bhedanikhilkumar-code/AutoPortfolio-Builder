@@ -5,15 +5,26 @@ const submitButton = document.getElementById("submit-button");
 const statusEl = document.getElementById("status");
 const errorBannerEl = document.getElementById("error-banner");
 const portfolioEl = document.getElementById("portfolio");
+const audioReactiveToggle = document.getElementById("audio-reactive");
 
 const appState = { profileData: null, generatedPortfolio: null, draftPortfolio: null, savedPortfolio: null, hasUnsavedChanges: false };
 let parallaxTargets = [];
 
-setupWarpBackground();
+setupIntroLoader();
+const warpController = setupWarpBackground();
+setupAudioReactiveToggle();
+setupCustomCursor();
 setupMouseParallax();
 setupRevealAnimations();
 setupHeroRotator();
 setupMagnetic();
+
+function setupAudioReactiveToggle() {
+  if (!audioReactiveToggle || !warpController) return;
+  audioReactiveToggle.addEventListener("change", () => {
+    warpController.setAudioReactive(Boolean(audioReactiveToggle.checked));
+  });
+}
 
 themeInput.addEventListener("change", () => {
   if (!appState.draftPortfolio) return;
@@ -77,44 +88,18 @@ function renderWorkspace() {
   portfolioEl.innerHTML = `
     <div class="workspace reveal" data-reveal="up">
       <section class="panel editor glass-card">
-        <div>
-          <h2>Edit Content</h2>
-          <p>Changes apply to the draft immediately. Use Save Edits to update the exportable portfolio state.</p>
-        </div>
-        <div class="inline-actions">
-          <button id="save-edits" class="btn-secondary magnetic" type="button">Save Edits</button>
-          <button id="reset-edits" class="btn-danger magnetic" type="button">Reset</button>
-        </div>
-        <div class="inline-actions">
-          <button id="export-html" class="btn-primary magnetic" type="button">Export HTML</button>
-          <button id="export-zip" class="btn-secondary magnetic" type="button">Export ZIP</button>
-          <button id="export-pdf" class="btn-secondary magnetic" type="button">Export PDF</button>
-        </div>
+        <div><h2>Edit Content</h2><p>Changes apply to the draft immediately. Use Save Edits to update the exportable portfolio state.</p></div>
+        <div class="inline-actions"><button id="save-edits" class="btn-secondary magnetic" type="button">Save Edits</button><button id="reset-edits" class="btn-danger magnetic" type="button">Reset</button></div>
+        <div class="inline-actions"><button id="export-html" class="btn-primary magnetic" type="button">Export HTML</button><button id="export-zip" class="btn-secondary magnetic" type="button">Export ZIP</button><button id="export-pdf" class="btn-secondary magnetic" type="button">Export PDF</button></div>
         <div class="inline-actions"><button id="copy-share-link" class="btn-secondary magnetic" type="button">Copy Resume Link</button></div>
         <p class="muted-note">Share creates a separate resume page and tries to return a short link.</p>
-        <div class="editor-section"><h3>${escapeHtml(draft.hero.title)}</h3>
-          <label class="field"><span>Headline</span><input id="hero-headline" value="${escapeHtml(draft.hero.content.headline || "")}"></label>
-          <label class="field"><span>Subheadline</span><textarea id="hero-subheadline">${escapeHtml(draft.hero.content.subheadline || "")}</textarea></label>
-        </div>
-        <div class="editor-section"><h3>${escapeHtml(draft.about.title)}</h3>
-          <label class="field"><span>Name</span><input id="about-name" value="${escapeHtml(draft.about.content.name || "")}"></label>
-          <label class="field"><span>Summary points</span><textarea id="about-summary">${escapeHtml((draft.about.content.summary || []).join("\n"))}</textarea><small>Use one line per summary point.</small></label>
-        </div>
-        <div class="editor-section"><h3>${escapeHtml(draft.skills.title)}</h3>
-          <label class="field"><span>Highlighted skills</span><textarea id="skills-highlighted">${escapeHtml((draft.skills.content.highlighted || []).join(", "))}</textarea><small>Use commas to separate skills.</small></label>
-        </div>
-        <div class="editor-section"><h3>${escapeHtml(draft.contact.title)}</h3>
-          <label class="field"><span>GitHub URL</span><input id="contact-github" value="${escapeHtml(draft.contact.content.github || profile.html_url || "")}"></label>
-          <label class="field"><span>Blog</span><input id="contact-blog" value="${escapeHtml(draft.contact.content.blog || "")}"></label>
-          <label class="field"><span>Email</span><input id="contact-email" value="${escapeHtml(draft.contact.content.email || "")}"></label>
-          <label class="field"><span>Location</span><input id="contact-location" value="${escapeHtml(draft.contact.content.location || "")}"></label>
-        </div>
+        <div class="editor-section"><h3>${escapeHtml(draft.hero.title)}</h3><label class="field"><span>Headline</span><input id="hero-headline" value="${escapeHtml(draft.hero.content.headline || "")}"></label><label class="field"><span>Subheadline</span><textarea id="hero-subheadline">${escapeHtml(draft.hero.content.subheadline || "")}</textarea></label></div>
+        <div class="editor-section"><h3>${escapeHtml(draft.about.title)}</h3><label class="field"><span>Name</span><input id="about-name" value="${escapeHtml(draft.about.content.name || "")}"></label><label class="field"><span>Summary points</span><textarea id="about-summary">${escapeHtml((draft.about.content.summary || []).join("\n"))}</textarea><small>Use one line per summary point.</small></label></div>
+        <div class="editor-section"><h3>${escapeHtml(draft.skills.title)}</h3><label class="field"><span>Highlighted skills</span><textarea id="skills-highlighted">${escapeHtml((draft.skills.content.highlighted || []).join(", "))}</textarea><small>Use commas to separate skills.</small></label></div>
+        <div class="editor-section"><h3>${escapeHtml(draft.contact.title)}</h3><label class="field"><span>GitHub URL</span><input id="contact-github" value="${escapeHtml(draft.contact.content.github || profile.html_url || "")}"></label><label class="field"><span>Blog</span><input id="contact-blog" value="${escapeHtml(draft.contact.content.blog || "")}"></label><label class="field"><span>Email</span><input id="contact-email" value="${escapeHtml(draft.contact.content.email || "")}"></label><label class="field"><span>Location</span><input id="contact-location" value="${escapeHtml(draft.contact.content.location || "")}"></label></div>
         <div class="editor-section"><h3>${escapeHtml(draft.projects.title)}</h3>${renderProjectEditors(draft.projects.content.items || [])}</div>
       </section>
-
-      <section class="preview-grid">
-        ${renderPreview(saved, profile)}
-      </section>
+      <section class="preview-grid">${renderPreview(saved, profile)}</section>
     </div>
   `;
 
@@ -192,38 +177,17 @@ async function exportPortfolio(format) {
   } catch (error) { showError(error.message); }
 }
 
-function triggerDownload(blob, fileName) {
-  const url = URL.createObjectURL(blob); const link = document.createElement("a");
-  link.href = url; link.download = fileName; document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
-}
-
-async function copyShareLink() {
-  if (!appState.savedPortfolio) return showError("Generate and save a portfolio before creating a share link.");
-  clearError();
-  try { const shareUrl = await buildShareUrl(); await writeToClipboard(shareUrl); setStatus("Share link copied to clipboard."); }
-  catch (error) { showError(error.message); }
-}
+function triggerDownload(blob, fileName) { const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = fileName; document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url); }
+async function copyShareLink() { if (!appState.savedPortfolio) return showError("Generate and save a portfolio before creating a share link."); clearError(); try { const shareUrl = await buildShareUrl(); await writeToClipboard(shareUrl); setStatus("Share link copied to clipboard."); } catch (error) { showError(error.message); } }
 
 function renderPreview(portfolioData, profile) {
   const timeline = ["Freelance / Open Source Contributions", "Built automation tools for portfolio workflows", "Shipping UI and full-stack product iterations"];
   const testimonials = ["Fast execution and clean UI taste.", "Great at turning ideas into working products."];
   return `
-    <section class="panel preview-panel wide glass-card reveal" data-reveal="up">
-      <p>${escapeHtml(portfolioData.hero.title)}</p>
-      <h2>${escapeHtml(portfolioData.hero.content.headline || "")}</h2>
-      <p>${escapeHtml(portfolioData.hero.content.subheadline || "")}</p>
-      <div class="stats">
-        ${renderStat("Repos", portfolioData.hero.content.stats.public_repos)}
-        ${renderStat("Followers", portfolioData.hero.content.stats.followers)}
-        ${renderStat("Following", portfolioData.hero.content.stats.following)}
-      </div>
-    </section>
+    <section class="panel preview-panel wide glass-card reveal" data-reveal="up"><p>${escapeHtml(portfolioData.hero.title)}</p><h2>${escapeHtml(portfolioData.hero.content.headline || "")}</h2><p>${escapeHtml(portfolioData.hero.content.subheadline || "")}</p><div class="stats">${renderStat("Repos", portfolioData.hero.content.stats.public_repos)}${renderStat("Followers", portfolioData.hero.content.stats.followers)}${renderStat("Following", portfolioData.hero.content.stats.following)}</div></section>
     <section class="panel preview-panel glass-card reveal" data-reveal="up"><p>${escapeHtml(portfolioData.about.title)}</p><h2>${escapeHtml(portfolioData.about.content.name || "")}</h2><ul>${(portfolioData.about.content.summary || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("") || "<li>Details coming soon.</li>"}</ul></section>
     <section class="panel preview-panel glass-card reveal" data-reveal="up"><p>${escapeHtml(portfolioData.skills.title)}</p><h2>Highlighted Skills</h2><div class="tags">${(portfolioData.skills.content.highlighted || []).map(renderTag).join("") || "<span class='tag'>No detected skills yet</span>"}</div></section>
-    <section class="panel preview-panel wide glass-card reveal" data-reveal="up">
-      <p>${escapeHtml(portfolioData.projects.title)}</p><h2>Featured Work</h2>
-      <div class="project-list">${(portfolioData.projects.content.items || []).map((project) => `<article class="project glass-card tilt-card"><div class="project-header"><strong>${escapeHtml(project.name || "Untitled project")}</strong>${safeInlineLink(project.url, "Repository")}</div><p>${escapeHtml(project.description || "Project details coming soon.")}</p><div class="tags">${project.language ? renderTag(project.language) : ""}${(project.topics || []).map(renderTag).join("")}</div></article>`).join("") || "<p>No repositories available.</p>"}</div>
-    </section>
+    <section class="panel preview-panel wide glass-card reveal" data-reveal="up"><p>${escapeHtml(portfolioData.projects.title)}</p><h2>Featured Work</h2><div class="project-list">${(portfolioData.projects.content.items || []).map((project) => `<article class="project glass-card tilt-card"><div class="project-header"><strong>${escapeHtml(project.name || "Untitled project")}</strong>${safeInlineLink(project.url, "Repository")}</div><p>${escapeHtml(project.description || "Project details coming soon.")}</p><div class="tags">${project.language ? renderTag(project.language) : ""}${(project.topics || []).map(renderTag).join("")}</div></article>`).join("") || "<p>No repositories available.</p>"}</div></section>
     <section class="panel preview-panel glass-card reveal" data-reveal="up"><p>Experience Timeline</p><h2>Journey</h2>${timeline.map((x) => `<div class='timeline-item'>${escapeHtml(x)}</div>`).join("")}</section>
     <section class="panel preview-panel glass-card reveal" data-reveal="up"><p>Testimonials</p><h2>Feedback</h2>${testimonials.map((x) => `<div class='testimonial-item'>“${escapeHtml(x)}”</div>`).join("")}</section>
     <section class="panel preview-panel wide glass-card reveal" data-reveal="up"><p>Now Building</p><h2>Current Focus</h2><div class="now-item">⚙️ Improving developer portfolio generation quality, speed, and export flexibility.</div></section>
@@ -238,17 +202,9 @@ function safeInlineLink(href, label) { if (!href || !/^https?:\/\//.test(href)) 
 function safeLinkLine(href, label) { const link = safeInlineLink(href, label); return link ? `<p>${link}</p>` : ""; }
 function splitLines(value) { return value.split("\n").map((item) => item.trim()).filter(Boolean); }
 function splitCsv(value) { return value.split(",").map((item) => item.trim()).filter(Boolean); }
-
 function buildExportFilename() { const source = appState.savedPortfolio?.about?.content?.name || appState.profileData?.profile?.username || "portfolio"; return source.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 64) || "portfolio"; }
 function readDownloadName(contentDisposition, format) { const match = contentDisposition && contentDisposition.match(/filename="([^"]+)"/); return (match && match[1]) ? match[1] : `${buildExportFilename()}.${format}`; }
-
-async function buildShareUrl() {
-  const response = await fetch("/api/share", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ portfolio: appState.savedPortfolio, filename: buildExportFilename(), use_short_link: true }) });
-  if (!response.ok) throw new Error(getErrorMessage(await parseErrorPayload(response), "Failed to create share link."));
-  const payload = await response.json();
-  return payload.share_url || payload.resume_url;
-}
-
+async function buildShareUrl() { const response = await fetch("/api/share", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ portfolio: appState.savedPortfolio, filename: buildExportFilename(), use_short_link: true }) }); if (!response.ok) throw new Error(getErrorMessage(await parseErrorPayload(response), "Failed to create share link.")); const payload = await response.json(); return payload.share_url || payload.resume_url; }
 function getActiveProfile() { return appState.profileData?.profile || { html_url: "" }; }
 async function writeToClipboard(value) { if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(value); const input = document.createElement("input"); input.value = value; document.body.appendChild(input); input.select(); if (!document.execCommand("copy")) { input.remove(); throw new Error("Clipboard access is unavailable in this browser."); } input.remove(); }
 async function parseErrorPayload(response) { const contentType = response.headers.get("Content-Type") || ""; return contentType.includes("application/json") ? response.json() : { detail: await response.text() }; }
@@ -256,25 +212,65 @@ function getErrorMessage(payload, fallbackMessage) { return payload?.error?.mess
 function deepClone(value) { return JSON.parse(JSON.stringify(value)); }
 function escapeHtml(value) { return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;"); }
 
+function setupIntroLoader() {
+  const loader = document.getElementById("intro-loader");
+  const bar = document.getElementById("intro-loader-bar");
+  if (!loader || !bar) return;
+
+  let progress = 0;
+  const timer = setInterval(() => {
+    progress = Math.min(92, progress + Math.random() * 18);
+    bar.style.width = `${progress}%`;
+  }, 110);
+
+  window.addEventListener("load", () => {
+    clearInterval(timer);
+    bar.style.width = "100%";
+    setTimeout(() => loader.classList.add("hidden"), 250);
+  }, { once: true });
+}
+
+function setupCustomCursor() {
+  if (window.matchMedia("(hover: none), (pointer: coarse)").matches) return;
+  const dot = document.getElementById("cursor-dot");
+  const ring = document.getElementById("cursor-ring");
+  if (!dot || !ring) return;
+
+  let x = window.innerWidth / 2;
+  let y = window.innerHeight / 2;
+  let rx = x;
+  let ry = y;
+
+  document.addEventListener("mousemove", (e) => {
+    x = e.clientX;
+    y = e.clientY;
+    dot.style.transform = `translate(${x}px, ${y}px)`;
+  });
+
+  const animate = () => {
+    rx += (x - rx) * 0.16;
+    ry += (y - ry) * 0.16;
+    ring.style.transform = `translate(${rx}px, ${ry}px)`;
+    requestAnimationFrame(animate);
+  };
+  animate();
+}
+
 function setupWarpBackground() {
   const canvas = document.getElementById("warp-canvas");
-  if (!canvas) return;
+  if (!canvas) return null;
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const ctx = canvas.getContext("2d", { alpha: true });
-  if (!ctx) return;
+  if (!ctx) return null;
 
   let width = 0, height = 0, cx = 0, cy = 0, maxR = 0, rafId = null;
+  let audioReactive = false;
   const DPR = Math.min(window.devicePixelRatio || 1, 1.75);
   const quality = Math.max(0.55, Math.min(1, ((navigator.hardwareConcurrency || 4) / 8)));
   let particles = [], comets = [];
 
-  const spawnParticle = (fromEdge = false, layer = 1) => {
-    const angle = Math.random() * Math.PI * 2;
-    const radius = fromEdge ? maxR : Math.random() * maxR;
-    return { angle, radius, speed: (0.8 + Math.random() * 2.2) * layer, glow: 0.35 + Math.random() * 0.65, layer };
-  };
-
-  const spawnComet = () => ({ angle: Math.random() * Math.PI * 2, radius: maxR, speed: 5 + Math.random() * 3, life: 1 });
+  const spawnParticle = (fromEdge = false, layer = 1) => ({ angle: Math.random() * Math.PI * 2, radius: fromEdge ? maxR : Math.random() * maxR, speed: (0.8 + Math.random() * 2.2) * layer, glow: 0.35 + Math.random() * 0.65, layer });
+  const spawnComet = () => ({ angle: Math.random() * Math.PI * 2, radius: maxR, speed: 5 + Math.random() * 3 });
 
   function resize() {
     width = window.innerWidth; height = window.innerHeight;
@@ -282,44 +278,44 @@ function setupWarpBackground() {
     canvas.width = Math.floor(width * DPR); canvas.height = Math.floor(height * DPR);
     canvas.style.width = `${width}px`; canvas.style.height = `${height}px`;
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-
     const baseCount = Math.floor((width * height) / 12000);
     const count = Math.max(60, Math.min(220, Math.floor(baseCount * quality)));
     particles = Array.from({ length: count }, (_, i) => spawnParticle(true, i % 3 === 0 ? 1.35 : i % 2 === 0 ? 1.1 : 0.9));
     comets = Array.from({ length: Math.max(2, Math.floor(6 * quality)) }, spawnComet);
   }
 
-  function frame() {
+  function frame(now = 0) {
+    const pulse = audioReactive ? (0.75 + Math.abs(Math.sin(now * 0.004)) * 0.9) : 1;
     ctx.clearRect(0, 0, width, height);
 
     for (let i = 0; i < particles.length; i += 1) {
       const p = particles[i];
-      p.radius -= p.speed;
+      p.radius -= p.speed * pulse;
       if (p.radius < 2) { particles[i] = spawnParticle(true, p.layer); continue; }
       const x = cx + Math.cos(p.angle) * p.radius;
       const y = cy + Math.sin(p.angle) * p.radius;
-      const len = (1 - p.radius / maxR) * 36 + 4;
+      const len = ((1 - p.radius / maxR) * 36 + 4) * pulse;
       const dx = x - cx, dy = y - cy, mag = Math.hypot(dx, dy) || 1;
       const tx = x + (dx / mag) * len, ty = y + (dy / mag) * len;
       const a = Math.max(0.1, 1 - p.radius / maxR) * p.glow;
       ctx.strokeStyle = `rgba(56,189,248,${a})`;
       ctx.lineWidth = 0.8 + a * 2;
-      ctx.shadowColor = "rgba(34,211,238,0.85)";
-      ctx.shadowBlur = 12;
+      ctx.shadowColor = audioReactive ? "rgba(56,189,248,0.95)" : "rgba(34,211,238,0.85)";
+      ctx.shadowBlur = audioReactive ? 18 : 12;
       ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(x, y); ctx.stroke();
     }
 
     for (let i = 0; i < comets.length; i += 1) {
       const c = comets[i];
-      c.radius -= c.speed;
+      c.radius -= c.speed * (audioReactive ? 1.28 : 1);
       if (c.radius < 15) { comets[i] = spawnComet(); continue; }
       const x = cx + Math.cos(c.angle) * c.radius;
       const y = cy + Math.sin(c.angle) * c.radius;
-      const tail = 80;
-      ctx.strokeStyle = "rgba(96,165,250,0.45)";
-      ctx.lineWidth = 1.8;
+      const tail = audioReactive ? 120 : 80;
+      ctx.strokeStyle = audioReactive ? "rgba(96,165,250,0.68)" : "rgba(96,165,250,0.45)";
+      ctx.lineWidth = audioReactive ? 2.4 : 1.8;
       ctx.shadowColor = "rgba(56,189,248,0.95)";
-      ctx.shadowBlur = 18;
+      ctx.shadowBlur = audioReactive ? 24 : 18;
       ctx.beginPath(); ctx.moveTo(x + Math.cos(c.angle) * tail, y + Math.sin(c.angle) * tail); ctx.lineTo(x, y); ctx.stroke();
     }
 
@@ -328,17 +324,16 @@ function setupWarpBackground() {
 
   const stop = () => { if (rafId) cancelAnimationFrame(rafId); rafId = null; };
   const start = () => { if (!rafId && !reduced) rafId = requestAnimationFrame(frame); };
-
-  resize();
-  start();
+  resize(); start();
 
   let resizeTimer = null;
   window.addEventListener("resize", () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => { stop(); resize(); start(); }, 140);
   });
-
   document.addEventListener("visibilitychange", () => { if (document.hidden) stop(); else start(); });
+
+  return { setAudioReactive(value) { audioReactive = value; } };
 }
 
 function setupMouseParallax() {
@@ -356,80 +351,9 @@ function setupMouseParallax() {
   document.addEventListener("mouseleave", () => parallaxTargets.forEach((el) => { el.style.transform = "translate3d(0,0,0)"; }));
 }
 
-function refreshParallaxTargets() {
-  parallaxTargets = Array.from(document.querySelectorAll(".panel, .editor-section, .project"));
-  parallaxTargets.forEach((el, index) => { if (!el.dataset.depth) el.dataset.depth = String(0.75 + (index % 3) * 0.15); });
-}
-
-function setupRevealAnimations() {
-  const items = document.querySelectorAll(".reveal");
-  if (!items.length) return;
-  const io = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add("reveal-in");
-        io.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.14 });
-  items.forEach((el) => io.observe(el));
-}
-
-function setupHeroRotator() {
-  const el = document.getElementById("hero-rotator");
-  if (!el) return;
-  const lines = [
-    "AI Portfolio. Auto-built. Always fresh.",
-    "From GitHub profile to premium personal brand.",
-    "Dark, modern, and ready to impress recruiters.",
-  ];
-  let i = 0;
-  setInterval(() => {
-    i = (i + 1) % lines.length;
-    el.style.opacity = "0";
-    setTimeout(() => { el.textContent = lines[i]; el.style.opacity = "1"; }, 180);
-  }, 3000);
-}
-
-function setupMagnetic() {
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  document.querySelectorAll(".magnetic").forEach((btn) => {
-    btn.onmousemove = (e) => {
-      const r = btn.getBoundingClientRect();
-      const x = e.clientX - (r.left + r.width / 2);
-      const y = e.clientY - (r.top + r.height / 2);
-      btn.style.transform = `translate(${x * 0.14}px, ${y * 0.16}px)`;
-    };
-    btn.onmouseleave = () => { btn.style.transform = "translate(0,0)"; };
-  });
-}
-
-function setupProjectTilt() {
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  document.querySelectorAll(".tilt-card").forEach((card) => {
-    card.addEventListener("mousemove", (e) => {
-      const r = card.getBoundingClientRect();
-      const x = (e.clientX - r.left) / r.width - 0.5;
-      const y = (e.clientY - r.top) / r.height - 0.5;
-      card.style.transform = `rotateX(${(-y * 8).toFixed(2)}deg) rotateY(${(x * 10).toFixed(2)}deg)`;
-    });
-    card.addEventListener("mouseleave", () => { card.style.transform = "rotateX(0deg) rotateY(0deg)"; });
-  });
-}
-
-function animateStatCounters() {
-  const items = document.querySelectorAll("[data-count]");
-  items.forEach((el) => {
-    const target = Number(el.dataset.count || 0);
-    if (!Number.isFinite(target)) return;
-    const start = performance.now();
-    const dur = 900;
-    const step = (now) => {
-      const t = Math.min(1, (now - start) / dur);
-      const eased = 1 - Math.pow(1 - t, 3);
-      el.textContent = Math.round(target * eased).toString();
-      if (t < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  });
-}
+function refreshParallaxTargets() { parallaxTargets = Array.from(document.querySelectorAll(".panel, .editor-section, .project")); parallaxTargets.forEach((el, index) => { if (!el.dataset.depth) el.dataset.depth = String(0.75 + (index % 3) * 0.15); }); }
+function setupRevealAnimations() { const items = document.querySelectorAll(".reveal"); if (!items.length) return; const io = new IntersectionObserver((entries) => { entries.forEach((entry) => { if (entry.isIntersecting) { entry.target.classList.add("reveal-in"); io.unobserve(entry.target); } }); }, { threshold: 0.14 }); items.forEach((el) => io.observe(el)); }
+function setupHeroRotator() { const el = document.getElementById("hero-rotator"); if (!el) return; const lines = ["AI Portfolio. Auto-built. Always fresh.", "From GitHub profile to premium personal brand.", "Dark, modern, and ready to impress recruiters."]; let i = 0; setInterval(() => { i = (i + 1) % lines.length; el.style.opacity = "0"; setTimeout(() => { el.textContent = lines[i]; el.style.opacity = "1"; }, 180); }, 3000); }
+function setupMagnetic() { if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return; document.querySelectorAll(".magnetic").forEach((btn) => { btn.onmousemove = (e) => { const r = btn.getBoundingClientRect(); const x = e.clientX - (r.left + r.width / 2); const y = e.clientY - (r.top + r.height / 2); btn.style.transform = `translate(${x * 0.14}px, ${y * 0.16}px)`; }; btn.onmouseleave = () => { btn.style.transform = "translate(0,0)"; }; }); }
+function setupProjectTilt() { if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return; document.querySelectorAll(".tilt-card").forEach((card) => { card.addEventListener("mousemove", (e) => { const r = card.getBoundingClientRect(); const x = (e.clientX - r.left) / r.width - 0.5; const y = (e.clientY - r.top) / r.height - 0.5; card.style.transform = `rotateX(${(-y * 8).toFixed(2)}deg) rotateY(${(x * 10).toFixed(2)}deg)`; }); card.addEventListener("mouseleave", () => { card.style.transform = "rotateX(0deg) rotateY(0deg)"; }); }); }
+function animateStatCounters() { const items = document.querySelectorAll("[data-count]"); items.forEach((el) => { const target = Number(el.dataset.count || 0); if (!Number.isFinite(target)) return; const start = performance.now(); const dur = 900; const step = (now) => { const t = Math.min(1, (now - start) / dur); const eased = 1 - Math.pow(1 - t, 3); el.textContent = Math.round(target * eased).toString(); if (t < 1) requestAnimationFrame(step); }; requestAnimationFrame(step); }); }
