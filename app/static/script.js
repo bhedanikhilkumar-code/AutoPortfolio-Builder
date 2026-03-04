@@ -448,16 +448,17 @@ function setupWarpBackground() {
   let maxRadius = 0;
   let rafId = null;
   let audioReactive = false;
-  const DPR = Math.min(window.devicePixelRatio || 1, 1.8);
+  const DPR = Math.min(window.devicePixelRatio || 1, 2);
   let streaks = [];
 
-  function createStreak(startRandom = true) {
+  function createStreak(randomRadius = true) {
     const angle = Math.random() * Math.PI * 2;
-    const radius = startRandom ? Math.random() * maxRadius : 0;
-    const speed = 2.2 + Math.random() * 6.5;
-    const widthPx = 0.8 + Math.random() * 2.4;
-    const glow = 0.3 + Math.random() * 0.7;
-    return { angle, radius, speed, widthPx, glow };
+    const radius = randomRadius ? Math.random() * maxRadius : 4 + Math.random() * 24;
+    const depth = 0.55 + Math.random() * 1.6;
+    const speed = (1.1 + Math.random() * 4.6) * depth;
+    const widthPx = 0.45 + Math.random() * 1.8;
+    const glow = 0.35 + Math.random() * 0.65;
+    return { angle, radius, depth, speed, widthPx, glow };
   }
 
   function resize() {
@@ -465,7 +466,7 @@ function setupWarpBackground() {
     height = window.innerHeight;
     cx = width * 0.5;
     cy = height * 0.5;
-    maxRadius = Math.hypot(cx, cy) + 200;
+    maxRadius = Math.hypot(cx, cy) + 220;
 
     canvas.width = Math.floor(width * DPR);
     canvas.height = Math.floor(height * DPR);
@@ -473,15 +474,15 @@ function setupWarpBackground() {
     canvas.style.height = `${height}px`;
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
-    const base = Math.floor((width * height) / 8000);
-    const count = Math.max(180, Math.min(420, base));
+    const base = Math.floor((width * height) / 9000);
+    const count = Math.max(220, Math.min(520, base));
     streaks = Array.from({ length: count }, () => createStreak(true));
   }
 
   function frame(now = 0) {
-    const pulse = audioReactive ? (0.85 + Math.abs(Math.sin(now * 0.004)) * 1.05) : 1;
+    const pulse = audioReactive ? (0.85 + Math.abs(Math.sin(now * 0.0037)) * 0.65) : 1;
 
-    ctx.fillStyle = "rgba(2, 6, 23, 0.18)";
+    ctx.fillStyle = "rgba(2, 6, 23, 0.13)";
     ctx.fillRect(0, 0, width, height);
 
     for (let i = 0; i < streaks.length; i += 1) {
@@ -493,26 +494,40 @@ function setupWarpBackground() {
         continue;
       }
 
-      const x = cx + Math.cos(s.angle) * s.radius;
-      const y = cy + Math.sin(s.angle) * s.radius;
+      const cos = Math.cos(s.angle);
+      const sin = Math.sin(s.angle);
+      const x = cx + cos * s.radius;
+      const y = cy + sin * s.radius;
+      const distFactor = s.radius / maxRadius;
 
-      const dirX = Math.cos(s.angle);
-      const dirY = Math.sin(s.angle);
-      const tailLen = (18 + (s.radius / maxRadius) * 95) * (audioReactive ? 1.2 : 1);
-      const tx = x - dirX * tailLen;
-      const ty = y - dirY * tailLen;
+      const tailLen = (14 + distFactor * 120) * s.depth * (audioReactive ? 1.15 : 1);
+      const tx = x - cos * tailLen;
+      const ty = y - sin * tailLen;
 
-      const alpha = Math.min(0.92, 0.12 + (s.radius / maxRadius) * 0.9) * s.glow;
-      ctx.strokeStyle = `rgba(0, 234, 255, ${alpha})`;
-      ctx.lineWidth = s.widthPx * (audioReactive ? 1.25 : 1);
+      const alpha = Math.min(0.95, 0.08 + distFactor * 0.98) * s.glow;
+      const hueMix = Math.min(1, distFactor * 1.2);
+      const r = Math.round(40 + 30 * hueMix);
+      const g = Math.round(185 + 50 * hueMix);
+      const b = Math.round(255);
+
+      ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      ctx.lineWidth = s.widthPx * (0.75 + distFactor * 1.25) * (audioReactive ? 1.2 : 1);
       ctx.lineCap = "round";
-      ctx.shadowColor = audioReactive ? "rgba(56, 189, 248, 1)" : "rgba(0, 234, 255, 0.9)";
-      ctx.shadowBlur = audioReactive ? 20 : 14;
+      ctx.shadowColor = audioReactive ? "rgba(56,189,248,1)" : "rgba(34,211,238,0.9)";
+      ctx.shadowBlur = 8 + distFactor * 16;
 
       ctx.beginPath();
       ctx.moveTo(tx, ty);
       ctx.lineTo(x, y);
       ctx.stroke();
+
+      if (distFactor > 0.76 && Math.random() < 0.035) {
+        ctx.beginPath();
+        ctx.arc(x, y, Math.max(0.8, s.widthPx * 0.7), 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(125, 247, 255, ${Math.min(0.9, alpha + 0.1)})`;
+        ctx.shadowBlur = 20;
+        ctx.fill();
+      }
     }
 
     rafId = requestAnimationFrame(frame);
@@ -537,7 +552,7 @@ function setupWarpBackground() {
       stop();
       resize();
       start();
-    }, 120);
+    }, 130);
   });
 
   document.addEventListener("visibilitychange", () => {

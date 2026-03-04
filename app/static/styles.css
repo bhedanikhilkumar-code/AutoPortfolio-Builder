@@ -2,8 +2,8 @@
   color-scheme: dark;
   --bg-dark: #020617;
   --bg-mid: #0f172a;
-  --card: rgba(15, 23, 42, 0.56);
-  --border: rgba(148, 163, 184, 0.24);
+  --card: rgba(15, 23, 42, 0.5);
+  --border: rgba(148, 163, 184, 0.2);
   --text: #e2e8f0;
   --muted: #94a3b8;
   --primary: #38bdf8;
@@ -48,10 +48,11 @@ body { position: relative; overflow-x: hidden; }
 
 .bg-overlay {
   z-index: 1;
-  backdrop-filter: blur(1px);
+  backdrop-filter: blur(0.6px);
   background:
-    radial-gradient(circle at 50% 45%, rgba(56, 189, 248, 0.12), transparent 46%),
-    linear-gradient(160deg, rgba(15, 23, 42, 0.2), rgba(2, 6, 23, 0.52));
+    radial-gradient(circle at 50% 48%, rgba(56, 189, 248, 0.14), rgba(8, 47, 73, 0.1) 20%, transparent 48%),
+    radial-gradient(circle at 50% 50%, transparent 35%, rgba(2, 6, 23, 0.38) 78%, rgba(2, 6, 23, 0.65) 100%),
+    linear-gradient(160deg, rgba(15, 23, 42, 0.1), rgba(2, 6, 23, 0.4));
 }
 
 .page {
