@@ -7,7 +7,17 @@ const errorBannerEl = document.getElementById("error-banner");
 const portfolioEl = document.getElementById("portfolio");
 const audioReactiveToggle = document.getElementById("audio-reactive");
 
-const appState = { profileData: null, generatedPortfolio: null, draftPortfolio: null, savedPortfolio: null, hasUnsavedChanges: false };
+const appState = {
+  profileData: null,
+  generatedPortfolio: null,
+  draftPortfolio: null,
+  savedPortfolio: null,
+  hasUnsavedChanges: false,
+  username: "",
+  selectedVariantId: 1,
+  variants: { 1: null, 2: null, 3: null },
+  triesByUsername: {},
+};
 let parallaxTargets = [];
 
 setupIntroLoader();
@@ -31,32 +41,45 @@ themeInput.addEventListener("change", () => {
   updateDraft(() => { appState.draftPortfolio.theme = themeInput.value; });
 });
 
+usernameInput.addEventListener("input", () => {
+  const incoming = usernameInput.value.trim().toLowerCase();
+  if (!incoming || incoming === (appState.username || "").toLowerCase()) return;
+  appState.profileData = null;
+  appState.variants = { 1: null, 2: null, 3: null };
+});
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const username = usernameInput.value.trim();
   const theme = themeInput.value;
   if (!username) return showError("Enter a GitHub username.");
 
-  setLoading(true); clearError(); setStatus("Fetching GitHub profile...");
+  setLoading(true);
+  clearError();
 
   try {
-    const profileResponse = await fetch("/api/profile", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username }) });
-    const profilePayload = await profileResponse.json();
-    if (!profileResponse.ok) throw new Error(getErrorMessage(profilePayload, "Failed to fetch profile."));
-
-    setStatus("Generating portfolio...");
-    const generateResponse = await fetch("/api/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...profilePayload, theme }) });
-    const portfolioPayload = await generateResponse.json();
-    if (!generateResponse.ok) throw new Error(getErrorMessage(portfolioPayload, "Failed to generate portfolio."));
-
+    const profilePayload = await ensureProfilePayload(username);
     appState.profileData = profilePayload;
-    appState.generatedPortfolio = deepClone(portfolioPayload);
-    appState.draftPortfolio = deepClone(portfolioPayload);
-    appState.savedPortfolio = deepClone(portfolioPayload);
-    appState.hasUnsavedChanges = false;
+    appState.username = username;
 
-    renderWorkspace();
-    setStatus("Portfolio generated. Edit the fields, then save before exporting.");
+    const activeTry = getNextTryIndex(username);
+    if (activeTry > 3) {
+      setStatus("Try limit reached for this username in this session (3/3).");
+      return;
+    }
+
+    const variantId = appState.selectedVariantId || 1;
+    const variantPortfolio = await generateVariant(profilePayload, theme, variantId, activeTry);
+
+    appState.variants[variantId] = {
+      portfolio: deepClone(variantPortfolio),
+      tryIndex: activeTry,
+      generatedAt: Date.now(),
+    };
+    appState.triesByUsername[username.toLowerCase()] = activeTry;
+
+    activateVariant(variantId);
+    setStatus(`Draft variation ${variantId}/3 generated. Tries used: ${activeTry}/3`);
   } catch (error) {
     portfolioEl.hidden = true;
     portfolioEl.innerHTML = "";
@@ -65,6 +88,48 @@ form.addEventListener("submit", async (event) => {
     setLoading(false);
   }
 });
+
+async function ensureProfilePayload(username) {
+  if (appState.profileData && appState.username.toLowerCase() === username.toLowerCase()) {
+    return appState.profileData;
+  }
+  setStatus("Fetching GitHub profile...");
+  const profileResponse = await fetch("/api/profile", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username }),
+  });
+  const profilePayload = await profileResponse.json();
+  if (!profileResponse.ok) throw new Error(getErrorMessage(profilePayload, "Failed to fetch profile."));
+  return profilePayload;
+}
+
+async function generateVariant(profilePayload, theme, variantId, tryIndex) {
+  setStatus(`Generating variation ${variantId}/3...`);
+  const generateResponse = await fetch("/api/generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...profilePayload, theme, variant_id: variantId, try_index: tryIndex }),
+  });
+  const portfolioPayload = await generateResponse.json();
+  if (!generateResponse.ok) throw new Error(getErrorMessage(portfolioPayload, "Failed to generate portfolio."));
+  return portfolioPayload;
+}
+
+function getNextTryIndex(username) {
+  return (appState.triesByUsername[username.toLowerCase()] || 0) + 1;
+}
+
+function activateVariant(variantId) {
+  const entry = appState.variants[variantId];
+  if (!entry?.portfolio) return;
+  appState.selectedVariantId = variantId;
+  appState.generatedPortfolio = deepClone(entry.portfolio);
+  appState.draftPortfolio = deepClone(entry.portfolio);
+  appState.savedPortfolio = deepClone(entry.portfolio);
+  appState.hasUnsavedChanges = false;
+  renderWorkspace();
+}
 
 function setLoading(isLoading) { submitButton.disabled = isLoading; submitButton.textContent = isLoading ? "Working..." : "Generate"; }
 function setStatus(message) { statusEl.textContent = message; }
@@ -88,7 +153,17 @@ function renderWorkspace() {
   portfolioEl.innerHTML = `
     <div class="workspace reveal" data-reveal="up">
       <section class="panel editor glass-card">
-        <div><h2>Edit Content</h2><p>Changes apply to the draft immediately. Use Save Edits to update the exportable portfolio state.</p></div>
+        <div>
+          <h2>Edit Content</h2>
+          <p>Changes apply to the draft immediately. Use Save Edits to update the exportable portfolio state.</p>
+          <p class="muted-note"><strong>Draft Variation:</strong> ${appState.selectedVariantId}/3 &nbsp; • &nbsp; Tries used: ${(appState.triesByUsername[(appState.username || "").toLowerCase()] || 0)}/3</p>
+        </div>
+        <div class="inline-actions" id="variant-tabs">
+          <button data-variant-tab="1" class="btn-secondary magnetic" type="button">Variant 1</button>
+          <button data-variant-tab="2" class="btn-secondary magnetic" type="button">Variant 2</button>
+          <button data-variant-tab="3" class="btn-secondary magnetic" type="button">Variant 3</button>
+          <button id="try-another" class="btn-primary magnetic" type="button">Try Another</button>
+        </div>
         <div class="inline-actions"><button id="save-edits" class="btn-secondary magnetic" type="button">Save Edits</button><button id="reset-edits" class="btn-danger magnetic" type="button">Reset</button></div>
         <div class="inline-actions"><button id="export-html" class="btn-primary magnetic" type="button">Export HTML</button><button id="export-zip" class="btn-secondary magnetic" type="button">Export ZIP</button><button id="export-pdf" class="btn-secondary magnetic" type="button">Export PDF</button></div>
         <div class="inline-actions"><button id="copy-share-link" class="btn-secondary magnetic" type="button">Copy Resume Link</button></div>
@@ -132,6 +207,75 @@ function bindEditorEvents() {
       });
     });
   });
+
+  document.querySelectorAll("[data-variant-tab]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const variantId = Number(btn.dataset.variantTab);
+      appState.selectedVariantId = variantId;
+
+      if (appState.variants[variantId]?.portfolio) {
+        activateVariant(variantId);
+        setStatus(`Showing draft variation ${variantId}/3.`);
+        return;
+      }
+
+      const username = appState.username || usernameInput.value.trim();
+      if (!username || !appState.profileData) {
+        showError("Generate profile data first.");
+        return;
+      }
+
+      const activeTry = appState.triesByUsername[username.toLowerCase()] || 0;
+      if (activeTry >= 3) {
+        setStatus("Try limit reached for this username in this session (3/3).");
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const nextTry = activeTry + 1;
+        const generated = await generateVariant(appState.profileData, themeInput.value, variantId, nextTry);
+        appState.variants[variantId] = { portfolio: deepClone(generated), tryIndex: nextTry, generatedAt: Date.now() };
+        appState.triesByUsername[username.toLowerCase()] = nextTry;
+        activateVariant(variantId);
+        setStatus(`Draft variation ${variantId}/3 generated. Tries used: ${nextTry}/3`);
+      } catch (error) {
+        showError(error.message);
+      } finally {
+        setLoading(false);
+      }
+    });
+  });
+
+  const tryAnotherBtn = document.getElementById("try-another");
+  if (tryAnotherBtn) {
+    tryAnotherBtn.addEventListener("click", async () => {
+      const username = appState.username || usernameInput.value.trim();
+      if (!username || !appState.profileData) {
+        showError("Generate profile data first.");
+        return;
+      }
+      const activeTry = appState.triesByUsername[username.toLowerCase()] || 0;
+      if (activeTry >= 3) {
+        setStatus("Try limit reached for this username in this session (3/3).");
+        return;
+      }
+      setLoading(true);
+      try {
+        const nextTry = activeTry + 1;
+        const variantId = appState.selectedVariantId || 1;
+        const generated = await generateVariant(appState.profileData, themeInput.value, variantId, nextTry);
+        appState.variants[variantId] = { portfolio: deepClone(generated), tryIndex: nextTry, generatedAt: Date.now() };
+        appState.triesByUsername[username.toLowerCase()] = nextTry;
+        activateVariant(variantId);
+        setStatus(`Regenerated variation ${variantId}/3. Tries used: ${nextTry}/3`);
+      } catch (error) {
+        showError(error.message);
+      } finally {
+        setLoading(false);
+      }
+    });
+  }
 
   document.getElementById("save-edits").addEventListener("click", () => {
     appState.savedPortfolio = deepClone(appState.draftPortfolio);
@@ -183,16 +327,22 @@ async function copyShareLink() { if (!appState.savedPortfolio) return showError(
 function renderPreview(portfolioData, profile) {
   const timeline = ["Freelance / Open Source Contributions", "Built automation tools for portfolio workflows", "Shipping UI and full-stack product iterations"];
   const testimonials = ["Fast execution and clean UI taste.", "Great at turning ideas into working products."];
-  return `
-    <section class="panel preview-panel wide glass-card reveal" data-reveal="up"><p>${escapeHtml(portfolioData.hero.title)}</p><h2>${escapeHtml(portfolioData.hero.content.headline || "")}</h2><p>${escapeHtml(portfolioData.hero.content.subheadline || "")}</p><div class="stats">${renderStat("Repos", portfolioData.hero.content.stats.public_repos)}${renderStat("Followers", portfolioData.hero.content.stats.followers)}${renderStat("Following", portfolioData.hero.content.stats.following)}</div></section>
-    <section class="panel preview-panel glass-card reveal" data-reveal="up"><p>${escapeHtml(portfolioData.about.title)}</p><h2>${escapeHtml(portfolioData.about.content.name || "")}</h2><ul>${(portfolioData.about.content.summary || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("") || "<li>Details coming soon.</li>"}</ul></section>
-    <section class="panel preview-panel glass-card reveal" data-reveal="up"><p>${escapeHtml(portfolioData.skills.title)}</p><h2>Highlighted Skills</h2><div class="tags">${(portfolioData.skills.content.highlighted || []).map(renderTag).join("") || "<span class='tag'>No detected skills yet</span>"}</div></section>
-    <section class="panel preview-panel wide glass-card reveal" data-reveal="up"><p>${escapeHtml(portfolioData.projects.title)}</p><h2>Featured Work</h2><div class="project-list">${(portfolioData.projects.content.items || []).map((project) => `<article class="project glass-card tilt-card"><div class="project-header"><strong>${escapeHtml(project.name || "Untitled project")}</strong>${safeInlineLink(project.url, "Repository")}</div><p>${escapeHtml(project.description || "Project details coming soon.")}</p><div class="tags">${project.language ? renderTag(project.language) : ""}${(project.topics || []).map(renderTag).join("")}</div></article>`).join("") || "<p>No repositories available.</p>"}</div></section>
+
+  const sectionMap = {
+    hero: `<section class="panel preview-panel wide glass-card reveal" data-reveal="up"><p>${escapeHtml(portfolioData.hero.title)}</p><h2>${escapeHtml(portfolioData.hero.content.headline || "")}</h2><p>${escapeHtml(portfolioData.hero.content.subheadline || "")}</p><div class="stats">${renderStat("Repos", portfolioData.hero.content.stats.public_repos)}${renderStat("Followers", portfolioData.hero.content.stats.followers)}${renderStat("Following", portfolioData.hero.content.stats.following)}</div></section>`,
+    about: `<section class="panel preview-panel glass-card reveal" data-reveal="up"><p>${escapeHtml(portfolioData.about.title)}</p><h2>${escapeHtml(portfolioData.about.content.name || "")}</h2><ul>${(portfolioData.about.content.summary || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("") || "<li>Details coming soon.</li>"}</ul></section>`,
+    skills: `<section class="panel preview-panel glass-card reveal" data-reveal="up"><p>${escapeHtml(portfolioData.skills.title)}</p><h2>Highlighted Skills</h2><div class="tags">${(portfolioData.skills.content.highlighted || []).map(renderTag).join("") || "<span class='tag'>No detected skills yet</span>"}</div></section>`,
+    projects: `<section class="panel preview-panel wide glass-card reveal" data-reveal="up"><p>${escapeHtml(portfolioData.projects.title)}</p><h2>Featured Work</h2><div class="project-list">${(portfolioData.projects.content.items || []).map((project) => `<article class="project glass-card tilt-card"><div class="project-header"><strong>${escapeHtml(project.name || "Untitled project")}</strong>${safeInlineLink(project.url, "Repository")}</div><p>${escapeHtml(project.description || "Project details coming soon.")}</p><div class="tags">${project.language ? renderTag(project.language) : ""}${(project.topics || []).map(renderTag).join("")}</div></article>`).join("") || "<p>No repositories available.</p>"}</div></section>`,
+    contact: `<section class="panel preview-panel wide glass-card reveal" data-reveal="up"><p>${escapeHtml(portfolioData.contact.title)}</p><h2>Contact</h2>${safeLinkLine(portfolioData.contact.content.github || profile.html_url, portfolioData.contact.content.github || profile.html_url)}${safeLinkLine(portfolioData.contact.content.blog, portfolioData.contact.content.blog)}${portfolioData.contact.content.email ? `<p>${escapeHtml(portfolioData.contact.content.email)}</p>` : ""}${portfolioData.contact.content.location ? `<p>${escapeHtml(portfolioData.contact.content.location)}</p>` : ""}</section>`,
+  };
+
+  const ordered = portfolioData.hero.content.section_order || ["hero", "about", "skills", "projects", "contact"];
+  const dynamicSections = ordered.map((key) => sectionMap[key] || "").join("");
+
+  return `${dynamicSections}
     <section class="panel preview-panel glass-card reveal" data-reveal="up"><p>Experience Timeline</p><h2>Journey</h2>${timeline.map((x) => `<div class='timeline-item'>${escapeHtml(x)}</div>`).join("")}</section>
     <section class="panel preview-panel glass-card reveal" data-reveal="up"><p>Testimonials</p><h2>Feedback</h2>${testimonials.map((x) => `<div class='testimonial-item'>“${escapeHtml(x)}”</div>`).join("")}</section>
-    <section class="panel preview-panel wide glass-card reveal" data-reveal="up"><p>Now Building</p><h2>Current Focus</h2><div class="now-item">⚙️ Improving developer portfolio generation quality, speed, and export flexibility.</div></section>
-    <section class="panel preview-panel wide glass-card reveal" data-reveal="up"><p>${escapeHtml(portfolioData.contact.title)}</p><h2>Contact</h2>${safeLinkLine(portfolioData.contact.content.github || profile.html_url, portfolioData.contact.content.github || profile.html_url)}${safeLinkLine(portfolioData.contact.content.blog, portfolioData.contact.content.blog)}${portfolioData.contact.content.email ? `<p>${escapeHtml(portfolioData.contact.content.email)}</p>` : ""}${portfolioData.contact.content.location ? `<p>${escapeHtml(portfolioData.contact.content.location)}</p>` : ""}</section>
-  `;
+    <section class="panel preview-panel wide glass-card reveal" data-reveal="up"><p>Now Building</p><h2>Current Focus</h2><div class="now-item">⚙️ Improving developer portfolio generation quality, speed, and export flexibility.</div></section>`;
 }
 
 function renderProjectEditors(projects) { if (!projects.length) return "<p>No repositories available to edit.</p>"; return projects.map((project, index) => `<div class="project-editor"><label class="field"><span>Project ${index + 1} name</span><input data-project-index="${index}" data-project-field="name" value="${escapeHtml(project.name || "")}"></label><label class="field"><span>Description</span><textarea data-project-index="${index}" data-project-field="description">${escapeHtml(project.description || "")}</textarea></label></div>`).join(""); }

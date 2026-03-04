@@ -52,6 +52,8 @@ class GenerateRequest(BaseModel):
     profile: GitHubProfile
     repos: list[RepoSummary]
     theme: ThemeMode = "modern"
+    variant_id: Literal[1, 2, 3] = 1
+    try_index: Annotated[int, Field(ge=1, le=3)] = 1
 
 
 class PortfolioSection(BaseModel):

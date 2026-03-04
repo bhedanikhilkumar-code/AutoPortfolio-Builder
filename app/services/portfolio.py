@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from collections import Counter
 from html import escape
+import hashlib
 from io import BytesIO
+import random
 from zipfile import ZIP_DEFLATED, ZipFile
 
 try:
@@ -28,72 +30,113 @@ def generate_portfolio(payload: GenerateRequest) -> PortfolioResponse:
     )
 
     display_name = payload.profile.name or payload.profile.username
-    about_points = [
-        point
-        for point in [
-            payload.profile.bio,
-            f"Based in {payload.profile.location}" if payload.profile.location else None,
-            (
-                f"Maintains {len(payload.repos)} non-fork repositories on GitHub"
-                if payload.repos
-                else "Getting started with open source projects on GitHub"
-            ),
-        ]
-        if point
+    top_languages = [name for name, _ in language_counts.most_common(8)]
+    top_topics = [name for name, _ in topic_counts.most_common(8)]
+    top_skills = top_languages or top_topics
+
+    seed = _build_variant_seed(payload.profile.username, payload.variant_id, payload.try_index)
+    rng = random.Random(seed)
+
+    hero_templates = {
+        1: [
+            f"{display_name} builds software that ships.",
+            f"{display_name} builds and ships high-impact software.",
+            f"{display_name} turns ideas into production-ready products.",
+            f"{display_name} delivers clean, fast, and reliable developer products.",
+        ],
+        2: [
+            f"{display_name}'s journey is about building useful software with momentum.",
+            f"From experiments to shipped tools, {display_name} keeps iterating with intent.",
+            f"{display_name} builds products with story, purpose, and measurable impact.",
+        ],
+        3: [
+            f"{display_name} | Software Engineer | Full-Stack Development | Automation.",
+            f"{display_name} | Backend, APIs, UI Engineering, Delivery.",
+            f"{display_name} | Engineer focused on scalable systems and execution.",
+        ],
+    }
+
+    subheadline_templates = {
+        1: [
+            "Concise portfolio generated from real GitHub activity with impact-first positioning.",
+            "Modern developer snapshot powered by repositories, commits, and practical outcomes.",
+        ],
+        2: [
+            payload.profile.bio or "A detailed portfolio narrative derived from GitHub projects and engineering choices.",
+            "A storytelling format that highlights journey, decisions, and project evolution.",
+        ],
+        3: [
+            "ATS-ready profile with structured keywords, technical stack signals, and role relevance.",
+            "Structured resume format optimized for recruiters and screening systems.",
+        ],
+    }
+
+    about_variant = _build_about_summary(payload, display_name, top_languages, top_topics, payload.variant_id)
+
+    project_items = [
+        {
+            "name": repo.name,
+            "description": repo.description or "Repository with active development history.",
+            "url": repo.html_url,
+            "homepage": repo.homepage,
+            "language": repo.language,
+            "stars": repo.stargazers_count,
+            "forks": repo.forks_count,
+            "topics": repo.topics,
+        }
+        for repo in featured_repos
     ]
-    top_skills = [name for name, _ in language_counts.most_common(8)] or [
-        topic for topic, _ in topic_counts.most_common(8)
-    ]
+    if payload.variant_id == 2:
+        project_items = list(reversed(project_items))
+
+    section_order = {
+        1: ["hero", "projects", "skills", "about", "contact"],
+        2: ["hero", "about", "projects", "skills", "contact"],
+        3: ["hero", "skills", "projects", "about", "contact"],
+    }[payload.variant_id]
+
+    headline = (
+        f"{display_name} builds software that ships."
+        if payload.variant_id == 1 and payload.try_index == 1
+        else rng.choice(hero_templates[payload.variant_id])
+    )
 
     return PortfolioResponse(
         theme=payload.theme,
         hero=PortfolioSection(
             title="Hero",
             content={
-                "headline": f"{display_name} builds software that ships.",
-                "subheadline": payload.profile.bio
-                or "GitHub-powered portfolio generated automatically from live repository data.",
+                "headline": headline,
+                "subheadline": rng.choice(subheadline_templates[payload.variant_id]),
                 "stats": {
                     "public_repos": payload.profile.public_repos,
                     "followers": payload.profile.followers,
                     "following": payload.profile.following,
                 },
                 "cta": payload.profile.html_url,
+                "variant_id": payload.variant_id,
+                "try_index": payload.try_index,
+                "section_order": section_order,
             },
         ),
         about=PortfolioSection(
             title="About",
             content={
                 "name": display_name,
-                "summary": about_points,
+                "summary": about_variant,
                 "github": payload.profile.html_url,
             },
         ),
         projects=PortfolioSection(
             title="Projects",
-            content={
-                "items": [
-                    {
-                        "name": repo.name,
-                        "description": repo.description
-                        or "Repository with active development history.",
-                        "url": repo.html_url,
-                        "homepage": repo.homepage,
-                        "language": repo.language,
-                        "stars": repo.stargazers_count,
-                        "forks": repo.forks_count,
-                        "topics": repo.topics,
-                    }
-                    for repo in featured_repos
-                ]
-            },
+            content={"items": project_items},
         ),
         skills=PortfolioSection(
             title="Skills",
             content={
-                "languages": [name for name, _ in language_counts.most_common(8)],
-                "topics": [name for name, _ in topic_counts.most_common(8)],
-                "highlighted": top_skills,
+                "languages": top_languages,
+                "topics": top_topics,
+                "highlighted": _build_highlighted_skills(top_skills, payload.variant_id),
             },
         ),
         contact=PortfolioSection(
@@ -120,6 +163,72 @@ def _select_featured_repos(repos: list[RepoSummary]) -> list[RepoSummary]:
         reverse=True,
     )
     return ranked[:6]
+
+
+def _build_variant_seed(username: str, variant_id: int, try_index: int) -> int:
+    token = f"{username.lower()}::{variant_id}::{try_index}".encode("utf-8")
+    digest = hashlib.sha256(token).hexdigest()
+    return int(digest[:16], 16)
+
+
+def _build_about_summary(
+    payload: GenerateRequest,
+    display_name: str,
+    top_languages: list[str],
+    top_topics: list[str],
+    variant_id: int,
+) -> list[str]:
+    base_location = f"Based in {payload.profile.location}" if payload.profile.location else None
+    repo_line = (
+        f"Maintains {len(payload.repos)} non-fork repositories on GitHub"
+        if payload.repos
+        else "Getting started with open source projects on GitHub"
+    )
+
+    if variant_id == 1:
+        return [
+            point
+            for point in [
+                payload.profile.bio,
+                base_location,
+                repo_line,
+                f"Top stack: {', '.join(top_languages[:4])}" if top_languages else None,
+            ]
+            if point
+        ]
+
+    if variant_id == 2:
+        return [
+            point
+            for point in [
+                payload.profile.bio or f"{display_name} builds with a product mindset and iterative delivery style.",
+                base_location,
+                f"Portfolio story is inferred from {len(payload.repos)} repositories and contribution signals.",
+                f"Frequently working across {', '.join(top_languages[:5])}." if top_languages else None,
+                f"Domain interests include {', '.join(top_topics[:5])}." if top_topics else None,
+            ]
+            if point
+        ]
+
+    return [
+        point
+        for point in [
+            payload.profile.bio or f"{display_name} focuses on software engineering execution.",
+            base_location,
+            repo_line,
+            f"Core keywords: {', '.join((top_languages + top_topics)[:8])}" if (top_languages or top_topics) else None,
+            "Strengths: API design, maintainable codebases, and delivery consistency.",
+        ]
+        if point
+    ]
+
+
+def _build_highlighted_skills(skills: list[str], variant_id: int) -> list[str]:
+    if variant_id == 3:
+        return [f"{skill} (Production)" for skill in skills[:8]]
+    if variant_id == 2:
+        return skills[:10]
+    return skills[:8]
 
 
 def build_export_filename(payload: ExportRequest) -> str:
