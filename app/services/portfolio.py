@@ -590,23 +590,35 @@ def _render_pdf_styled(portfolio: PortfolioResponse, template_name: str) -> byte
 
     if template_name == "creative":
         pdf.set_fill_color(30, 64, 175)
-        pdf.rect(0, 0, page_w, 20, style="F")
+        pdf.rect(0, 0, page_w, 36, style="F")
 
-    pdf.set_xy(right_x, 14)
+    name_y = 14
+    if template_name == "creative":
+        name_y = 22
+    elif template_name == "minimal":
+        name_y = 18
+
+    pdf.set_xy(right_x, name_y)
     pdf.set_font("Helvetica", "B", style["name"])
-    pdf.set_text_color(15, 23, 42)
+    if template_name == "creative":
+        pdf.set_text_color(255, 255, 255)
+    else:
+        pdf.set_text_color(15, 23, 42)
     pdf.multi_cell(right_w, 10, display_name)
 
     pdf.set_x(right_x)
     pdf.set_font("Helvetica", "", 10.5)
     pdf.set_text_color(51, 65, 85)
+    if template_name == "creative":
+        pdf.set_y(max(pdf.get_y(), 44))
+        pdf.set_x(right_x)
     if headline:
         pdf.multi_cell(right_w, 6, headline)
     if subheadline:
         pdf.set_x(right_x)
         pdf.multi_cell(right_w, 6, subheadline)
 
-    y = max(pdf.get_y() + 4, 56)
+    y = max(pdf.get_y() + 4, 58 if template_name == "creative" else 56)
 
     def right_section(title: str, body_lines: list[str]) -> None:
         nonlocal y
