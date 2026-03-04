@@ -494,61 +494,118 @@ def render_portfolio_pdf(portfolio: PortfolioResponse) -> bytes:
     projects_items = portfolio.projects.content.get("items") or []
     contact = portfolio.contact.content
 
-    pdf = FPDF()
-    pdf.set_auto_page_break(auto=True, margin=15)
+    display_name = _pdf_text(about.get("name") or hero.get("headline") or "Portfolio")
+    headline = _pdf_text(hero.get("headline") or "")
+    subheadline = _pdf_text(hero.get("subheadline") or "")
+
+    pdf = FPDF(format="A4")
+    pdf.set_auto_page_break(auto=True, margin=12)
     pdf.add_page()
-    pdf.set_title(_pdf_text(about.get("name") or hero.get("headline") or "Portfolio"))
+    pdf.set_title(display_name)
     pdf.set_author(_pdf_text(contact.get("github") or "AutoPortfolio Builder"))
-    pdf.set_margins(15, 15, 15)
 
-    _pdf_section_title(pdf, about.get("name") or "Portfolio")
-    _pdf_paragraph(pdf, hero.get("headline"))
-    _pdf_paragraph(pdf, hero.get("subheadline"))
+    page_w = 210
+    page_h = 297
+    margin = 10
+    left_w = 62
+    gutter = 8
+    right_x = margin + left_w + gutter
+    right_w = page_w - right_x - margin
 
-    _pdf_spacer(pdf, 2)
-    _pdf_section_label(pdf, "About")
-    about_points = about.get("summary") or []
-    if about_points:
-        for point in about_points:
-            _pdf_bullet(pdf, point)
-    else:
-        _pdf_bullet(pdf, "Details coming soon.")
+    # Background + left rail
+    pdf.set_fill_color(248, 250, 252)
+    pdf.rect(0, 0, page_w, page_h, style="F")
+    pdf.set_fill_color(15, 23, 42)
+    pdf.rect(0, 0, left_w + margin + 3, page_h, style="F")
 
-    _pdf_spacer(pdf, 2)
-    _pdf_section_label(pdf, "Skills")
-    highlighted_skills = [str(item).strip() for item in skills.get("highlighted") or [] if str(item).strip()]
-    _pdf_paragraph(pdf, ", ".join(highlighted_skills) if highlighted_skills else "No skills listed.")
+    # Header (right panel)
+    pdf.set_xy(right_x, 14)
+    pdf.set_font("Helvetica", "B", 24)
+    pdf.set_text_color(15, 23, 42)
+    pdf.multi_cell(right_w, 10, display_name)
 
-    _pdf_spacer(pdf, 2)
-    _pdf_section_label(pdf, "Top Projects")
-    if projects_items:
-        for project in projects_items[:4]:
-            if not isinstance(project, dict):
+    pdf.set_x(right_x)
+    pdf.set_font("Helvetica", "", 11)
+    pdf.set_text_color(51, 65, 85)
+    if headline:
+        pdf.multi_cell(right_w, 6, headline)
+    if subheadline:
+        pdf.set_x(right_x)
+        pdf.multi_cell(right_w, 6, subheadline)
+
+    y = max(pdf.get_y() + 4, 56)
+
+    def right_section(title: str, body_lines: list[str]) -> None:
+        nonlocal y
+        if y > 255:
+            pdf.add_page()
+            y = 20
+        pdf.set_xy(right_x, y)
+        pdf.set_font("Helvetica", "B", 13)
+        pdf.set_text_color(15, 23, 42)
+        pdf.multi_cell(right_w, 7, _pdf_text(title).upper())
+        y = pdf.get_y() + 1
+        pdf.set_font("Helvetica", "", 10)
+        pdf.set_text_color(30, 41, 59)
+        for line in body_lines:
+            if not line:
                 continue
-            project_name = project.get("name") or "Untitled project"
-            description = project.get("description") or "Project details coming soon."
-            details = [description]
-            if project.get("language"):
-                details.append(f"Language: {project['language']}")
-            if project.get("url"):
-                details.append(f"Repository: {project['url']}")
-            _pdf_project(pdf, project_name, " | ".join(details))
-    else:
-        _pdf_paragraph(pdf, "No featured projects yet.")
+            pdf.set_xy(right_x, y)
+            pdf.multi_cell(right_w, 5.5, f"- {_pdf_text(line)}")
+            y = pdf.get_y()
+        y += 3
 
-    _pdf_spacer(pdf, 2)
-    _pdf_section_label(pdf, "Contact")
+    def left_section(title: str, body_lines: list[str], y_pos: float) -> float:
+        pdf.set_xy(margin, y_pos)
+        pdf.set_font("Helvetica", "B", 12)
+        pdf.set_text_color(226, 232, 240)
+        pdf.multi_cell(left_w, 6.5, _pdf_text(title).upper())
+        y_local = pdf.get_y() + 1
+        pdf.set_font("Helvetica", "", 9.5)
+        pdf.set_text_color(203, 213, 225)
+        for line in body_lines:
+            if not line:
+                continue
+            pdf.set_xy(margin, y_local)
+            pdf.multi_cell(left_w, 5, _pdf_text(line))
+            y_local = pdf.get_y() + 0.6
+        return y_local + 4
+
+    # Left column: contact + skills
+    left_y = 20
     contact_lines = [
-        f"GitHub: {contact.get('github')}" if contact.get("github") else "",
-        f"Blog: {contact.get('blog')}" if contact.get("blog") else "",
-        f"Email: {contact.get('email')}" if contact.get("email") else "",
-        f"Location: {contact.get('location')}" if contact.get("location") else "",
+        _pdf_text(contact.get("email")) if contact.get("email") else "",
+        _pdf_text(contact.get("location")) if contact.get("location") else "",
+        _pdf_text(contact.get("github")) if contact.get("github") else "",
+        _pdf_text(contact.get("blog")) if contact.get("blog") else "",
     ]
-    for line in contact_lines:
-        if line:
-            _pdf_bullet(pdf, line)
-    if not any(contact_lines):
-        _pdf_paragraph(pdf, "No contact details listed.")
+    left_y = left_section("Contact", [line for line in contact_lines if line], left_y)
+
+    highlighted_skills = [str(item).strip() for item in skills.get("highlighted") or [] if str(item).strip()]
+    left_y = left_section("Technical Skills", highlighted_skills[:12], left_y)
+
+    about_points = [str(point).strip() for point in about.get("summary") or [] if str(point).strip()]
+    left_section("Summary", about_points[:6], left_y)
+
+    # Right column: experience/projects style
+    right_section("Professional Summary", about_points or ["Details coming soon."])
+
+    project_lines: list[str] = []
+    for project in projects_items[:5]:
+        if not isinstance(project, dict):
+            continue
+        name = str(project.get("name") or "Untitled project")
+        desc = str(project.get("description") or "Project details coming soon.")
+        lang = str(project.get("language") or "")
+        line = f"{name}: {desc}"
+        if lang:
+            line += f" | Tech: {lang}"
+        project_lines.append(line)
+
+    right_section("Project Experience", project_lines or ["No featured projects yet."])
+
+    keywords = [str(x).strip() for x in (skills.get("languages") or []) + (skills.get("topics") or []) if str(x).strip()]
+    right_section("Core Keywords", keywords[:14] or ["Software Engineering", "Web Development", "APIs", "Problem Solving"])
 
     output = pdf.output()
     return bytes(output) if not isinstance(output, bytes) else output
