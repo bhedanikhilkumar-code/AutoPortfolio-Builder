@@ -6,6 +6,11 @@ const statusEl = document.getElementById("status");
 const errorBannerEl = document.getElementById("error-banner");
 const portfolioEl = document.getElementById("portfolio");
 const audioReactiveToggle = document.getElementById("audio-reactive");
+const authEmailInput = document.getElementById("auth-email");
+const authPasswordInput = document.getElementById("auth-password");
+const authRegisterBtn = document.getElementById("auth-register");
+const authLoginBtn = document.getElementById("auth-login");
+const authLoadDashboardBtn = document.getElementById("auth-load-dashboard");
 
 const appState = {
   profileData: null,
@@ -20,6 +25,7 @@ const appState = {
   selectedPdfTemplate: "auto",
   pdfTryHistoryByUsername: {},
   pdfTryCountByUsername: {},
+  authToken: localStorage.getItem("apb_token") || "",
 };
 let parallaxTargets = [];
 const PERF_LOW_POWER = (navigator.hardwareConcurrency || 4) <= 4;
@@ -32,6 +38,99 @@ if (!PERF_LOW_POWER) setupMouseParallax();
 setupRevealAnimations();
 setupHeroRotator();
 if (!PERF_LOW_POWER) setupMagnetic();
+setupAuthDashboard();
+if (appState.authToken) {
+  loadDashboard().catch(() => {
+    localStorage.removeItem("apb_token");
+    appState.authToken = "";
+  });
+}
+
+function authHeaders() {
+  return appState.authToken ? { Authorization: `Bearer ${appState.authToken}` } : {};
+}
+
+function setupAuthDashboard() {
+  if (!authRegisterBtn || !authLoginBtn || !authLoadDashboardBtn) return;
+
+  authRegisterBtn.addEventListener("click", async () => {
+    try {
+      const payload = { email: authEmailInput.value.trim(), password: authPasswordInput.value };
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(getErrorMessage(data, "Registration failed."));
+      appState.authToken = data.access_token;
+      localStorage.setItem("apb_token", appState.authToken);
+      showToast("Registered successfully.", "success");
+      await loadDashboard();
+    } catch (error) {
+      showError(error.message);
+    }
+  });
+
+  authLoginBtn.addEventListener("click", async () => {
+    try {
+      const payload = { email: authEmailInput.value.trim(), password: authPasswordInput.value };
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(getErrorMessage(data, "Login failed."));
+      appState.authToken = data.access_token;
+      localStorage.setItem("apb_token", appState.authToken);
+      showToast("Logged in.", "success");
+      await loadDashboard();
+    } catch (error) {
+      showError(error.message);
+    }
+  });
+
+  authLoadDashboardBtn.addEventListener("click", async () => {
+    await loadDashboard();
+  });
+}
+
+async function loadDashboard() {
+  if (!appState.authToken) {
+    showError("Login required to load dashboard.");
+    return;
+  }
+
+  const response = await fetch("/api/dashboard", { headers: { ...authHeaders() } });
+  const data = await response.json();
+  if (!response.ok) throw new Error(getErrorMessage(data, "Failed to load dashboard."));
+
+  const wrap = document.getElementById("dashboard-panels");
+  const myResumes = document.getElementById("dash-my-resumes");
+  const drafts = document.getElementById("dash-drafts");
+  const history = document.getElementById("dash-history");
+
+  wrap.hidden = false;
+  myResumes.innerHTML = (data.my_resumes || []).map((item) => `<li>${escapeHtml(item.title)} <button class='btn-secondary' data-edit-resume='${item.id}' type='button'>Edit existing resume</button></li>`).join("") || "<li>No resumes yet.</li>";
+  drafts.innerHTML = (data.saved_drafts || []).map((item) => `<li>${escapeHtml(item.title)}</li>`).join("") || "<li>No drafts yet.</li>";
+  history.innerHTML = (data.generation_history || []).map((item) => `<li>${escapeHtml(item.username)} • V${item.variant_id} • ${escapeHtml(item.template_id)}</li>`).join("") || "<li>No generation history yet.</li>";
+
+  document.querySelectorAll("[data-edit-resume]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const resumeId = Number(btn.dataset.editResume);
+      const resumeRes = await fetch(`/api/dashboard/resumes/${resumeId}`, { headers: { ...authHeaders() } });
+      const resumeData = await resumeRes.json();
+      if (!resumeRes.ok) throw new Error(getErrorMessage(resumeData, "Failed to load resume."));
+      const parsed = JSON.parse(resumeData.portfolio);
+      appState.generatedPortfolio = deepClone(parsed);
+      appState.draftPortfolio = deepClone(parsed);
+      appState.savedPortfolio = deepClone(parsed);
+      renderWorkspace();
+      setStatus(`Loaded resume #${resumeId} for editing.`);
+    });
+  });
+}
 
 function setupAudioReactiveToggle() {
   if (!audioReactiveToggle || !warpController) return;
@@ -103,7 +202,7 @@ async function ensureProfilePayload(username) {
   setStatus("Fetching GitHub profile...");
   const profileResponse = await fetch("/api/profile", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify({ username }),
   });
   const profilePayload = await profileResponse.json();
@@ -115,7 +214,7 @@ async function generateVariant(profilePayload, theme, variantId, tryIndex) {
   setStatus(`Generating variation ${variantId}/3...`);
   const generateResponse = await fetch("/api/generate", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify({ ...profilePayload, theme, variant_id: variantId, try_index: tryIndex }),
   });
   const portfolioPayload = await generateResponse.json();
@@ -210,7 +309,7 @@ function renderWorkspace() {
           <button data-variant-tab="3" class="btn-secondary magnetic" type="button">Variant 3</button>
           <button id="try-another" class="btn-primary magnetic" type="button">Try Another</button>
         </div>
-        <div class="inline-actions"><button id="save-edits" class="btn-secondary magnetic" type="button">Save Edits</button><button id="reset-edits" class="btn-danger magnetic" type="button">Reset</button></div>
+        <div class="inline-actions"><button id="save-edits" class="btn-secondary magnetic" type="button">Save Edits</button><button id="save-draft" class="btn-primary magnetic" type="button">Save Draft</button><button id="reset-edits" class="btn-danger magnetic" type="button">Reset</button></div>
         <div class="inline-actions"><button id="export-html" class="btn-primary magnetic" type="button">Export HTML</button><button id="export-zip" class="btn-secondary magnetic" type="button">Export ZIP</button><button id="export-pdf" class="btn-secondary magnetic" type="button">Export PDF</button></div>
         <div class="editor-section">
           <h3>Resume Style</h3>
@@ -350,6 +449,33 @@ function bindEditorEvents() {
     renderWorkspace();
     setStatus("Edits saved. Export uses the current saved version.");
   });
+
+  const saveDraftBtn = document.getElementById("save-draft");
+  if (saveDraftBtn) {
+    saveDraftBtn.addEventListener("click", async () => {
+      if (!appState.authToken) {
+        showError("Login required to save draft.");
+        return;
+      }
+      try {
+        const response = await fetch("/api/dashboard/resumes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...authHeaders() },
+          body: JSON.stringify({
+            title: `${(appState.savedPortfolio?.about?.content?.name || appState.username || "Resume")} Draft`,
+            status: "draft",
+            portfolio: appState.savedPortfolio || appState.draftPortfolio,
+          }),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(getErrorMessage(data, "Failed to save draft."));
+        showToast(`Draft saved (#${data.resume_id}).`, "success");
+        await loadDashboard();
+      } catch (error) {
+        showError(error.message);
+      }
+    });
+  }
 
   document.getElementById("reset-edits").addEventListener("click", () => {
     appState.draftPortfolio = deepClone(appState.generatedPortfolio);

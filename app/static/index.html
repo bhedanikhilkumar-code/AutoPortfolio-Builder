@@ -56,6 +56,24 @@
       </div>
     </section>
 
+    <section id="auth-dashboard" class="panel glass-card reveal" data-reveal="up">
+      <h2>Account & Dashboard</h2>
+      <div class="inline-actions">
+        <input id="auth-email" type="email" placeholder="Email">
+        <input id="auth-password" type="password" placeholder="Password">
+      </div>
+      <div class="inline-actions">
+        <button id="auth-register" class="btn-secondary magnetic" type="button">Register</button>
+        <button id="auth-login" class="btn-primary magnetic" type="button">Login</button>
+        <button id="auth-load-dashboard" class="btn-secondary magnetic" type="button">Load Dashboard</button>
+      </div>
+      <div id="dashboard-panels" class="dashboard-panels" hidden>
+        <div class="editor-section"><h3>My Resumes</h3><ul id="dash-my-resumes"></ul></div>
+        <div class="editor-section"><h3>Saved Drafts</h3><ul id="dash-drafts"></ul></div>
+        <div class="editor-section"><h3>Generation History</h3><ul id="dash-history"></ul></div>
+      </div>
+    </section>
+
     <section id="portfolio" hidden></section>
   </main>
 

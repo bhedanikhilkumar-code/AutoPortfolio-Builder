@@ -4,22 +4,31 @@ from pathlib import Path
 import secrets
 
 import httpx
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from app.schemas import (
+    AuthResponse,
+    DashboardResponse,
     ErrorResponse,
     ExportRequest,
     GenerateRequest,
     HealthResponse,
+    LoginRequest,
     PortfolioResponse,
     ProfileRequest,
     ProfileResponse,
+    RegisterRequest,
+    SaveResumeRequest,
+    SaveResumeResponse,
     ShareRequest,
     ShareResponse,
 )
+from app.auth.service import create_session, register_user, resolve_user_from_token
+from app.core.db import init_db
+from app.dashboard.service import add_generation_history, build_dashboard, save_resume_snapshot
 from app.services.github import GitHubService
 from app.services.portfolio import (
     build_export_filename,
@@ -39,8 +48,18 @@ def get_github_service() -> GitHubService:
     return GitHubService()
 
 
+def get_current_user(authorization: str | None = Header(default=None)) -> dict:
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing bearer token.")
+    token = authorization.split(" ", 1)[1].strip()
+    if not token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing bearer token.")
+    return resolve_user_from_token(token)
+
+
 def create_app() -> FastAPI:
-    app = FastAPI(title="AutoPortfolio Builder", version="0.1.0")
+    init_db()
+    app = FastAPI(title="AutoPortfolio Builder", version="0.2.0")
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
     @app.exception_handler(HTTPException)
@@ -65,6 +84,54 @@ def create_app() -> FastAPI:
     async def health() -> HealthResponse:
         return HealthResponse(status="ok")
 
+    @app.post("/api/auth/register", response_model=AuthResponse)
+    async def auth_register(payload: RegisterRequest) -> AuthResponse:
+        register_user(payload.email, payload.password)
+        token, _ = create_session(payload.email, payload.password)
+        return AuthResponse(access_token=token)
+
+    @app.post("/api/auth/login", response_model=AuthResponse)
+    async def auth_login(payload: LoginRequest) -> AuthResponse:
+        token, _ = create_session(payload.email, payload.password)
+        return AuthResponse(access_token=token)
+
+    @app.get("/api/dashboard", response_model=DashboardResponse)
+    async def dashboard(user: dict = Depends(get_current_user)) -> DashboardResponse:
+        return build_dashboard(user)
+
+    @app.post("/api/dashboard/resumes", response_model=SaveResumeResponse)
+    async def save_resume(payload: SaveResumeRequest, user: dict = Depends(get_current_user)) -> SaveResumeResponse:
+        return save_resume_snapshot(
+            user_id=user["id"],
+            title=payload.title,
+            status=payload.status,
+            portfolio_json=payload.portfolio.model_dump_json(),
+        )
+
+    @app.get("/api/dashboard/resumes/{resume_id}")
+    async def get_resume_for_edit(resume_id: int, user: dict = Depends(get_current_user)) -> JSONResponse:
+        from app.core.db import get_connection
+
+        conn = get_connection()
+        try:
+            row = conn.execute(
+                "SELECT id, title, status, portfolio_json, updated_at FROM resumes WHERE id = ? AND user_id = ?",
+                (resume_id, user["id"]),
+            ).fetchone()
+            if not row:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found.")
+            return JSONResponse(
+                {
+                    "resume_id": int(row["id"]),
+                    "title": row["title"],
+                    "status": row["status"],
+                    "updated_at": row["updated_at"],
+                    "portfolio": row["portfolio_json"],
+                }
+            )
+        finally:
+            conn.close()
+
     @app.post("/api/profile", response_model=ProfileResponse)
     async def profile(
         payload: ProfileRequest,
@@ -73,8 +140,15 @@ def create_app() -> FastAPI:
         return await github_service.fetch_profile(payload.username)
 
     @app.post("/api/generate", response_model=PortfolioResponse)
-    async def generate(payload: GenerateRequest) -> PortfolioResponse:
-        return generate_portfolio(payload)
+    async def generate(payload: GenerateRequest, authorization: str | None = Header(default=None)) -> PortfolioResponse:
+        result = generate_portfolio(payload)
+        if authorization and authorization.lower().startswith("bearer "):
+            try:
+                user = resolve_user_from_token(authorization.split(" ", 1)[1].strip())
+                add_generation_history(user["id"], payload.profile.username, payload.variant_id, "auto")
+            except HTTPException:
+                pass
+        return result
 
     @app.post("/api/export/html")
     async def export_html(payload: ExportRequest) -> Response:

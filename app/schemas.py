@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Annotated, Any, Literal
+from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -95,6 +96,60 @@ class ShareResponse(BaseModel):
     share_id: str
     resume_url: str
     share_url: str
+
+
+class RegisterRequest(BaseModel):
+    email: str
+    password: Annotated[str, Field(min_length=8, max_length=128)]
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: Annotated[str, Field(min_length=8, max_length=128)]
+
+
+class AuthResponse(BaseModel):
+    access_token: str
+    token_type: Literal["bearer"] = "bearer"
+
+
+class UserSummary(BaseModel):
+    id: int
+    email: str
+    created_at: datetime
+
+
+class ResumeCard(BaseModel):
+    id: int
+    title: str
+    status: str
+    updated_at: datetime
+
+
+class GenerationHistoryItem(BaseModel):
+    id: int
+    username: str
+    variant_id: int
+    template_id: str
+    created_at: datetime
+
+
+class DashboardResponse(BaseModel):
+    user: UserSummary
+    my_resumes: list[ResumeCard]
+    saved_drafts: list[ResumeCard]
+    generation_history: list[GenerationHistoryItem]
+
+
+class SaveResumeRequest(BaseModel):
+    title: Annotated[str, Field(min_length=1, max_length=120)]
+    portfolio: PortfolioResponse
+    status: Literal["draft", "published"] = "draft"
+
+
+class SaveResumeResponse(BaseModel):
+    resume_id: int
+    message: str
 
 
 class APIError(BaseModel):
