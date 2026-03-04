@@ -2,6 +2,10 @@
 
 ## Phase 4 (Next)
 - [ ] PDF export (`/api/export/pdf`) with clean printable template
+- [ ] Professional multi-template PDF resume engine (modern / classic / ATS)
+- [ ] Deterministic per-user PDF style selection (same user => stable style; Try Another => alternate style)
+- [ ] Variant-aware PDF output matching selected draft variation (1/2/3)
+- [ ] Strong typography + spacing system for recruiter-friendly print quality
 - [ ] Save edited portfolio draft as JSON and reload later
 - [ ] Improve export naming/versioning
 
