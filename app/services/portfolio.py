@@ -87,7 +87,7 @@ def generate_portfolio(payload: GenerateRequest) -> PortfolioResponse:
     project_items = [
         {
             "name": repo.name,
-            "description": repo.description or "Repository with active development history.",
+            "description": _build_project_par_description(repo),
             "url": repo.html_url,
             "homepage": repo.homepage,
             "language": repo.language,
@@ -148,6 +148,7 @@ def generate_portfolio(payload: GenerateRequest) -> PortfolioResponse:
                 "languages": top_languages,
                 "topics": top_topics,
                 "highlighted": _build_highlighted_skills(top_skills, payload.variant_id),
+                "ats_keywords": _build_ats_keywords(top_languages, top_topics),
             },
         ),
         contact=PortfolioSection(
@@ -240,6 +241,36 @@ def _build_highlighted_skills(skills: list[str], variant_id: int) -> list[str]:
     if variant_id == 2:
         return skills[:10]
     return skills[:8]
+
+
+def _build_ats_keywords(top_languages: list[str], top_topics: list[str]) -> list[str]:
+    keywords = [*top_languages[:8], *top_topics[:8], "REST APIs", "Problem Solving", "System Design"]
+    seen: set[str] = set()
+    deduped: list[str] = []
+    for keyword in keywords:
+        token = keyword.strip()
+        if not token:
+            continue
+        key = token.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(token)
+    return deduped[:16]
+
+
+def _build_project_par_description(repo: RepoSummary) -> str:
+    problem = repo.description.strip() if repo.description else "Needed a reliable solution for developer workflow automation"
+    action = f"Built and iterated {repo.name}"
+    if repo.language:
+        action += f" using {repo.language}"
+    result_bits = []
+    if repo.stargazers_count:
+        result_bits.append(f"{repo.stargazers_count} stars")
+    if repo.forks_count:
+        result_bits.append(f"{repo.forks_count} forks")
+    result = ", ".join(result_bits) if result_bits else "production-ready repository with practical outcomes"
+    return f"Problem: {problem}. Action: {action}. Result: {result}."
 
 
 def build_export_filename(payload: ExportRequest) -> str:
@@ -706,7 +737,11 @@ def _render_pdf_styled(portfolio: PortfolioResponse, template_name: str) -> byte
             line += f" | Tech: {lang}"
         project_lines.append(line)
 
-    keywords = [str(x).strip() for x in (skills.get("languages") or []) + (skills.get("topics") or []) if str(x).strip()]
+    keywords = [
+        str(x).strip()
+        for x in (skills.get("ats_keywords") or (skills.get("languages") or []) + (skills.get("topics") or []))
+        if str(x).strip()
+    ]
 
     for block in order:
         if block == "summary":
@@ -761,7 +796,11 @@ def _render_pdf_ats(portfolio: PortfolioResponse) -> bytes:
         pdf.multi_cell(180, 5.5, f"- {_pdf_text(line)}")
 
     sec("Skills")
-    keywords = [str(x).strip() for x in (skills.get("languages") or []) + (skills.get("topics") or []) if str(x).strip()]
+    keywords = [
+        str(x).strip()
+        for x in (skills.get("ats_keywords") or (skills.get("languages") or []) + (skills.get("topics") or []))
+        if str(x).strip()
+    ]
     pdf.multi_cell(180, 5.5, _pdf_text(", ".join(keywords[:24]) or "Software Engineering, APIs, Web Development"))
 
     sec("Projects")

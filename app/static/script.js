@@ -163,7 +163,24 @@ function resetGenerateButton() {
 
 function setStatus(message) { statusEl.textContent = message; }
 function clearError() { errorBannerEl.hidden = true; errorBannerEl.textContent = ""; }
-function showError(message) { setStatus("Request failed."); errorBannerEl.hidden = false; errorBannerEl.textContent = message; }
+function showError(message) { setStatus("Request failed."); errorBannerEl.hidden = false; errorBannerEl.textContent = message; showToast(message, "error"); }
+
+function showToast(message, type = "info") {
+  const existing = document.getElementById("ui-toast");
+  if (existing) existing.remove();
+
+  const toast = document.createElement("div");
+  toast.id = "ui-toast";
+  toast.className = `ui-toast ${type}`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+
+  requestAnimationFrame(() => toast.classList.add("show"));
+  window.setTimeout(() => {
+    toast.classList.remove("show");
+    window.setTimeout(() => toast.remove(), 260);
+  }, 2200);
+}
 
 function renderWorkspace() {
   if (!appState.draftPortfolio || !appState.savedPortfolio) {
@@ -210,6 +227,7 @@ function renderWorkspace() {
             </select>
             <small id="pdf-tries-note">PDF tries used: ${(appState.pdfTryCountByUsername[(appState.username || "").toLowerCase()] || 0)}/3</small>
           </label>
+          <div class="inline-actions"><button id="reset-pdf-tries" class="btn-danger magnetic" type="button">Reset PDF Tries</button></div>
           <div id="pdf-template-preview" class="pdf-template-preview"></div>
         </div>
         <div class="inline-actions"><button id="copy-share-link" class="btn-secondary magnetic" type="button">Copy Resume Link</button></div>
@@ -354,6 +372,20 @@ function bindEditorEvents() {
       renderPdfTemplatePreview(appState.selectedPdfTemplate);
     });
   }
+
+  const resetPdfTriesBtn = document.getElementById("reset-pdf-tries");
+  if (resetPdfTriesBtn) {
+    resetPdfTriesBtn.addEventListener("click", () => {
+      const key = (appState.username || usernameInput.value.trim() || "unknown").toLowerCase();
+      appState.pdfTryCountByUsername[key] = 0;
+      appState.pdfTryHistoryByUsername[key] = [];
+      const note = document.getElementById("pdf-tries-note");
+      if (note) note.textContent = "PDF tries used: 0/3";
+      showToast("PDF tries reset for current username.", "success");
+      setStatus("PDF tries reset.");
+    });
+  }
+
   renderPdfTemplatePreview(appState.selectedPdfTemplate);
 }
 
@@ -410,6 +442,18 @@ async function exportPortfolio(format) {
   const endpoint = { html: "/api/export/html", zip: "/api/export/zip", pdf: "/api/export/pdf" }[format] || "/api/export/html";
   setStatus(`Preparing ${format.toUpperCase()} export...`);
 
+  const buttonByFormat = {
+    html: document.getElementById("export-html"),
+    zip: document.getElementById("export-zip"),
+    pdf: document.getElementById("export-pdf"),
+  };
+  const activeBtn = buttonByFormat[format];
+  const originalBtnText = activeBtn ? activeBtn.textContent : "";
+  if (activeBtn) {
+    activeBtn.disabled = true;
+    activeBtn.textContent = format === "pdf" ? "Generating PDF..." : `Exporting ${format.toUpperCase()}...`;
+  }
+
   const usernameKey = (appState.username || usernameInput.value.trim() || "unknown").toLowerCase();
   let payload = { portfolio: appState.savedPortfolio, filename: buildExportFilename() };
 
@@ -438,8 +482,17 @@ async function exportPortfolio(format) {
       ? `${buildExportFilename()}-${pdfTemplateUsed}.pdf`
       : readDownloadName(response.headers.get("Content-Disposition"), format);
     triggerDownload(await response.blob(), fallbackName);
-    setStatus(format === "pdf" ? `PDF export downloaded (${pdfTemplateUsed.toUpperCase()}).` : `${format.toUpperCase()} export downloaded.`);
-  } catch (error) { showError(error.message); }
+    const statusMsg = format === "pdf" ? `PDF export downloaded (${pdfTemplateUsed.toUpperCase()}).` : `${format.toUpperCase()} export downloaded.`;
+    setStatus(statusMsg);
+    showToast(statusMsg, "success");
+  } catch (error) {
+    showError(error.message);
+  } finally {
+    if (activeBtn) {
+      activeBtn.disabled = false;
+      activeBtn.textContent = originalBtnText || (format === "pdf" ? "Export PDF" : `Export ${format.toUpperCase()}`);
+    }
+  }
 }
 
 function triggerDownload(blob, fileName) { const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = fileName; document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url); }
