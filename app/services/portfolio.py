@@ -558,13 +558,39 @@ def _render_pdf_styled(portfolio: PortfolioResponse, template_name: str) -> byte
     margin = 10
     left_w = 60
     gutter = 8
+
+    if template_name == "minimal":
+        left_w = 0
+        gutter = 0
+    elif template_name == "modern":
+        left_w = 48
+    elif template_name == "creative":
+        left_w = 42
+    elif template_name == "executive":
+        left_w = 52
+
     right_x = margin + left_w + gutter
     right_w = page_w - right_x - margin
+    if template_name == "executive":
+        right_x = margin
+        right_w = page_w - margin - (left_w + margin + 6)
 
     pdf.set_fill_color(*style["bg"])
     pdf.rect(0, 0, page_w, page_h, style="F")
-    pdf.set_fill_color(*style["rail"])
-    pdf.rect(0, 0, left_w + margin + 2, page_h, style="F")
+
+    if template_name == "minimal":
+        pdf.set_draw_color(120, 120, 120)
+        pdf.line(margin, 38, page_w - margin, 38)
+    elif template_name == "executive":
+        pdf.set_fill_color(*style["rail"])
+        pdf.rect(page_w - (left_w + margin + 2), 0, left_w + margin + 2, page_h, style="F")
+    else:
+        pdf.set_fill_color(*style["rail"])
+        pdf.rect(0, 0, left_w + margin + 2, page_h, style="F")
+
+    if template_name == "creative":
+        pdf.set_fill_color(30, 64, 175)
+        pdf.rect(0, 0, page_w, 20, style="F")
 
     pdf.set_xy(right_x, 14)
     pdf.set_font("Helvetica", "B", style["name"])
@@ -605,11 +631,17 @@ def _render_pdf_styled(portfolio: PortfolioResponse, template_name: str) -> byte
     def left_section(title: str, body_lines: list[str], y_pos: float) -> float:
         pdf.set_xy(margin, y_pos)
         pdf.set_font("Helvetica", "B", 11.5)
-        pdf.set_text_color(226, 232, 240)
+        if template_name == "executive":
+            pdf.set_text_color(30, 41, 59)
+        else:
+            pdf.set_text_color(226, 232, 240)
         pdf.multi_cell(left_w, 6.2, _pdf_text(title).upper())
         y_local = pdf.get_y() + 1
         pdf.set_font("Helvetica", "", 9.2)
-        pdf.set_text_color(203, 213, 225)
+        if template_name == "executive":
+            pdf.set_text_color(51, 65, 85)
+        else:
+            pdf.set_text_color(203, 213, 225)
         for line in body_lines:
             if not line:
                 continue
@@ -618,20 +650,29 @@ def _render_pdf_styled(portfolio: PortfolioResponse, template_name: str) -> byte
             y_local = pdf.get_y() + 0.6
         return y_local + 4
 
-    left_y = 20
     contact_lines = [
         _pdf_text(contact.get("email")) if contact.get("email") else "",
         _pdf_text(contact.get("location")) if contact.get("location") else "",
         _pdf_text(contact.get("github")) if contact.get("github") else "",
         _pdf_text(contact.get("blog")) if contact.get("blog") else "",
     ]
-    left_y = left_section("Contact", [line for line in contact_lines if line], left_y)
 
     highlighted_skills = [str(item).strip() for item in skills.get("highlighted") or [] if str(item).strip()]
-    left_y = left_section("Technical Skills", highlighted_skills[:12], left_y)
-
     about_points = [str(point).strip() for point in about.get("summary") or [] if str(point).strip()]
-    left_section("Summary", about_points[:6], left_y)
+
+    if template_name != "minimal":
+        left_y = 20
+        left_y = left_section("Contact", [line for line in contact_lines if line], left_y)
+        left_y = left_section("Technical Skills", highlighted_skills[:12], left_y)
+        left_section("Summary", about_points[:6], left_y)
+    else:
+        pdf.set_xy(right_x, max(pdf.get_y() + 3, 44))
+        pdf.set_font("Helvetica", "", 10)
+        pdf.set_text_color(40, 40, 40)
+        inline_contact = " | ".join([line for line in contact_lines if line])
+        if inline_contact:
+            pdf.multi_cell(right_w, 5.2, inline_contact)
+        y = pdf.get_y() + 2
 
     order = {
         "classic": ["summary", "projects", "keywords"],
@@ -676,48 +717,50 @@ def _render_pdf_ats(portfolio: PortfolioResponse) -> bytes:
 
     pdf = FPDF(format="A4")
     pdf.set_auto_page_break(auto=True, margin=12)
-    pdf.add_page()
     pdf.set_margins(15, 12, 15)
+    pdf.add_page()
 
     name = _pdf_text(about.get("name") or hero.get("headline") or "Portfolio")
     pdf.set_font("Helvetica", "B", 20)
     pdf.set_text_color(0, 0, 0)
-    pdf.multi_cell(0, 9, name)
+    pdf.multi_cell(180, 9, name)
 
     pdf.set_font("Helvetica", "", 10)
+    github_value = str(contact.get("github") or "")
+    github_short = github_value.rstrip("/").split("/")[-1] if github_value else ""
     contact_line = " | ".join(
         [
             _pdf_text(contact.get("email")) if contact.get("email") else "",
             _pdf_text(contact.get("location")) if contact.get("location") else "",
-            _pdf_text(contact.get("github")) if contact.get("github") else "",
+            _pdf_text(f"GitHub: {github_short}") if github_short else "",
         ]
     ).strip(" |")
     if contact_line:
-        pdf.multi_cell(0, 6, contact_line)
+        pdf.multi_cell(180, 6, contact_line)
 
     def sec(title: str) -> None:
         pdf.ln(1)
         pdf.set_font("Helvetica", "B", 12)
-        pdf.cell(0, 7, _pdf_text(title).upper(), ln=True)
+        pdf.cell(180, 7, _pdf_text(title).upper(), ln=True)
         pdf.set_font("Helvetica", "", 10)
 
     sec("Summary")
     for line in about.get("summary") or ["Details coming soon."]:
-        pdf.multi_cell(0, 5.5, f"- {_pdf_text(line)}")
+        pdf.multi_cell(180, 5.5, f"- {_pdf_text(line)}")
 
     sec("Skills")
     keywords = [str(x).strip() for x in (skills.get("languages") or []) + (skills.get("topics") or []) if str(x).strip()]
-    pdf.multi_cell(0, 5.5, _pdf_text(", ".join(keywords[:24]) or "Software Engineering, APIs, Web Development"))
+    pdf.multi_cell(180, 5.5, _pdf_text(", ".join(keywords[:24]) or "Software Engineering, APIs, Web Development"))
 
     sec("Projects")
     for project in projects_items[:6]:
         if not isinstance(project, dict):
             continue
         pdf.set_font("Helvetica", "B", 10)
-        pdf.multi_cell(0, 5.5, _pdf_text(project.get("name") or "Untitled project"))
+        pdf.multi_cell(180, 5.5, _pdf_text(project.get("name") or "Untitled project"))
         pdf.set_font("Helvetica", "", 10)
         desc = _pdf_text(project.get("description") or "Project details coming soon.")
-        pdf.multi_cell(0, 5.2, desc)
+        pdf.multi_cell(180, 5.2, desc)
 
     output = pdf.output()
     return bytes(output) if not isinstance(output, bytes) else output

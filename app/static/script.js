@@ -372,9 +372,12 @@ function resolvePdfTemplateForExport(username) {
 
   const all = ["classic", "modern", "minimal", "ats", "creative", "executive"];
   const history = appState.pdfTryHistoryByUsername[key] || [];
-  const available = all.filter((name) => !history.includes(name));
+  const usedSet = new Set(history);
+  const available = all.filter((name) => !usedSet.has(name));
   const pickPool = available.length ? available : all;
-  const choice = pickPool[Math.floor(Math.random() * pickPool.length)];
+
+  const nextIndex = (appState.pdfTryCountByUsername[key] || 0) % pickPool.length;
+  const choice = pickPool[nextIndex];
   appState.pdfTryHistoryByUsername[key] = [...history, choice].slice(-3);
   return choice;
 }
@@ -410,6 +413,7 @@ async function exportPortfolio(format) {
   const usernameKey = (appState.username || usernameInput.value.trim() || "unknown").toLowerCase();
   let payload = { portfolio: appState.savedPortfolio, filename: buildExportFilename() };
 
+  let pdfTemplateUsed = "";
   if (format === "pdf") {
     const used = appState.pdfTryCountByUsername[usernameKey] || 0;
     if (used >= 3) {
@@ -419,6 +423,7 @@ async function exportPortfolio(format) {
 
     const templateId = resolvePdfTemplateForExport(usernameKey);
     payload = { ...payload, template_id: templateId };
+    pdfTemplateUsed = templateId;
     appState.pdfTryCountByUsername[usernameKey] = used + 1;
 
     const note = document.getElementById("pdf-tries-note");
@@ -429,8 +434,11 @@ async function exportPortfolio(format) {
   try {
     const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     if (!response.ok) throw new Error(getErrorMessage(await parseErrorPayload(response), `Failed to export ${format.toUpperCase()}.`));
-    triggerDownload(await response.blob(), readDownloadName(response.headers.get("Content-Disposition"), format));
-    setStatus(`${format.toUpperCase()} export downloaded.`);
+    const fallbackName = format === "pdf" && pdfTemplateUsed
+      ? `${buildExportFilename()}-${pdfTemplateUsed}.pdf`
+      : readDownloadName(response.headers.get("Content-Disposition"), format);
+    triggerDownload(await response.blob(), fallbackName);
+    setStatus(format === "pdf" ? `PDF export downloaded (${pdfTemplateUsed.toUpperCase()}).` : `${format.toUpperCase()} export downloaded.`);
   } catch (error) { showError(error.message); }
 }
 
