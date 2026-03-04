@@ -419,69 +419,63 @@ function setupWarpBackground() {
   let rafId = null;
   let audioReactive = false;
   const DPR = Math.min(window.devicePixelRatio || 1, 1.75);
-  const quality = Math.max(0.6, Math.min(1, ((navigator.hardwareConcurrency || 4) / 8)));
   let particles = [];
-  let particleCount = 180;
-
-  function createParticle() {
-    const angle = Math.random() * Math.PI * 2;
-    const speed = 1.2 + Math.random() * 3.6;
-    return {
-      x: width * 0.5,
-      y: height * 0.5,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
-      size: Math.random() * 1.8 + 0.7,
-    };
-  }
-
-  function resetParticle(p) {
-    const angle = Math.random() * Math.PI * 2;
-    const speed = 1.2 + Math.random() * 3.6;
-    p.x = width * 0.5;
-    p.y = height * 0.5;
-    p.vx = Math.cos(angle) * speed;
-    p.vy = Math.sin(angle) * speed;
-    p.size = Math.random() * 1.8 + 0.7;
-  }
 
   function resize() {
     width = window.innerWidth;
     height = window.innerHeight;
-
     canvas.width = Math.floor(width * DPR);
     canvas.height = Math.floor(height * DPR);
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
-    particleCount = Math.max(100, Math.min(260, Math.floor((width * height) / 13000 * quality)));
-    particles = Array.from({ length: particleCount }, createParticle);
+    particles = Array.from({ length: 200 }, () => createParticle());
+  }
+
+  function createParticle() {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = (Math.random() * 6) - 3;
+    const speed2 = (Math.random() * 6) - 3;
+    return {
+      x: width / 2,
+      y: height / 2,
+      vx: speed,
+      vy: speed2,
+      size: Math.random() * 2 + 1,
+      angle,
+    };
+  }
+
+  function resetParticle(p) {
+    p.x = width / 2;
+    p.y = height / 2;
+    p.vx = (Math.random() - 0.5) * 6;
+    p.vy = (Math.random() - 0.5) * 6;
+    p.size = Math.random() * 2 + 1;
   }
 
   function frame(now = 0) {
-    const pulse = audioReactive ? (0.8 + Math.abs(Math.sin(now * 0.0045)) * 0.9) : 1;
+    const pulse = audioReactive ? (0.8 + Math.abs(Math.sin(now * 0.0045)) * 0.8) : 1;
 
-    ctx.fillStyle = "rgba(2, 6, 23, 0.24)";
+    ctx.fillStyle = "rgba(2,6,23,0.25)";
     ctx.fillRect(0, 0, width, height);
 
-    for (let i = 0; i < particles.length; i += 1) {
-      const p = particles[i];
+    particles.forEach((p) => {
       p.x += p.vx * pulse;
       p.y += p.vy * pulse;
 
-      if (p.x < -20 || p.x > width + 20 || p.y < -20 || p.y > height + 20) {
-        resetParticle(p);
-        continue;
-      }
-
       ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size * (audioReactive ? 1.18 : 1), 0, Math.PI * 2);
-      ctx.fillStyle = audioReactive ? "rgba(56, 189, 248, 0.95)" : "rgba(0, 234, 255, 0.9)";
+      ctx.arc(p.x, p.y, p.size * (audioReactive ? 1.2 : 1), 0, Math.PI * 2);
+      ctx.fillStyle = audioReactive ? "rgba(56, 189, 248, 0.95)" : "#00eaff";
       ctx.shadowColor = audioReactive ? "rgba(56, 189, 248, 0.95)" : "rgba(0, 234, 255, 0.85)";
-      ctx.shadowBlur = audioReactive ? 18 : 12;
+      ctx.shadowBlur = audioReactive ? 18 : 10;
       ctx.fill();
-    }
+
+      if (p.x < 0 || p.x > width || p.y < 0 || p.y > height) {
+        resetParticle(p);
+      }
+    });
 
     rafId = requestAnimationFrame(frame);
   }
@@ -505,7 +499,7 @@ function setupWarpBackground() {
       stop();
       resize();
       start();
-    }, 140);
+    }, 120);
   });
 
   document.addEventListener("visibilitychange", () => {
