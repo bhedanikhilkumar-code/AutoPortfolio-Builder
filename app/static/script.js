@@ -443,66 +443,77 @@ function setupWarpBackground() {
 
   let width = 0;
   let height = 0;
+  let cx = 0;
+  let cy = 0;
+  let maxRadius = 0;
   let rafId = null;
   let audioReactive = false;
-  const DPR = Math.min(window.devicePixelRatio || 1, 1.75);
-  let particles = [];
+  const DPR = Math.min(window.devicePixelRatio || 1, 1.8);
+  let streaks = [];
+
+  function createStreak(startRandom = true) {
+    const angle = Math.random() * Math.PI * 2;
+    const radius = startRandom ? Math.random() * maxRadius : 0;
+    const speed = 2.2 + Math.random() * 6.5;
+    const widthPx = 0.8 + Math.random() * 2.4;
+    const glow = 0.3 + Math.random() * 0.7;
+    return { angle, radius, speed, widthPx, glow };
+  }
 
   function resize() {
     width = window.innerWidth;
     height = window.innerHeight;
+    cx = width * 0.5;
+    cy = height * 0.5;
+    maxRadius = Math.hypot(cx, cy) + 200;
+
     canvas.width = Math.floor(width * DPR);
     canvas.height = Math.floor(height * DPR);
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
-    particles = Array.from({ length: 200 }, () => createParticle());
-  }
-
-  function createParticle() {
-    const angle = Math.random() * Math.PI * 2;
-    const speed = (Math.random() * 6) - 3;
-    const speed2 = (Math.random() * 6) - 3;
-    return {
-      x: width / 2,
-      y: height / 2,
-      vx: speed,
-      vy: speed2,
-      size: Math.random() * 2 + 1,
-      angle,
-    };
-  }
-
-  function resetParticle(p) {
-    p.x = width / 2;
-    p.y = height / 2;
-    p.vx = (Math.random() - 0.5) * 6;
-    p.vy = (Math.random() - 0.5) * 6;
-    p.size = Math.random() * 2 + 1;
+    const base = Math.floor((width * height) / 8000);
+    const count = Math.max(180, Math.min(420, base));
+    streaks = Array.from({ length: count }, () => createStreak(true));
   }
 
   function frame(now = 0) {
-    const pulse = audioReactive ? (0.8 + Math.abs(Math.sin(now * 0.0045)) * 0.8) : 1;
+    const pulse = audioReactive ? (0.85 + Math.abs(Math.sin(now * 0.004)) * 1.05) : 1;
 
-    ctx.fillStyle = "rgba(2,6,23,0.25)";
+    ctx.fillStyle = "rgba(2, 6, 23, 0.18)";
     ctx.fillRect(0, 0, width, height);
 
-    particles.forEach((p) => {
-      p.x += p.vx * pulse;
-      p.y += p.vy * pulse;
+    for (let i = 0; i < streaks.length; i += 1) {
+      const s = streaks[i];
+      s.radius += s.speed * pulse;
+
+      if (s.radius > maxRadius) {
+        streaks[i] = createStreak(false);
+        continue;
+      }
+
+      const x = cx + Math.cos(s.angle) * s.radius;
+      const y = cy + Math.sin(s.angle) * s.radius;
+
+      const dirX = Math.cos(s.angle);
+      const dirY = Math.sin(s.angle);
+      const tailLen = (18 + (s.radius / maxRadius) * 95) * (audioReactive ? 1.2 : 1);
+      const tx = x - dirX * tailLen;
+      const ty = y - dirY * tailLen;
+
+      const alpha = Math.min(0.92, 0.12 + (s.radius / maxRadius) * 0.9) * s.glow;
+      ctx.strokeStyle = `rgba(0, 234, 255, ${alpha})`;
+      ctx.lineWidth = s.widthPx * (audioReactive ? 1.25 : 1);
+      ctx.lineCap = "round";
+      ctx.shadowColor = audioReactive ? "rgba(56, 189, 248, 1)" : "rgba(0, 234, 255, 0.9)";
+      ctx.shadowBlur = audioReactive ? 20 : 14;
 
       ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size * (audioReactive ? 1.2 : 1), 0, Math.PI * 2);
-      ctx.fillStyle = audioReactive ? "rgba(56, 189, 248, 0.95)" : "#00eaff";
-      ctx.shadowColor = audioReactive ? "rgba(56, 189, 248, 0.95)" : "rgba(0, 234, 255, 0.85)";
-      ctx.shadowBlur = audioReactive ? 18 : 10;
-      ctx.fill();
-
-      if (p.x < 0 || p.x > width || p.y < 0 || p.y > height) {
-        resetParticle(p);
-      }
-    });
+      ctx.moveTo(tx, ty);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    }
 
     rafId = requestAnimationFrame(frame);
   }

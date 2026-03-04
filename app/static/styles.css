@@ -48,10 +48,10 @@ body { position: relative; overflow-x: hidden; }
 
 .bg-overlay {
   z-index: 0;
-  backdrop-filter: blur(3px);
+  backdrop-filter: blur(1px);
   background:
-    radial-gradient(circle at 50% 45%, rgba(56, 189, 248, 0.14), transparent 45%),
-    linear-gradient(160deg, rgba(15, 23, 42, 0.36), rgba(2, 6, 23, 0.84));
+    radial-gradient(circle at 50% 45%, rgba(56, 189, 248, 0.12), transparent 46%),
+    linear-gradient(160deg, rgba(15, 23, 42, 0.2), rgba(2, 6, 23, 0.52));
 }
 
 .page {
