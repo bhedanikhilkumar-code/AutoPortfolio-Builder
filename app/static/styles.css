@@ -50,9 +50,9 @@ body { position: relative; overflow-x: hidden; }
   z-index: 1;
   backdrop-filter: blur(0.6px);
   background:
-    radial-gradient(circle at 50% 48%, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03) 20%, transparent 48%),
-    radial-gradient(circle at 50% 50%, transparent 35%, rgba(0, 0, 0, 0.42) 78%, rgba(0, 0, 0, 0.72) 100%),
-    linear-gradient(160deg, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.46));
+    radial-gradient(circle at 50% 48%, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04) 20%, transparent 48%),
+    radial-gradient(circle at 50% 50%, transparent 35%, rgba(0, 0, 0, 0.36) 78%, rgba(0, 0, 0, 0.64) 100%),
+    linear-gradient(160deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.42));
 }
 
 .page {
@@ -204,6 +204,30 @@ a { color: var(--accent-2); text-decoration: none; }
 .stat { min-width: 110px; padding: 14px; border-radius: 18px; background: rgba(15, 23, 42, 0.5); }
 .stat strong { display: block; font-size: 1.2rem; margin-bottom: 4px; }
 .muted-note { font-size: 0.9rem; color: var(--muted); margin-top: 8px; }
+
+.pdf-template-preview {
+  margin-top: 10px;
+}
+
+.pdf-preview-card {
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.pdf-preview-card p {
+  margin-top: 6px;
+  font-size: 0.88rem;
+}
+
+.pdf-preview-auto { background: linear-gradient(140deg, rgba(15,23,42,0.5), rgba(30,41,59,0.45)); }
+.pdf-preview-classic { background: linear-gradient(140deg, rgba(51,65,85,0.45), rgba(30,41,59,0.35)); }
+.pdf-preview-modern { background: linear-gradient(140deg, rgba(14,116,144,0.32), rgba(30,64,175,0.22)); }
+.pdf-preview-minimal { background: linear-gradient(140deg, rgba(82,82,91,0.35), rgba(113,113,122,0.25)); }
+.pdf-preview-ats { background: linear-gradient(140deg, rgba(0,0,0,0.45), rgba(39,39,42,0.35)); }
+.pdf-preview-creative { background: linear-gradient(140deg, rgba(8,47,73,0.38), rgba(30,64,175,0.25)); }
+.pdf-preview-executive { background: linear-gradient(140deg, rgba(28,25,23,0.45), rgba(68,64,60,0.35)); }
 
 .timeline-item,
 .testimonial-item,

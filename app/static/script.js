@@ -17,6 +17,9 @@ const appState = {
   selectedVariantId: 1,
   variants: { 1: null, 2: null, 3: null },
   triesByUsername: {},
+  selectedPdfTemplate: "auto",
+  pdfTryHistoryByUsername: {},
+  pdfTryCountByUsername: {},
 };
 let parallaxTargets = [];
 
@@ -191,6 +194,23 @@ function renderWorkspace() {
         </div>
         <div class="inline-actions"><button id="save-edits" class="btn-secondary magnetic" type="button">Save Edits</button><button id="reset-edits" class="btn-danger magnetic" type="button">Reset</button></div>
         <div class="inline-actions"><button id="export-html" class="btn-primary magnetic" type="button">Export HTML</button><button id="export-zip" class="btn-secondary magnetic" type="button">Export ZIP</button><button id="export-pdf" class="btn-secondary magnetic" type="button">Export PDF</button></div>
+        <div class="editor-section">
+          <h3>Resume Style</h3>
+          <label class="field">
+            <span>Template</span>
+            <select id="pdf-template-select">
+              <option value="auto">Auto (Random)</option>
+              <option value="classic">Classic</option>
+              <option value="modern">Modern</option>
+              <option value="minimal">Minimal</option>
+              <option value="ats">ATS</option>
+              <option value="creative">Creative</option>
+              <option value="executive">Executive</option>
+            </select>
+            <small id="pdf-tries-note">PDF tries used: ${(appState.pdfTryCountByUsername[(appState.username || "").toLowerCase()] || 0)}/3</small>
+          </label>
+          <div id="pdf-template-preview" class="pdf-template-preview"></div>
+        </div>
         <div class="inline-actions"><button id="copy-share-link" class="btn-secondary magnetic" type="button">Copy Resume Link</button></div>
         <p class="muted-note">Share creates a separate resume page and tries to return a short link.</p>
         <div class="editor-section"><h3>${escapeHtml(draft.hero.title)}</h3><label class="field"><span>Headline</span><input id="hero-headline" value="${escapeHtml(draft.hero.content.headline || "")}"></label><label class="field"><span>Subheadline</span><textarea id="hero-subheadline">${escapeHtml(draft.hero.content.subheadline || "")}</textarea></label></div>
@@ -324,6 +344,16 @@ function bindEditorEvents() {
   document.getElementById("export-zip").addEventListener("click", () => exportPortfolio("zip"));
   document.getElementById("export-pdf").addEventListener("click", () => exportPortfolio("pdf"));
   document.getElementById("copy-share-link").addEventListener("click", async () => copyShareLink());
+
+  const pdfTemplateSelect = document.getElementById("pdf-template-select");
+  if (pdfTemplateSelect) {
+    pdfTemplateSelect.value = appState.selectedPdfTemplate;
+    pdfTemplateSelect.addEventListener("change", () => {
+      appState.selectedPdfTemplate = pdfTemplateSelect.value;
+      renderPdfTemplatePreview(appState.selectedPdfTemplate);
+    });
+  }
+  renderPdfTemplatePreview(appState.selectedPdfTemplate);
 }
 
 function bindInput(id, handler) {
@@ -334,14 +364,69 @@ function bindInput(id, handler) {
 
 function updateDraft(mutate) { mutate(); appState.draftPortfolio.theme = themeInput.value; appState.hasUnsavedChanges = true; setStatus("Draft updated. Save edits to refresh the preview and export state."); }
 
+function resolvePdfTemplateForExport(username) {
+  const key = (username || "unknown").toLowerCase();
+  const selected = appState.selectedPdfTemplate || "auto";
+  if (selected !== "auto") return selected;
+
+  const all = ["classic", "modern", "minimal", "ats", "creative", "executive"];
+  const history = appState.pdfTryHistoryByUsername[key] || [];
+  const available = all.filter((name) => !history.includes(name));
+  const pickPool = available.length ? available : all;
+  const choice = pickPool[Math.floor(Math.random() * pickPool.length)];
+  appState.pdfTryHistoryByUsername[key] = [...history, choice].slice(-3);
+  return choice;
+}
+
+function renderPdfTemplatePreview(templateId) {
+  const preview = document.getElementById("pdf-template-preview");
+  if (!preview) return;
+
+  const labels = {
+    auto: "Auto (Random)",
+    classic: "Classic",
+    modern: "Modern",
+    minimal: "Minimal",
+    ats: "ATS",
+    creative: "Creative",
+    executive: "Executive",
+  };
+
+  preview.innerHTML = `
+    <div class="pdf-preview-card pdf-preview-${templateId}">
+      <strong>${labels[templateId] || "Template"}</strong>
+      <p>${templateId === "ats" ? "Single-column ATS-friendly layout" : "Professional styled resume layout"}</p>
+    </div>
+  `;
+}
+
 async function exportPortfolio(format) {
   if (!appState.savedPortfolio) return showError("Generate and save a portfolio before exporting.");
   clearError();
   const endpoint = { html: "/api/export/html", zip: "/api/export/zip", pdf: "/api/export/pdf" }[format] || "/api/export/html";
   setStatus(`Preparing ${format.toUpperCase()} export...`);
 
+  const usernameKey = (appState.username || usernameInput.value.trim() || "unknown").toLowerCase();
+  let payload = { portfolio: appState.savedPortfolio, filename: buildExportFilename() };
+
+  if (format === "pdf") {
+    const used = appState.pdfTryCountByUsername[usernameKey] || 0;
+    if (used >= 3) {
+      setStatus("PDF generation limit reached for this username (3/3) in this session.");
+      return;
+    }
+
+    const templateId = resolvePdfTemplateForExport(usernameKey);
+    payload = { ...payload, template_id: templateId };
+    appState.pdfTryCountByUsername[usernameKey] = used + 1;
+
+    const note = document.getElementById("pdf-tries-note");
+    if (note) note.textContent = `PDF tries used: ${appState.pdfTryCountByUsername[usernameKey]}/3`;
+    setStatus(`Preparing PDF export (${templateId.toUpperCase()})...`);
+  }
+
   try {
-    const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ portfolio: appState.savedPortfolio, filename: buildExportFilename() }) });
+    const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     if (!response.ok) throw new Error(getErrorMessage(await parseErrorPayload(response), `Failed to export ${format.toUpperCase()}.`));
     triggerDownload(await response.blob(), readDownloadName(response.headers.get("Content-Disposition"), format));
     setStatus(`${format.toUpperCase()} export downloaded.`);
@@ -448,7 +533,7 @@ function setupWarpBackground() {
   let maxRadius = 0;
   let rafId = null;
   let audioReactive = false;
-  const DPR = Math.min(window.devicePixelRatio || 1, 2);
+  const DPR = Math.min(window.devicePixelRatio || 1, 2.2);
   let streaks = [];
 
   function createStreak(randomRadius = true) {
@@ -474,16 +559,18 @@ function setupWarpBackground() {
     canvas.style.height = `${height}px`;
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
-    const base = Math.floor((width * height) / 9000);
-    const count = Math.max(220, Math.min(520, base));
+    const base = Math.floor((width * height) / 8600);
+    const count = Math.max(240, Math.min(560, base));
     streaks = Array.from({ length: count }, () => createStreak(true));
   }
 
   function frame(now = 0) {
     const pulse = audioReactive ? (0.85 + Math.abs(Math.sin(now * 0.0037)) * 0.65) : 1;
 
-    ctx.fillStyle = "rgba(0, 0, 0, 0.16)";
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = "rgba(0, 0, 0, 0.12)";
     ctx.fillRect(0, 0, width, height);
+    ctx.globalCompositeOperation = "lighter";
 
     for (let i = 0; i < streaks.length; i += 1) {
       const s = streaks[i];

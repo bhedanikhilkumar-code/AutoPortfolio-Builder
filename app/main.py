@@ -99,7 +99,7 @@ def create_app() -> FastAPI:
     @app.post("/api/export/pdf")
     async def export_pdf(payload: ExportRequest) -> Response:
         filename = build_export_filename(payload)
-        pdf_bytes = render_portfolio_pdf(payload.portfolio)
+        pdf_bytes = render_portfolio_pdf(payload.portfolio, payload.template_id)
         return Response(
             content=pdf_bytes,
             media_type="application/pdf",

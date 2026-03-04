@@ -12,7 +12,18 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - exercised only when dependency is absent.
     FPDF = None
 
-from app.schemas import ExportRequest, GenerateRequest, PortfolioResponse, PortfolioSection, RepoSummary
+from app.schemas import (
+    ExportRequest,
+    GenerateRequest,
+    PortfolioResponse,
+    PortfolioSection,
+    RepoSummary,
+    ResumeTemplate,
+)
+
+
+TEMPLATE_IDS: tuple[str, ...] = ("classic", "modern", "minimal", "ats", "creative", "executive")
+PDF_TEMPLATE_TRY_HISTORY: dict[str, list[str]] = {}
 
 
 def generate_portfolio(payload: GenerateRequest) -> PortfolioResponse:
@@ -484,15 +495,56 @@ def build_portfolio_zip(payload: ExportRequest) -> bytes:
     return buffer.getvalue()
 
 
-def render_portfolio_pdf(portfolio: PortfolioResponse) -> bytes:
+def render_portfolio_pdf(portfolio: PortfolioResponse, template_id: ResumeTemplate = "auto") -> bytes:
+    resolved_template = _resolve_pdf_template(portfolio, template_id)
+
     if FPDF is None:
         return _render_portfolio_pdf_fallback(portfolio)
 
+    if resolved_template == "ats":
+        return _render_pdf_ats(portfolio)
+
+    return _render_pdf_styled(portfolio, resolved_template)
+
+
+def _resolve_pdf_template(portfolio: PortfolioResponse, template_id: ResumeTemplate) -> str:
+    if template_id != "auto":
+        return template_id
+
+    profile_key = str(
+        portfolio.about.content.get("name")
+        or portfolio.contact.content.get("github")
+        or portfolio.hero.content.get("headline")
+        or "default"
+    ).strip().lower()
+
+    history = PDF_TEMPLATE_TRY_HISTORY.get(profile_key, [])
+    available = [template for template in TEMPLATE_IDS if template not in history]
+    if not available:
+        history = []
+        available = list(TEMPLATE_IDS)
+
+    pick = random.choice(available)
+    history = (history + [pick])[-3:]
+    PDF_TEMPLATE_TRY_HISTORY[profile_key] = history
+    return pick
+
+
+def _render_pdf_styled(portfolio: PortfolioResponse, template_name: str) -> bytes:
     hero = portfolio.hero.content
     about = portfolio.about.content
     skills = portfolio.skills.content
     projects_items = portfolio.projects.content.get("items") or []
     contact = portfolio.contact.content
+
+    presets = {
+        "classic": {"rail": (31, 41, 55), "bg": (248, 250, 252), "name": 23},
+        "modern": {"rail": (17, 24, 39), "bg": (245, 247, 250), "name": 25},
+        "minimal": {"rail": (60, 60, 60), "bg": (255, 255, 255), "name": 22},
+        "creative": {"rail": (15, 23, 42), "bg": (239, 246, 255), "name": 26},
+        "executive": {"rail": (20, 20, 20), "bg": (250, 250, 250), "name": 24},
+    }
+    style = presets.get(template_name, presets["modern"])
 
     display_name = _pdf_text(about.get("name") or hero.get("headline") or "Portfolio")
     headline = _pdf_text(hero.get("headline") or "")
@@ -501,31 +553,26 @@ def render_portfolio_pdf(portfolio: PortfolioResponse) -> bytes:
     pdf = FPDF(format="A4")
     pdf.set_auto_page_break(auto=True, margin=12)
     pdf.add_page()
-    pdf.set_title(display_name)
-    pdf.set_author(_pdf_text(contact.get("github") or "AutoPortfolio Builder"))
 
-    page_w = 210
-    page_h = 297
+    page_w, page_h = 210, 297
     margin = 10
-    left_w = 62
+    left_w = 60
     gutter = 8
     right_x = margin + left_w + gutter
     right_w = page_w - right_x - margin
 
-    # Background + left rail
-    pdf.set_fill_color(248, 250, 252)
+    pdf.set_fill_color(*style["bg"])
     pdf.rect(0, 0, page_w, page_h, style="F")
-    pdf.set_fill_color(15, 23, 42)
-    pdf.rect(0, 0, left_w + margin + 3, page_h, style="F")
+    pdf.set_fill_color(*style["rail"])
+    pdf.rect(0, 0, left_w + margin + 2, page_h, style="F")
 
-    # Header (right panel)
     pdf.set_xy(right_x, 14)
-    pdf.set_font("Helvetica", "B", 24)
+    pdf.set_font("Helvetica", "B", style["name"])
     pdf.set_text_color(15, 23, 42)
     pdf.multi_cell(right_w, 10, display_name)
 
     pdf.set_x(right_x)
-    pdf.set_font("Helvetica", "", 11)
+    pdf.set_font("Helvetica", "", 10.5)
     pdf.set_text_color(51, 65, 85)
     if headline:
         pdf.multi_cell(right_w, 6, headline)
@@ -541,8 +588,8 @@ def render_portfolio_pdf(portfolio: PortfolioResponse) -> bytes:
             pdf.add_page()
             y = 20
         pdf.set_xy(right_x, y)
-        pdf.set_font("Helvetica", "B", 13)
-        pdf.set_text_color(15, 23, 42)
+        pdf.set_font("Helvetica", "B", 12)
+        pdf.set_text_color(17, 24, 39)
         pdf.multi_cell(right_w, 7, _pdf_text(title).upper())
         y = pdf.get_y() + 1
         pdf.set_font("Helvetica", "", 10)
@@ -551,27 +598,26 @@ def render_portfolio_pdf(portfolio: PortfolioResponse) -> bytes:
             if not line:
                 continue
             pdf.set_xy(right_x, y)
-            pdf.multi_cell(right_w, 5.5, f"- {_pdf_text(line)}")
+            pdf.multi_cell(right_w, 5.4, f"- {_pdf_text(line)}")
             y = pdf.get_y()
         y += 3
 
     def left_section(title: str, body_lines: list[str], y_pos: float) -> float:
         pdf.set_xy(margin, y_pos)
-        pdf.set_font("Helvetica", "B", 12)
+        pdf.set_font("Helvetica", "B", 11.5)
         pdf.set_text_color(226, 232, 240)
-        pdf.multi_cell(left_w, 6.5, _pdf_text(title).upper())
+        pdf.multi_cell(left_w, 6.2, _pdf_text(title).upper())
         y_local = pdf.get_y() + 1
-        pdf.set_font("Helvetica", "", 9.5)
+        pdf.set_font("Helvetica", "", 9.2)
         pdf.set_text_color(203, 213, 225)
         for line in body_lines:
             if not line:
                 continue
             pdf.set_xy(margin, y_local)
-            pdf.multi_cell(left_w, 5, _pdf_text(line))
+            pdf.multi_cell(left_w, 4.8, _pdf_text(line))
             y_local = pdf.get_y() + 0.6
         return y_local + 4
 
-    # Left column: contact + skills
     left_y = 20
     contact_lines = [
         _pdf_text(contact.get("email")) if contact.get("email") else "",
@@ -587,8 +633,13 @@ def render_portfolio_pdf(portfolio: PortfolioResponse) -> bytes:
     about_points = [str(point).strip() for point in about.get("summary") or [] if str(point).strip()]
     left_section("Summary", about_points[:6], left_y)
 
-    # Right column: experience/projects style
-    right_section("Professional Summary", about_points or ["Details coming soon."])
+    order = {
+        "classic": ["summary", "projects", "keywords"],
+        "modern": ["summary", "projects", "keywords"],
+        "minimal": ["projects", "summary", "keywords"],
+        "creative": ["projects", "keywords", "summary"],
+        "executive": ["summary", "keywords", "projects"],
+    }.get(template_name, ["summary", "projects", "keywords"])
 
     project_lines: list[str] = []
     for project in projects_items[:5]:
@@ -602,10 +653,71 @@ def render_portfolio_pdf(portfolio: PortfolioResponse) -> bytes:
             line += f" | Tech: {lang}"
         project_lines.append(line)
 
-    right_section("Project Experience", project_lines or ["No featured projects yet."])
-
     keywords = [str(x).strip() for x in (skills.get("languages") or []) + (skills.get("topics") or []) if str(x).strip()]
-    right_section("Core Keywords", keywords[:14] or ["Software Engineering", "Web Development", "APIs", "Problem Solving"])
+
+    for block in order:
+        if block == "summary":
+            right_section("Professional Summary", about_points or ["Details coming soon."])
+        elif block == "projects":
+            right_section("Project Experience", project_lines or ["No featured projects yet."])
+        elif block == "keywords":
+            right_section("Core Keywords", keywords[:14] or ["Software Engineering", "Web Development", "APIs", "Problem Solving"])
+
+    output = pdf.output()
+    return bytes(output) if not isinstance(output, bytes) else output
+
+
+def _render_pdf_ats(portfolio: PortfolioResponse) -> bytes:
+    hero = portfolio.hero.content
+    about = portfolio.about.content
+    skills = portfolio.skills.content
+    projects_items = portfolio.projects.content.get("items") or []
+    contact = portfolio.contact.content
+
+    pdf = FPDF(format="A4")
+    pdf.set_auto_page_break(auto=True, margin=12)
+    pdf.add_page()
+    pdf.set_margins(15, 12, 15)
+
+    name = _pdf_text(about.get("name") or hero.get("headline") or "Portfolio")
+    pdf.set_font("Helvetica", "B", 20)
+    pdf.set_text_color(0, 0, 0)
+    pdf.multi_cell(0, 9, name)
+
+    pdf.set_font("Helvetica", "", 10)
+    contact_line = " | ".join(
+        [
+            _pdf_text(contact.get("email")) if contact.get("email") else "",
+            _pdf_text(contact.get("location")) if contact.get("location") else "",
+            _pdf_text(contact.get("github")) if contact.get("github") else "",
+        ]
+    ).strip(" |")
+    if contact_line:
+        pdf.multi_cell(0, 6, contact_line)
+
+    def sec(title: str) -> None:
+        pdf.ln(1)
+        pdf.set_font("Helvetica", "B", 12)
+        pdf.cell(0, 7, _pdf_text(title).upper(), ln=True)
+        pdf.set_font("Helvetica", "", 10)
+
+    sec("Summary")
+    for line in about.get("summary") or ["Details coming soon."]:
+        pdf.multi_cell(0, 5.5, f"- {_pdf_text(line)}")
+
+    sec("Skills")
+    keywords = [str(x).strip() for x in (skills.get("languages") or []) + (skills.get("topics") or []) if str(x).strip()]
+    pdf.multi_cell(0, 5.5, _pdf_text(", ".join(keywords[:24]) or "Software Engineering, APIs, Web Development"))
+
+    sec("Projects")
+    for project in projects_items[:6]:
+        if not isinstance(project, dict):
+            continue
+        pdf.set_font("Helvetica", "B", 10)
+        pdf.multi_cell(0, 5.5, _pdf_text(project.get("name") or "Untitled project"))
+        pdf.set_font("Helvetica", "", 10)
+        desc = _pdf_text(project.get("description") or "Project details coming soon.")
+        pdf.multi_cell(0, 5.2, desc)
 
     output = pdf.output()
     return bytes(output) if not isinstance(output, bytes) else output

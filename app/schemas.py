@@ -10,6 +10,7 @@ class HealthResponse(BaseModel):
 
 
 ThemeMode = Literal["modern", "minimal"]
+ResumeTemplate = Literal["auto", "classic", "modern", "minimal", "ats", "creative", "executive"]
 GitHubUsername = Annotated[str, Field(min_length=1, max_length=39, pattern=r"^[A-Za-z0-9-]+$")]
 
 
@@ -81,6 +82,7 @@ ExportFilename = Annotated[
 class ExportRequest(BaseModel):
     portfolio: PortfolioResponse
     filename: ExportFilename | None = None
+    template_id: ResumeTemplate = "auto"
 
 
 class ShareRequest(BaseModel):
