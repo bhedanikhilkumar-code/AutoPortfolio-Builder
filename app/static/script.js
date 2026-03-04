@@ -257,7 +257,7 @@ function setupCustomCursor() {
 }
 
 function setupWarpBackground() {
-  const canvas = document.getElementById("warp-canvas");
+  const canvas = document.getElementById("bg-animation");
   if (!canvas) return null;
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const ctx = canvas.getContext("2d", { alpha: true });

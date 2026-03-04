@@ -31,19 +31,23 @@ html, body {
 
 body { position: relative; overflow-x: hidden; }
 
-.warp-canvas,
+#bg-animation,
 .bg-overlay {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
 }
 
-.warp-canvas { z-index: -3; }
+#bg-animation {
+  z-index: -1;
+  background: #020617;
+}
 
 .bg-overlay {
-  z-index: -2;
+  z-index: 0;
   backdrop-filter: blur(3px);
   background:
     radial-gradient(circle at 50% 45%, rgba(56, 189, 248, 0.14), transparent 45%),
