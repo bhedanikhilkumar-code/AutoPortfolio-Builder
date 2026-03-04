@@ -22,15 +22,16 @@ const appState = {
   pdfTryCountByUsername: {},
 };
 let parallaxTargets = [];
+const PERF_LOW_POWER = (navigator.hardwareConcurrency || 4) <= 4;
 
 setupIntroLoader();
 const warpController = setupWarpBackground();
 setupAudioReactiveToggle();
-setupCustomCursor();
-setupMouseParallax();
+if (!PERF_LOW_POWER) setupCustomCursor();
+if (!PERF_LOW_POWER) setupMouseParallax();
 setupRevealAnimations();
 setupHeroRotator();
-setupMagnetic();
+if (!PERF_LOW_POWER) setupMagnetic();
 
 function setupAudioReactiveToggle() {
   if (!audioReactiveToggle || !warpController) return;
@@ -533,7 +534,7 @@ function setupWarpBackground() {
   let maxRadius = 0;
   let rafId = null;
   let audioReactive = false;
-  const DPR = Math.min(window.devicePixelRatio || 1, 2.2);
+  const DPR = Math.min(window.devicePixelRatio || 1, PERF_LOW_POWER ? 1.25 : 1.7);
   let streaks = [];
 
   function createStreak(randomRadius = true) {
@@ -559,8 +560,9 @@ function setupWarpBackground() {
     canvas.style.height = `${height}px`;
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
-    const base = Math.floor((width * height) / 8600);
-    const count = Math.max(240, Math.min(560, base));
+    const densityDivisor = PERF_LOW_POWER ? 17000 : 12000;
+    const base = Math.floor((width * height) / densityDivisor);
+    const count = PERF_LOW_POWER ? Math.max(90, Math.min(180, base)) : Math.max(140, Math.min(320, base));
     streaks = Array.from({ length: count }, () => createStreak(true));
   }
 
@@ -568,9 +570,8 @@ function setupWarpBackground() {
     const pulse = audioReactive ? (0.85 + Math.abs(Math.sin(now * 0.0037)) * 0.65) : 1;
 
     ctx.globalCompositeOperation = "source-over";
-    ctx.fillStyle = "rgba(0, 0, 0, 0.12)";
+    ctx.fillStyle = PERF_LOW_POWER ? "rgba(0, 0, 0, 0.2)" : "rgba(0, 0, 0, 0.14)";
     ctx.fillRect(0, 0, width, height);
-    ctx.globalCompositeOperation = "lighter";
 
     for (let i = 0; i < streaks.length; i += 1) {
       const s = streaks[i];
@@ -599,7 +600,7 @@ function setupWarpBackground() {
       ctx.lineWidth = s.widthPx * (0.75 + distFactor * 1.25) * (audioReactive ? 1.2 : 1);
       ctx.lineCap = "round";
       ctx.shadowColor = audioReactive ? "rgba(255,255,255,1)" : "rgba(255,255,255,0.9)";
-      ctx.shadowBlur = 8 + distFactor * 16;
+      ctx.shadowBlur = PERF_LOW_POWER ? (4 + distFactor * 8) : (6 + distFactor * 12);
 
       ctx.beginPath();
       ctx.moveTo(tx, ty);
@@ -610,7 +611,7 @@ function setupWarpBackground() {
         ctx.beginPath();
         ctx.arc(x, y, Math.max(0.8, s.widthPx * 0.7), 0, Math.PI * 2);
         ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(0.92, alpha + 0.12)})`;
-        ctx.shadowBlur = 20;
+        ctx.shadowBlur = PERF_LOW_POWER ? 10 : 16;
         ctx.fill();
       }
     }
