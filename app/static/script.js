@@ -259,81 +259,115 @@ function setupCustomCursor() {
 function setupWarpBackground() {
   const canvas = document.getElementById("bg-animation");
   if (!canvas) return null;
+
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const ctx = canvas.getContext("2d", { alpha: true });
   if (!ctx) return null;
 
-  let width = 0, height = 0, cx = 0, cy = 0, maxR = 0, rafId = null;
+  let width = 0;
+  let height = 0;
+  let rafId = null;
   let audioReactive = false;
   const DPR = Math.min(window.devicePixelRatio || 1, 1.75);
-  const quality = Math.max(0.55, Math.min(1, ((navigator.hardwareConcurrency || 4) / 8)));
-  let particles = [], comets = [];
+  const quality = Math.max(0.6, Math.min(1, ((navigator.hardwareConcurrency || 4) / 8)));
+  let particles = [];
+  let particleCount = 180;
 
-  const spawnParticle = (fromEdge = false, layer = 1) => ({ angle: Math.random() * Math.PI * 2, radius: fromEdge ? maxR : Math.random() * maxR, speed: (0.8 + Math.random() * 2.2) * layer, glow: 0.35 + Math.random() * 0.65, layer });
-  const spawnComet = () => ({ angle: Math.random() * Math.PI * 2, radius: maxR, speed: 5 + Math.random() * 3 });
+  function createParticle() {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1.2 + Math.random() * 3.6;
+    return {
+      x: width * 0.5,
+      y: height * 0.5,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      size: Math.random() * 1.8 + 0.7,
+    };
+  }
+
+  function resetParticle(p) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1.2 + Math.random() * 3.6;
+    p.x = width * 0.5;
+    p.y = height * 0.5;
+    p.vx = Math.cos(angle) * speed;
+    p.vy = Math.sin(angle) * speed;
+    p.size = Math.random() * 1.8 + 0.7;
+  }
 
   function resize() {
-    width = window.innerWidth; height = window.innerHeight;
-    cx = width * 0.5; cy = height * 0.5; maxR = Math.hypot(cx, cy) + 140;
-    canvas.width = Math.floor(width * DPR); canvas.height = Math.floor(height * DPR);
-    canvas.style.width = `${width}px`; canvas.style.height = `${height}px`;
+    width = window.innerWidth;
+    height = window.innerHeight;
+
+    canvas.width = Math.floor(width * DPR);
+    canvas.height = Math.floor(height * DPR);
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    const baseCount = Math.floor((width * height) / 12000);
-    const count = Math.max(60, Math.min(220, Math.floor(baseCount * quality)));
-    particles = Array.from({ length: count }, (_, i) => spawnParticle(true, i % 3 === 0 ? 1.35 : i % 2 === 0 ? 1.1 : 0.9));
-    comets = Array.from({ length: Math.max(2, Math.floor(6 * quality)) }, spawnComet);
+
+    particleCount = Math.max(100, Math.min(260, Math.floor((width * height) / 13000 * quality)));
+    particles = Array.from({ length: particleCount }, createParticle);
   }
 
   function frame(now = 0) {
-    const pulse = audioReactive ? (0.75 + Math.abs(Math.sin(now * 0.004)) * 0.9) : 1;
-    ctx.clearRect(0, 0, width, height);
+    const pulse = audioReactive ? (0.8 + Math.abs(Math.sin(now * 0.0045)) * 0.9) : 1;
+
+    ctx.fillStyle = "rgba(2, 6, 23, 0.24)";
+    ctx.fillRect(0, 0, width, height);
 
     for (let i = 0; i < particles.length; i += 1) {
       const p = particles[i];
-      p.radius -= p.speed * pulse;
-      if (p.radius < 2) { particles[i] = spawnParticle(true, p.layer); continue; }
-      const x = cx + Math.cos(p.angle) * p.radius;
-      const y = cy + Math.sin(p.angle) * p.radius;
-      const len = ((1 - p.radius / maxR) * 36 + 4) * pulse;
-      const dx = x - cx, dy = y - cy, mag = Math.hypot(dx, dy) || 1;
-      const tx = x + (dx / mag) * len, ty = y + (dy / mag) * len;
-      const a = Math.max(0.1, 1 - p.radius / maxR) * p.glow;
-      ctx.strokeStyle = `rgba(56,189,248,${a})`;
-      ctx.lineWidth = 0.8 + a * 2;
-      ctx.shadowColor = audioReactive ? "rgba(56,189,248,0.95)" : "rgba(34,211,238,0.85)";
-      ctx.shadowBlur = audioReactive ? 18 : 12;
-      ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(x, y); ctx.stroke();
-    }
+      p.x += p.vx * pulse;
+      p.y += p.vy * pulse;
 
-    for (let i = 0; i < comets.length; i += 1) {
-      const c = comets[i];
-      c.radius -= c.speed * (audioReactive ? 1.28 : 1);
-      if (c.radius < 15) { comets[i] = spawnComet(); continue; }
-      const x = cx + Math.cos(c.angle) * c.radius;
-      const y = cy + Math.sin(c.angle) * c.radius;
-      const tail = audioReactive ? 120 : 80;
-      ctx.strokeStyle = audioReactive ? "rgba(96,165,250,0.68)" : "rgba(96,165,250,0.45)";
-      ctx.lineWidth = audioReactive ? 2.4 : 1.8;
-      ctx.shadowColor = "rgba(56,189,248,0.95)";
-      ctx.shadowBlur = audioReactive ? 24 : 18;
-      ctx.beginPath(); ctx.moveTo(x + Math.cos(c.angle) * tail, y + Math.sin(c.angle) * tail); ctx.lineTo(x, y); ctx.stroke();
+      if (p.x < -20 || p.x > width + 20 || p.y < -20 || p.y > height + 20) {
+        resetParticle(p);
+        continue;
+      }
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * (audioReactive ? 1.18 : 1), 0, Math.PI * 2);
+      ctx.fillStyle = audioReactive ? "rgba(56, 189, 248, 0.95)" : "rgba(0, 234, 255, 0.9)";
+      ctx.shadowColor = audioReactive ? "rgba(56, 189, 248, 0.95)" : "rgba(0, 234, 255, 0.85)";
+      ctx.shadowBlur = audioReactive ? 18 : 12;
+      ctx.fill();
     }
 
     rafId = requestAnimationFrame(frame);
   }
 
-  const stop = () => { if (rafId) cancelAnimationFrame(rafId); rafId = null; };
-  const start = () => { if (!rafId && !reduced) rafId = requestAnimationFrame(frame); };
-  resize(); start();
+  const stop = () => {
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = null;
+  };
+
+  const start = () => {
+    if (!rafId && !reduced) rafId = requestAnimationFrame(frame);
+  };
+
+  resize();
+  start();
 
   let resizeTimer = null;
   window.addEventListener("resize", () => {
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => { stop(); resize(); start(); }, 140);
+    resizeTimer = setTimeout(() => {
+      stop();
+      resize();
+      start();
+    }, 140);
   });
-  document.addEventListener("visibilitychange", () => { if (document.hidden) stop(); else start(); });
 
-  return { setAudioReactive(value) { audioReactive = value; } };
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) stop();
+    else start();
+  });
+
+  return {
+    setAudioReactive(value) {
+      audioReactive = value;
+    },
+  };
 }
 
 function setupMouseParallax() {
