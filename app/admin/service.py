@@ -176,14 +176,6 @@ def get_admin_resumes_overview(
         conn.close()
 
 
-def suspend_user(admin_user_id: int, user_id: int) -> AdminActionResponse:
-    return _set_user_active_state(admin_user_id, user_id, False)
-
-
-def activate_user(admin_user_id: int, user_id: int) -> AdminActionResponse:
-    return _set_user_active_state(admin_user_id, user_id, True)
-
-
 def force_publish_resume(admin_user_id: int, resume_id: int) -> AdminActionResponse:
     conn = get_connection()
     try:
@@ -322,22 +314,6 @@ def export_admin_activity_csv(
     for a in payload.logs:
         writer.writerow([a.id, a.admin_user_id, a.action, a.target_type, a.target_id, a.details or "", a.created_at.isoformat()])
     return out.getvalue()
-
-
-def _set_user_active_state(admin_user_id: int, user_id: int, is_active: bool) -> AdminActionResponse:
-    conn = get_connection()
-    try:
-        row = conn.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
-        if not row:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
-
-        conn.execute("UPDATE users SET is_active = ? WHERE id = ?", (1 if is_active else 0, user_id))
-        action = "activate" if is_active else "suspend"
-        _log_admin_action(conn, admin_user_id, action, "user", user_id, f"User marked {'active' if is_active else 'suspended'}")
-        conn.commit()
-        return AdminActionResponse(message=f"User {'activated' if is_active else 'suspended' }.")
-    finally:
-        conn.close()
 
 
 def _log_admin_action(conn, admin_user_id: int, action: str, target_type: str, target_id: int, details: str | None = None) -> None:

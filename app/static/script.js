@@ -324,7 +324,7 @@ async function loadAdminDashboard() {
     statsEl.textContent = `Users: ${stats.total_users} | Admins: ${stats.total_admins} | Resumes: ${stats.total_resumes} | Drafts: ${stats.total_drafts} | Published: ${stats.total_published} | Generations: ${stats.total_generations}`;
   }
   if (usersEl) {
-    usersEl.innerHTML = ((users.users || []).map((u) => `<li>${escapeHtml(u.email)} ${u.is_admin ? "(admin)" : ""} ${u.is_active ? "" : "(suspended)"} • resumes: ${u.resume_count} • generations: ${u.generation_count} <button class='btn-secondary' data-admin-action='${u.is_active ? "suspend" : "activate"}' data-user-id='${u.id}' type='button'>${u.is_active ? "Suspend" : "Activate"}</button></li>`).join("")) || "<li>No users.</li>";
+    usersEl.innerHTML = ((users.users || []).map((u) => `<li>${escapeHtml(u.email)} ${u.is_admin ? "(admin)" : ""} ${u.is_active ? "" : "(suspended)"} • resumes: ${u.resume_count} • generations: ${u.generation_count}</li>`).join("")) || "<li>No users.</li>";
     usersEl.innerHTML += `<li class='muted-note'>Page ${users.page} • showing ${users.users.length} of ${users.total} <button class='btn-secondary' data-admin-page='users-prev' type='button'>Prev</button> <button class='btn-secondary' data-admin-page='users-next' type='button'>Next</button></li>`;
   }
   if (resumesEl) {
@@ -335,18 +335,6 @@ async function loadAdminDashboard() {
     activityEl.innerHTML = ((activity.logs || []).map((a) => `<li>${escapeHtml(a.action)} ${escapeHtml(a.target_type)}#${a.target_id} • admin:${a.admin_user_id}</li>`).join("")) || "<li>No activity yet.</li>";
     activityEl.innerHTML += `<li class='muted-note'>Page ${activity.page} • showing ${activity.logs.length} of ${activity.total} <button class='btn-secondary' data-admin-page='activity-prev' type='button'>Prev</button> <button class='btn-secondary' data-admin-page='activity-next' type='button'>Next</button></li>`;
   }
-
-  document.querySelectorAll("[data-admin-action]").forEach((btn) => {
-    if (btn.dataset.bound) return;
-    btn.dataset.bound = "1";
-    btn.addEventListener("click", async () => {
-      const action = btn.dataset.adminAction;
-      const userId = Number(btn.dataset.userId);
-      await callAdminAction(`/api/admin/users/${userId}/${action}`);
-      showToast(`User ${action}ed successfully.`, "success");
-      await loadAdminDashboard();
-    });
-  });
 
   document.querySelectorAll("[data-admin-resume]").forEach((btn) => {
     if (btn.dataset.bound) return;

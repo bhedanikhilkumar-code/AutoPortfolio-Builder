@@ -45,7 +45,6 @@ from app.schemas import (
     ResumeVersionsResponse,
 )
 from app.admin.service import (
-    activate_user,
     delete_resume_admin,
     export_admin_activity_csv,
     export_admin_resumes_csv,
@@ -55,7 +54,6 @@ from app.admin.service import (
     get_admin_resumes_overview,
     get_admin_stats,
     get_admin_users_overview,
-    suspend_user,
 )
 from app.ai_rewrite.service import rewrite_section
 from app.analytics.service import get_analytics_for_user, record_page_view, record_project_click
@@ -254,14 +252,6 @@ def create_app() -> FastAPI:
             sort_dir=sort_dir,
         )
         return Response(content=csv_data, media_type="text/csv", headers={"Content-Disposition": 'attachment; filename="admin-activity.csv"'})
-
-    @app.post("/api/admin/users/{user_id}/suspend", response_model=AdminActionResponse)
-    async def admin_suspend_user(user_id: int, admin: dict = Depends(require_admin)) -> AdminActionResponse:
-        return suspend_user(admin["id"], user_id)
-
-    @app.post("/api/admin/users/{user_id}/activate", response_model=AdminActionResponse)
-    async def admin_activate_user(user_id: int, admin: dict = Depends(require_admin)) -> AdminActionResponse:
-        return activate_user(admin["id"], user_id)
 
     @app.post("/api/admin/resumes/{resume_id}/publish", response_model=AdminActionResponse)
     async def admin_publish_resume(resume_id: int, admin: dict = Depends(require_admin)) -> AdminActionResponse:
