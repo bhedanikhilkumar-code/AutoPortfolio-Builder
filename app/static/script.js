@@ -21,6 +21,7 @@ const authLoginBtn = document.getElementById("auth-login");
 const authLoadDashboardBtn = document.getElementById("auth-load-dashboard");
 const authLogoutBtn = document.getElementById("auth-logout");
 const authGoogleBtn = document.getElementById("auth-google");
+const authGithubBtn = document.getElementById("auth-github");
 const googleSigninSlot = document.getElementById("google-signin-slot");
 const adminPanelsEl = document.getElementById("admin-panels");
 const generatorPanelEl = document.getElementById("generator-panel");
@@ -87,6 +88,9 @@ function refreshAccessUI() {
   }
   if (authRequiredMsgEl) {
     authRequiredMsgEl.hidden = loggedIn;
+  }
+  if (!loggedIn && window.location.hash === "#generate") {
+    document.getElementById("auth-dashboard")?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 }
 
@@ -271,6 +275,19 @@ function setupAuthDashboard() {
     try {
       await initGoogleSignIn();
       showToast("Use the Google button below to continue.");
+    } catch (error) {
+      showError(error.message);
+    }
+  });
+
+  authGithubBtn?.addEventListener("click", async () => {
+    try {
+      const res = await fetch("/api/auth/github/start");
+      const data = await parseErrorPayload(res);
+      if (!res.ok || !data?.enabled || !data?.auth_url) {
+        throw new Error("GitHub login is not configured yet.");
+      }
+      window.location.href = data.auth_url;
     } catch (error) {
       showError(error.message);
     }

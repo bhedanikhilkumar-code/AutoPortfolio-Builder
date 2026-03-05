@@ -4,6 +4,7 @@ from pathlib import Path
 import logging
 import os
 import secrets
+import time
 
 import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, status
@@ -27,6 +28,7 @@ from app.schemas import (
     ErrorResponse,
     ExportRequest,
     GenerateRequest,
+    GitHubAuthStartResponse,
     GoogleAuthConfigResponse,
     GoogleAuthRequest,
     HealthResponse,
@@ -58,6 +60,7 @@ from app.admin.service import (
 )
 from app.ai_rewrite.service import rewrite_section
 from app.analytics.service import get_analytics_for_user, record_page_view, record_project_click
+from app.auth.github import exchange_github_code, fetch_github_identity, get_github_client_id
 from app.auth.google import verify_google_id_token
 from app.auth.service import create_session, create_session_for_user, ensure_user_for_google, register_user, resolve_user_from_token, revoke_session
 from app.branding.service import get_branding, upsert_branding
@@ -79,6 +82,7 @@ from app.services.portfolio import (
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
 SHARED_PORTFOLIOS: dict[str, PortfolioResponse] = {}
+GITHUB_OAUTH_STATES: dict[str, float] = {}
 logger = logging.getLogger("autoporfolio_builder")
 
 
@@ -162,6 +166,49 @@ def create_app() -> FastAPI:
         user_id = ensure_user_for_google(google_user["email"], google_user.get("name"))
         token = create_session_for_user(user_id)
         return AuthResponse(access_token=token)
+
+    @app.get("/api/auth/github/start", response_model=GitHubAuthStartResponse)
+    async def auth_github_start(request: Request) -> GitHubAuthStartResponse:
+        client_id = get_github_client_id()
+        if not client_id:
+            return GitHubAuthStartResponse(enabled=False, auth_url=None)
+
+        state = secrets.token_urlsafe(24)
+        GITHUB_OAUTH_STATES[state] = time.time() + 600
+        for key, expires in list(GITHUB_OAUTH_STATES.items()):
+            if expires < time.time():
+                GITHUB_OAUTH_STATES.pop(key, None)
+
+        redirect_uri = str(request.base_url).rstrip("/") + "/api/auth/github/callback"
+        auth_url = (
+            "https://github.com/login/oauth/authorize"
+            f"?client_id={client_id}&scope=read:user%20user:email&state={state}&redirect_uri={redirect_uri}"
+        )
+        return GitHubAuthStartResponse(enabled=True, auth_url=auth_url)
+
+    @app.get("/api/auth/github/callback", include_in_schema=False)
+    async def auth_github_callback(code: str | None = None, state: str | None = None) -> Response:
+        if not code or not state:
+            return Response(content="GitHub login failed: missing code/state.", media_type="text/plain", status_code=400)
+        expires = GITHUB_OAUTH_STATES.pop(state, None)
+        if not expires or expires < time.time():
+            return Response(content="GitHub login failed: invalid or expired state.", media_type="text/plain", status_code=400)
+
+        try:
+            access_token = await exchange_github_code(code)
+            gh_user = await fetch_github_identity(access_token)
+            user_id = ensure_user_for_google(gh_user["email"], gh_user.get("name"))
+            app_token = create_session_for_user(user_id)
+        except HTTPException as exc:
+            return Response(content=f"GitHub login failed: {exc.detail}", media_type="text/plain", status_code=400)
+
+        html = f"""
+        <!doctype html><html><body><script>
+        localStorage.setItem('apb_token', {app_token!r});
+        window.location.href = '/#generate';
+        </script><p>Login successful. Redirecting…</p></body></html>
+        """
+        return Response(content=html, media_type="text/html")
 
     @app.get("/api/dashboard", response_model=DashboardResponse)
     async def dashboard(user: dict = Depends(get_current_user)) -> DashboardResponse:

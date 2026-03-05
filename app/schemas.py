@@ -137,6 +137,11 @@ class GoogleAuthConfigResponse(BaseModel):
     client_id: str | None = None
 
 
+class GitHubAuthStartResponse(BaseModel):
+    enabled: bool
+    auth_url: str | None = None
+
+
 class AuthResponse(BaseModel):
     access_token: str
     token_type: Literal["bearer"] = "bearer"
