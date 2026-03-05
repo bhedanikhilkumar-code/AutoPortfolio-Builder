@@ -18,6 +18,7 @@ const authLogoutBtn = document.getElementById("auth-logout");
 const authGoogleBtn = document.getElementById("auth-google");
 const googleSigninSlot = document.getElementById("google-signin-slot");
 const adminPanelsEl = document.getElementById("admin-panels");
+const themeToggleBtn = document.getElementById("theme-toggle");
 
 const appState = {
   profileData: null,
@@ -39,11 +40,13 @@ const appState = {
     activityPage: 1,
   },
   currentUserEmail: "",
+  colorTheme: localStorage.getItem("apb_theme") || "light",
 };
 let parallaxTargets = [];
 const PERF_LOW_POWER = (navigator.hardwareConcurrency || 4) <= 4;
 if (PERF_LOW_POWER) appState.performanceMode = true;
 
+setupThemeToggle();
 setupPerformanceModeToggle();
 setupIntroLoader();
 const warpController = appState.performanceMode ? null : setupWarpBackground();
@@ -65,6 +68,18 @@ if (appState.authToken) {
 
 function authHeaders() {
   return appState.authToken ? { Authorization: `Bearer ${appState.authToken}` } : {};
+}
+
+function setupThemeToggle() {
+  document.body.classList.toggle("dark", appState.colorTheme === "dark");
+  if (!themeToggleBtn) return;
+  themeToggleBtn.textContent = appState.colorTheme === "dark" ? "Light Mode" : "Dark Mode";
+  themeToggleBtn.addEventListener("click", () => {
+    appState.colorTheme = appState.colorTheme === "dark" ? "light" : "dark";
+    localStorage.setItem("apb_theme", appState.colorTheme);
+    document.body.classList.toggle("dark", appState.colorTheme === "dark");
+    themeToggleBtn.textContent = appState.colorTheme === "dark" ? "Light Mode" : "Dark Mode";
+  });
 }
 
 async function exchangeGoogleToken(idToken) {
