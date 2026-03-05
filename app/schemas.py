@@ -55,6 +55,9 @@ class LinkedInProfile(BaseModel):
     title: str | None = None
     headline: str | None = None
     summary: list[str] = Field(default_factory=list)
+    provider_used: str = "linkedin_public_page"
+    confidence_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    signals: list[str] = Field(default_factory=list)
 
 
 class ProfileResponse(BaseModel):

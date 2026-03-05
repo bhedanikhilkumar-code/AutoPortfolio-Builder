@@ -243,6 +243,10 @@ async function ensureProfilePayload(username, linkedinUsername) {
   });
   const profilePayload = await profileResponse.json();
   if (!profileResponse.ok) throw new Error(getErrorMessage(profilePayload, "Failed to fetch profile."));
+  const li = profilePayload.linkedin || {};
+  if (li.provider_used) {
+    setStatus(`Profile signals ready • LinkedIn provider: ${li.provider_used} • confidence: ${Math.round((li.confidence_score || 0) * 100)}%`);
+  }
   return profilePayload;
 }
 
