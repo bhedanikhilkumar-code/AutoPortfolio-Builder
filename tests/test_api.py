@@ -188,6 +188,10 @@ def test_admin_endpoints_and_actions(monkeypatch) -> None:
     assert activity.status_code == 200
     assert len(activity.json()["logs"]) >= 3
 
+    users_csv = client.get("/api/admin/export/users.csv", headers=admin_headers)
+    assert users_csv.status_code == 200
+    assert "text/csv" in users_csv.headers.get("content-type", "")
+
 
 def test_profile_endpoint_returns_profile_and_repos() -> None:
     response = client.post("/api/profile", json={"username": "octocat", "linkedin_username": "octocat"})

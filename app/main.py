@@ -47,6 +47,9 @@ from app.schemas import (
 from app.admin.service import (
     activate_user,
     delete_resume_admin,
+    export_admin_activity_csv,
+    export_admin_resumes_csv,
+    export_admin_users_csv,
     force_publish_resume,
     get_admin_activity,
     get_admin_resumes_overview,
@@ -213,6 +216,44 @@ def create_app() -> FastAPI:
             sort_by=sort_by,
             sort_dir=sort_dir,
         )
+
+    @app.get("/api/admin/export/users.csv")
+    async def admin_export_users_csv(
+        _: dict = Depends(require_admin),
+        q: str | None = Query(default=None),
+        sort_by: str = Query(default="created_at"),
+        sort_dir: str = Query(default="desc"),
+    ) -> Response:
+        csv_data = export_admin_users_csv(query=q, sort_by=sort_by, sort_dir=sort_dir)
+        return Response(content=csv_data, media_type="text/csv", headers={"Content-Disposition": 'attachment; filename="admin-users.csv"'})
+
+    @app.get("/api/admin/export/resumes.csv")
+    async def admin_export_resumes_csv(
+        _: dict = Depends(require_admin),
+        q: str | None = Query(default=None),
+        sort_by: str = Query(default="updated_at"),
+        sort_dir: str = Query(default="desc"),
+    ) -> Response:
+        csv_data = export_admin_resumes_csv(query=q, sort_by=sort_by, sort_dir=sort_dir)
+        return Response(content=csv_data, media_type="text/csv", headers={"Content-Disposition": 'attachment; filename="admin-resumes.csv"'})
+
+    @app.get("/api/admin/export/activity.csv")
+    async def admin_export_activity_csv(
+        _: dict = Depends(require_admin),
+        action: str | None = Query(default=None),
+        target_type: str | None = Query(default=None),
+        admin_user_id: int | None = Query(default=None, ge=1),
+        sort_by: str = Query(default="created_at"),
+        sort_dir: str = Query(default="desc"),
+    ) -> Response:
+        csv_data = export_admin_activity_csv(
+            action=action,
+            target_type=target_type,
+            admin_user_id=admin_user_id,
+            sort_by=sort_by,
+            sort_dir=sort_dir,
+        )
+        return Response(content=csv_data, media_type="text/csv", headers={"Content-Disposition": 'attachment; filename="admin-activity.csv"'})
 
     @app.post("/api/admin/users/{user_id}/suspend", response_model=AdminActionResponse)
     async def admin_suspend_user(user_id: int, admin: dict = Depends(require_admin)) -> AdminActionResponse:

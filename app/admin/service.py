@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime
+import csv
+import io
 
 from fastapi import HTTPException, status
 
@@ -276,6 +278,50 @@ def get_admin_activity(
         return AdminActivityResponse(logs=logs, total=total, page=page, page_size=page_size)
     finally:
         conn.close()
+
+
+def export_admin_users_csv(query: str | None = None, sort_by: str = "created_at", sort_dir: str = "desc") -> str:
+    payload = get_admin_users_overview(page=1, page_size=10000, query=query, sort_by=sort_by, sort_dir=sort_dir)
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(["id", "email", "is_admin", "is_active", "resume_count", "generation_count", "created_at"])
+    for u in payload.users:
+        writer.writerow([u.id, u.email, u.is_admin, u.is_active, u.resume_count, u.generation_count, u.created_at.isoformat()])
+    return out.getvalue()
+
+
+def export_admin_resumes_csv(query: str | None = None, sort_by: str = "updated_at", sort_dir: str = "desc") -> str:
+    payload = get_admin_resumes_overview(page=1, page_size=10000, query=query, sort_by=sort_by, sort_dir=sort_dir)
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(["id", "user_id", "owner_email", "title", "status", "updated_at"])
+    for r in payload.resumes:
+        writer.writerow([r.id, r.user_id, r.owner_email, r.title, r.status, r.updated_at.isoformat()])
+    return out.getvalue()
+
+
+def export_admin_activity_csv(
+    action: str | None = None,
+    target_type: str | None = None,
+    admin_user_id: int | None = None,
+    sort_by: str = "created_at",
+    sort_dir: str = "desc",
+) -> str:
+    payload = get_admin_activity(
+        page=1,
+        page_size=10000,
+        action=action,
+        target_type=target_type,
+        admin_user_id=admin_user_id,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+    )
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(["id", "admin_user_id", "action", "target_type", "target_id", "details", "created_at"])
+    for a in payload.logs:
+        writer.writerow([a.id, a.admin_user_id, a.action, a.target_type, a.target_id, a.details or "", a.created_at.isoformat()])
+    return out.getvalue()
 
 
 def _set_user_active_state(admin_user_id: int, user_id: int, is_active: bool) -> AdminActionResponse:

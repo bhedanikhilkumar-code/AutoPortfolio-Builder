@@ -250,6 +250,23 @@ async function callAdminAction(url, method = "POST") {
   return data;
 }
 
+async function downloadAdminCsv(url, filename) {
+  const res = await fetch(url, { headers: { ...authHeaders() } });
+  if (!res.ok) {
+    const data = await parseErrorPayload(res);
+    throw new Error(getErrorMessage(data, "CSV export failed."));
+  }
+  const blob = await res.blob();
+  const href = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = href;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(href);
+}
+
 async function loadAdminDashboard() {
   if (!adminPanelsEl) return;
 
@@ -271,6 +288,10 @@ async function loadAdminDashboard() {
   const activityParams = new URLSearchParams({ page: String(appState.adminState.activityPage), page_size: "20", sort_by: activitySortBy, sort_dir: activitySortDir });
   if (activityAction) activityParams.set("action", activityAction);
   if (activityTarget) activityParams.set("target_type", activityTarget);
+
+  const exportUsersUrl = `/api/admin/export/users.csv?${usersParams.toString()}`;
+  const exportResumesUrl = `/api/admin/export/resumes.csv?${resumesParams.toString()}`;
+  const exportActivityUrl = `/api/admin/export/activity.csv?${activityParams.toString()}`;
 
   const [statsRes, usersRes, resumesRes, activityRes] = await Promise.all([
     fetch("/api/admin/stats", { headers: { ...authHeaders() } }),
@@ -295,6 +316,9 @@ async function loadAdminDashboard() {
   const resumesEl = document.getElementById("admin-resumes");
   const activityEl = document.getElementById("admin-activity");
   const refreshBtn = document.getElementById("admin-refresh");
+  const exportUsersBtn = document.getElementById("admin-export-users");
+  const exportResumesBtn = document.getElementById("admin-export-resumes");
+  const exportActivityBtn = document.getElementById("admin-export-activity");
 
   if (statsEl) {
     statsEl.textContent = `Users: ${stats.total_users} | Admins: ${stats.total_admins} | Resumes: ${stats.total_resumes} | Drafts: ${stats.total_drafts} | Published: ${stats.total_published} | Generations: ${stats.total_generations}`;
@@ -366,6 +390,28 @@ async function loadAdminDashboard() {
       await loadAdminDashboard();
     });
   });
+
+  if (exportUsersBtn && !exportUsersBtn.dataset.bound) {
+    exportUsersBtn.dataset.bound = "1";
+    exportUsersBtn.addEventListener("click", async () => {
+      await downloadAdminCsv(exportUsersUrl, "admin-users.csv");
+      showToast("Users CSV downloaded.", "success");
+    });
+  }
+  if (exportResumesBtn && !exportResumesBtn.dataset.bound) {
+    exportResumesBtn.dataset.bound = "1";
+    exportResumesBtn.addEventListener("click", async () => {
+      await downloadAdminCsv(exportResumesUrl, "admin-resumes.csv");
+      showToast("Resumes CSV downloaded.", "success");
+    });
+  }
+  if (exportActivityBtn && !exportActivityBtn.dataset.bound) {
+    exportActivityBtn.dataset.bound = "1";
+    exportActivityBtn.addEventListener("click", async () => {
+      await downloadAdminCsv(exportActivityUrl, "admin-activity.csv");
+      showToast("Activity CSV downloaded.", "success");
+    });
+  }
 
   if (refreshBtn && !refreshBtn.dataset.bound) {
     refreshBtn.dataset.bound = "1";
