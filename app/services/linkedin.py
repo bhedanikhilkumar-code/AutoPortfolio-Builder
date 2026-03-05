@@ -80,6 +80,16 @@ class LinkedInService:
                 )
                 html = response.text
 
+            if response.status_code == 404:
+                return LinkedInProfile(
+                    username=slug,
+                    url=profile_url,
+                    summary=["LinkedIn username not found."],
+                    provider_used="linkedin_public_page",
+                    confidence_score=0.0,
+                    signals=["not_found"],
+                )
+
             title = _extract_title(html)
             if title:
                 signals.append("title")

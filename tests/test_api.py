@@ -128,6 +128,13 @@ def test_profile_endpoint_validates_username() -> None:
     assert response.json()["error"]["code"] == "validation_error"
 
 
+def test_profile_endpoint_validates_linkedin_username() -> None:
+    response = client.post("/api/profile", json={"username": "octocat", "linkedin_username": "bad user"})
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "validation_error"
+
+
 def test_generate_endpoint_accepts_selected_theme() -> None:
     profile_payload = client.post("/api/profile", json={"username": "octocat", "linkedin_username": "octocat"}).json()
 

@@ -63,6 +63,28 @@ body { position: relative; overflow-x: hidden; }
   z-index: 2;
 }
 
+.site-title {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.site-title__eyebrow {
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+}
+
+.site-title__heading {
+  margin: 8px 0;
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+  letter-spacing: -0.02em;
+}
+
+.site-title__sub {
+  max-width: 860px;
+  margin: 0 auto;
+}
+
 .hero {
   display: grid;
   gap: 24px;
@@ -120,6 +142,7 @@ body { position: relative; overflow-x: hidden; }
 h1, h2, h3, p, label { margin: 0; }
 h1 { font-size: clamp(2rem, 4vw, 3.5rem); line-height: 0.95; letter-spacing: -0.04em; margin-bottom: 14px; }
 h2 { font-size: 1.2rem; margin-bottom: 16px; }
+.hero-support-title { font-size: clamp(1.2rem, 2.1vw, 1.7rem); margin-bottom: 10px; }
 h3 { font-size: 1rem; margin-bottom: 10px; }
 p { color: var(--muted); line-height: 1.6; }
 

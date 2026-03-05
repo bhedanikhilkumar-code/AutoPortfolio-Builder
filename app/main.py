@@ -199,6 +199,10 @@ def create_app() -> FastAPI:
         github_payload = await github_service.fetch_profile(payload.username)
         try:
             linkedin_payload = await linkedin_service.fetch_public_profile(payload.linkedin_username)
+            if "not_found" in (linkedin_payload.signals or []):
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="LinkedIn username not found.")
+        except HTTPException:
+            raise
         except Exception:
             linkedin_slug = payload.linkedin_username.strip().strip("/").split("/")[-1].replace("in/", "")
             linkedin_payload = LinkedInProfile(

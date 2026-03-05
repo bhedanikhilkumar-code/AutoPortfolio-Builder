@@ -24,7 +24,6 @@ const appState = {
   username: "",
   selectedVariantId: 1,
   variants: { 1: null, 2: null, 3: null },
-  triesByUsername: {},
   selectedPdfTemplate: "auto",
   pdfTryHistoryByUsername: {},
   pdfTryCountByUsername: {},
@@ -202,24 +201,18 @@ form.addEventListener("submit", async (event) => {
     appState.profileData = profilePayload;
     appState.username = username;
 
-    const activeTry = getNextTryIndex(username);
-    if (activeTry > 3) {
-      setStatus("Try limit reached for this username in this session (3/3).");
-      return;
-    }
-
+    const nextTry = Date.now();
     const variantId = appState.selectedVariantId || 1;
-    const variantPortfolio = await generateVariant(profilePayload, theme, variantId, activeTry);
+    const variantPortfolio = await generateVariant(profilePayload, theme, variantId, nextTry);
 
     appState.variants[variantId] = {
       portfolio: deepClone(variantPortfolio),
-      tryIndex: activeTry,
+      tryIndex: nextTry,
       generatedAt: Date.now(),
     };
-    appState.triesByUsername[username.toLowerCase()] = activeTry;
 
     activateVariant(variantId);
-    setStatus(`Draft variation ${variantId}/3 generated. Tries used: ${activeTry}/3`);
+    setStatus(`Draft variation ${variantId}/3 generated.`);
     setGenerateButtonGenerated();
   } catch (error) {
     portfolioEl.hidden = true;
@@ -262,13 +255,9 @@ async function generateVariant(profilePayload, theme, variantId, tryIndex) {
     headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify({ ...profilePayload, theme, variant_id: variantId, try_index: tryIndex, target_role: targetRole, deep_mode: deepMode }),
   });
-  const portfolioPayload = await generateResponse.json();
+  const portfolioPayload = await parseErrorPayload(generateResponse);
   if (!generateResponse.ok) throw new Error(getErrorMessage(portfolioPayload, "Failed to generate portfolio."));
   return portfolioPayload;
-}
-
-function getNextTryIndex(username) {
-  return (appState.triesByUsername[username.toLowerCase()] || 0) + 1;
 }
 
 function activateVariant(variantId) {
@@ -346,7 +335,7 @@ function renderWorkspace() {
         <div>
           <h2>Edit Content</h2>
           <p>Changes apply to the draft immediately. Use Save Edits to update the exportable portfolio state.</p>
-          <p class="muted-note"><strong>Draft Variation:</strong> ${appState.selectedVariantId}/3 &nbsp; • &nbsp; Tries used: ${(appState.triesByUsername[(appState.username || "").toLowerCase()] || 0)}/3</p>
+          <p class="muted-note"><strong>Draft Variation:</strong> ${appState.selectedVariantId}/3 &nbsp; • &nbsp; Unlimited generations enabled</p>
         </div>
         <div class="inline-actions" id="variant-tabs">
           <button data-variant-tab="1" class="btn-secondary magnetic" type="button">Variant 1</button>
@@ -434,21 +423,14 @@ function bindEditorEvents() {
         return;
       }
 
-      const activeTry = appState.triesByUsername[username.toLowerCase()] || 0;
-      if (activeTry >= 3) {
-        setStatus("Try limit reached for this username in this session (3/3).");
-        return;
-      }
-
       setLoading(true, { preserveLabel: true });
       try {
-        const nextTry = activeTry + 1;
+        const nextTry = Date.now();
         const generated = await generateVariant(appState.profileData, themeInput.value, variantId, nextTry);
         appState.variants[variantId] = { portfolio: deepClone(generated), tryIndex: nextTry, generatedAt: Date.now() };
-        appState.triesByUsername[username.toLowerCase()] = nextTry;
         activateVariant(variantId);
         setGenerateButtonGenerated();
-        setStatus(`Draft variation ${variantId}/3 generated. Tries used: ${nextTry}/3`);
+        setStatus(`Draft variation ${variantId}/3 generated.`);
       } catch (error) {
         showError(error.message);
       } finally {
@@ -465,21 +447,15 @@ function bindEditorEvents() {
         showError("Generate profile data first.");
         return;
       }
-      const activeTry = appState.triesByUsername[username.toLowerCase()] || 0;
-      if (activeTry >= 3) {
-        setStatus("Try limit reached for this username in this session (3/3).");
-        return;
-      }
       setLoading(true, { preserveLabel: true });
       try {
-        const nextTry = activeTry + 1;
+        const nextTry = Date.now();
         const variantId = appState.selectedVariantId || 1;
         const generated = await generateVariant(appState.profileData, themeInput.value, variantId, nextTry);
         appState.variants[variantId] = { portfolio: deepClone(generated), tryIndex: nextTry, generatedAt: Date.now() };
-        appState.triesByUsername[username.toLowerCase()] = nextTry;
         activateVariant(variantId);
         setGenerateButtonGenerated();
-        setStatus(`Regenerated variation ${variantId}/3. Tries used: ${nextTry}/3`);
+        setStatus(`Regenerated variation ${variantId}/3.`);
       } catch (error) {
         showError(error.message);
       } finally {
