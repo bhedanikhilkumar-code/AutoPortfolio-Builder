@@ -116,6 +116,16 @@ def _is_admin_email(email: str) -> bool:
     return email in emails
 
 
+def revoke_session(token: str) -> None:
+    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    conn = get_connection()
+    try:
+        conn.execute("DELETE FROM sessions WHERE token_hash = ?", (token_hash,))
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def resolve_user_from_token(token: str) -> dict:
     token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
     conn = get_connection()

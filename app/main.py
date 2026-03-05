@@ -58,7 +58,7 @@ from app.admin.service import (
 from app.ai_rewrite.service import rewrite_section
 from app.analytics.service import get_analytics_for_user, record_page_view, record_project_click
 from app.auth.google import verify_google_id_token
-from app.auth.service import create_session, create_session_for_user, ensure_user_for_google, register_user, resolve_user_from_token
+from app.auth.service import create_session, create_session_for_user, ensure_user_for_google, register_user, resolve_user_from_token, revoke_session
 from app.branding.service import get_branding, upsert_branding
 from app.core.db import init_db
 from app.dashboard.service import add_generation_history, build_dashboard, save_resume_snapshot
@@ -140,6 +140,14 @@ def create_app() -> FastAPI:
     async def auth_login(payload: LoginRequest) -> AuthResponse:
         token, _ = create_session(payload.email, payload.password)
         return AuthResponse(access_token=token)
+
+    @app.post("/api/auth/logout", response_model=AuthResponse)
+    async def auth_logout(user: dict = Depends(get_current_user), authorization: str | None = Header(default=None)) -> AuthResponse:
+        _ = user
+        token = authorization.split(" ", 1)[1].strip() if authorization else ""
+        if token:
+            revoke_session(token)
+        return AuthResponse(access_token="logged_out")
 
     @app.get("/api/auth/google/config", response_model=GoogleAuthConfigResponse)
     async def auth_google_config() -> GoogleAuthConfigResponse:

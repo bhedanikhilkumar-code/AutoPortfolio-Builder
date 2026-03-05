@@ -117,6 +117,18 @@ def test_google_auth_config_endpoint() -> None:
     assert "enabled" in payload
 
 
+def test_logout_revokes_session() -> None:
+    email = f"logout-{uuid4().hex[:8]}@testmail.com"
+    register = client.post("/api/auth/register", json={"email": email, "password": "StrongPass@123"})
+    token = register.json()["access_token"]
+
+    logout = client.post("/api/auth/logout", headers={"Authorization": f"Bearer {token}"})
+    assert logout.status_code == 200
+
+    dashboard = client.get("/api/dashboard", headers={"Authorization": f"Bearer {token}"})
+    assert dashboard.status_code == 401
+
+
 def test_admin_endpoint_requires_auth() -> None:
     response = client.get("/api/admin/stats", headers={"Authorization": "Bearer invalid-token"})
 

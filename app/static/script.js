@@ -14,6 +14,7 @@ const authPasswordInput = document.getElementById("auth-password");
 const authRegisterBtn = document.getElementById("auth-register");
 const authLoginBtn = document.getElementById("auth-login");
 const authLoadDashboardBtn = document.getElementById("auth-load-dashboard");
+const authLogoutBtn = document.getElementById("auth-logout");
 const authGoogleBtn = document.getElementById("auth-google");
 const googleSigninSlot = document.getElementById("google-signin-slot");
 const adminPanelsEl = document.getElementById("admin-panels");
@@ -180,6 +181,23 @@ function setupAuthDashboard() {
 
   authLoadDashboardBtn.addEventListener("click", async () => {
     await loadDashboard();
+  });
+
+  authLogoutBtn?.addEventListener("click", async () => {
+    try {
+      if (appState.authToken) {
+        await fetch("/api/auth/logout", {
+          method: "POST",
+          headers: { ...authHeaders() },
+        });
+      }
+    } finally {
+      appState.authToken = "";
+      localStorage.removeItem("apb_token");
+      document.getElementById("dashboard-panels").hidden = true;
+      if (adminPanelsEl) adminPanelsEl.hidden = true;
+      showToast("Logged out successfully.", "success");
+    }
   });
 
   authGoogleBtn?.addEventListener("click", async () => {
