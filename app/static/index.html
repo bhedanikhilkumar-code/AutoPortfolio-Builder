@@ -45,6 +45,14 @@
             <option value="modern">Professional</option>
             <option value="minimal">Prime</option>
           </select>
+          <select id="target-role" name="target_role" aria-label="Target role">
+            <option value="">Target Role</option>
+            <option value="frontend">Frontend</option>
+            <option value="backend">Backend</option>
+            <option value="fullstack">Full-stack</option>
+            <option value="data">Data</option>
+            <option value="ai">AI</option>
+          </select>
           <button id="submit-button" class="btn-primary magnetic" type="submit">Generate</button>
         </form>
         <label class="audio-reactive-toggle">
@@ -54,6 +62,25 @@
         <div id="status" class="status"></div>
         <div id="error-banner" class="error-banner" hidden></div>
       </div>
+    </section>
+
+    <section class="proof-grid reveal" data-reveal="up">
+      <article class="panel glass-card">
+        <h2>3-click onboarding</h2>
+        <ul>
+          <li>1) Enter GitHub username</li>
+          <li>2) Pick style + target role</li>
+          <li>3) Generate, edit, export, share</li>
+        </ul>
+      </article>
+      <article class="panel glass-card">
+        <h2>Instant template previews (no signup)</h2>
+        <div class="inline-actions">
+          <button class="btn-secondary magnetic demo-fill" type="button" data-demo-user="torvalds">Demo: Professional</button>
+          <button class="btn-secondary magnetic demo-fill" type="button" data-demo-user="gaearon">Demo: Prime</button>
+          <button class="btn-secondary magnetic" type="button" onclick="document.getElementById('builder-form').scrollIntoView({behavior:'smooth'})">Start now</button>
+        </div>
+      </article>
     </section>
 
     <section id="auth-dashboard" class="panel glass-card reveal" data-reveal="up">

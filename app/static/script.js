@@ -39,6 +39,7 @@ setupRevealAnimations();
 setupHeroRotator();
 if (!PERF_LOW_POWER) setupMagnetic();
 setupAuthDashboard();
+setupQuickDemos();
 if (appState.authToken) {
   loadDashboard().catch(() => {
     localStorage.removeItem("apb_token");
@@ -48,6 +49,17 @@ if (appState.authToken) {
 
 function authHeaders() {
   return appState.authToken ? { Authorization: `Bearer ${appState.authToken}` } : {};
+}
+
+function setupQuickDemos() {
+  document.querySelectorAll(".demo-fill").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      usernameInput.value = btn.dataset.demoUser || "octocat";
+      themeInput.value = btn.textContent.toLowerCase().includes("prime") ? "minimal" : "modern";
+      setStatus("Demo username set. Click Generate.");
+      form.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  });
 }
 
 function setupAuthDashboard() {

@@ -10,8 +10,13 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from app.schemas import (
+    AnalyticsSummary,
     AuthResponse,
+    BrandingSettingsRequest,
+    BrandingSettingsResponse,
     DashboardResponse,
+    DeployExportRequest,
+    DeployExportResponse,
     ErrorResponse,
     ExportRequest,
     GenerateRequest,
@@ -21,14 +26,23 @@ from app.schemas import (
     ProfileRequest,
     ProfileResponse,
     RegisterRequest,
+    RestoreVersionResponse,
+    RewriteRequest,
+    RewriteResponse,
     SaveResumeRequest,
     SaveResumeResponse,
     ShareRequest,
     ShareResponse,
+    ResumeVersionsResponse,
 )
+from app.ai_rewrite.service import rewrite_section
+from app.analytics.service import get_analytics_for_user, record_page_view, record_project_click
 from app.auth.service import create_session, register_user, resolve_user_from_token
+from app.branding.service import get_branding, upsert_branding
 from app.core.db import init_db
 from app.dashboard.service import add_generation_history, build_dashboard, save_resume_snapshot
+from app.deploy_export.service import build_deploy_package
+from app.resume_versions.service import list_versions, restore_version
 from app.services.github import GitHubService
 from app.services.portfolio import (
     build_export_filename,
@@ -97,7 +111,9 @@ def create_app() -> FastAPI:
 
     @app.get("/api/dashboard", response_model=DashboardResponse)
     async def dashboard(user: dict = Depends(get_current_user)) -> DashboardResponse:
-        return build_dashboard(user)
+        payload = build_dashboard(user)
+        payload.analytics = get_analytics_for_user(user["id"])
+        return payload
 
     @app.post("/api/dashboard/resumes", response_model=SaveResumeResponse)
     async def save_resume(payload: SaveResumeRequest, user: dict = Depends(get_current_user)) -> SaveResumeResponse:
@@ -131,6 +147,42 @@ def create_app() -> FastAPI:
             )
         finally:
             conn.close()
+
+    @app.put("/api/dashboard/resumes/{resume_id}", response_model=SaveResumeResponse)
+    async def update_resume(resume_id: int, payload: SaveResumeRequest, user: dict = Depends(get_current_user)) -> SaveResumeResponse:
+        from app.core.db import get_connection
+
+        conn = get_connection()
+        try:
+            row = conn.execute("SELECT id FROM resumes WHERE id = ? AND user_id = ?", (resume_id, user["id"])).fetchone()
+            if not row:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found.")
+
+            conn.execute(
+                "UPDATE resumes SET title = ?, status = ?, portfolio_json = ?, updated_at = datetime('now') WHERE id = ?",
+                (payload.title, payload.status, payload.portfolio.model_dump_json(), resume_id),
+            )
+            latest = conn.execute(
+                "SELECT COALESCE(MAX(version_number), 0) AS mx FROM resume_versions WHERE resume_id = ?",
+                (resume_id,),
+            ).fetchone()
+            next_version = int(latest["mx"]) + 1
+            conn.execute(
+                "INSERT INTO resume_versions(resume_id, version_number, portfolio_json) VALUES(?, ?, ?)",
+                (resume_id, next_version, payload.portfolio.model_dump_json()),
+            )
+            conn.commit()
+            return SaveResumeResponse(resume_id=resume_id, message=f"Resume updated. Snapshot v{next_version} created.")
+        finally:
+            conn.close()
+
+    @app.get("/api/dashboard/resumes/{resume_id}/versions", response_model=ResumeVersionsResponse)
+    async def get_resume_versions(resume_id: int, user: dict = Depends(get_current_user)) -> ResumeVersionsResponse:
+        return list_versions(user["id"], resume_id)
+
+    @app.post("/api/dashboard/resumes/{resume_id}/restore/{version_number}", response_model=RestoreVersionResponse)
+    async def restore_resume_version(resume_id: int, version_number: int, user: dict = Depends(get_current_user)) -> RestoreVersionResponse:
+        return restore_version(user["id"], resume_id, version_number)
 
     @app.post("/api/profile", response_model=ProfileResponse)
     async def profile(
@@ -179,6 +231,34 @@ def create_app() -> FastAPI:
             media_type="application/pdf",
             headers={"Content-Disposition": f'attachment; filename="{filename}.pdf"'},
         )
+
+    @app.post("/api/rewrite", response_model=RewriteResponse)
+    async def rewrite(payload: RewriteRequest, user: dict = Depends(get_current_user)) -> RewriteResponse:
+        _ = user
+        return rewrite_section(payload)
+
+    @app.get("/api/branding", response_model=BrandingSettingsResponse)
+    async def branding_get(user: dict = Depends(get_current_user)) -> BrandingSettingsResponse:
+        return get_branding(user["id"])
+
+    @app.put("/api/branding", response_model=BrandingSettingsResponse)
+    async def branding_put(payload: BrandingSettingsRequest, user: dict = Depends(get_current_user)) -> BrandingSettingsResponse:
+        return upsert_branding(user["id"], payload)
+
+    @app.get("/api/analytics", response_model=AnalyticsSummary)
+    async def analytics_get(user: dict = Depends(get_current_user)) -> AnalyticsSummary:
+        return get_analytics_for_user(user["id"])
+
+    @app.post("/api/deploy/export", response_model=DeployExportResponse)
+    async def deploy_export(payload: DeployExportRequest, request: Request, user: dict = Depends(get_current_user)) -> DeployExportResponse:
+        _ = user
+        filename = payload.filename or "portfolio-deploy"
+        package = build_deploy_package(payload)
+        SHARED_PORTFOLIOS[filename] = payload.portfolio
+        preview_url = str(request.base_url).rstrip("/") + f"/resume/{filename}"
+        # store package in memory-less flow by returning preview link only; package can be downloaded via export/zip meanwhile
+        _ = package
+        return DeployExportResponse(provider=payload.provider, preview_url=preview_url)
 
     @app.post("/api/share", response_model=ShareResponse)
     async def create_share_link(payload: ShareRequest, request: Request) -> ShareResponse:

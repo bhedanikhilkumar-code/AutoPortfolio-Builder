@@ -56,6 +56,7 @@ class GenerateRequest(BaseModel):
     theme: ThemeMode = "modern"
     variant_id: Literal[1, 2, 3] = 1
     try_index: Annotated[int, Field(ge=1, le=3)] = 1
+    target_role: Literal["frontend", "backend", "fullstack", "data", "ai"] | None = None
 
 
 class PortfolioSection(BaseModel):
@@ -139,6 +140,7 @@ class DashboardResponse(BaseModel):
     my_resumes: list[ResumeCard]
     saved_drafts: list[ResumeCard]
     generation_history: list[GenerationHistoryItem]
+    analytics: AnalyticsSummary | None = None
 
 
 class SaveResumeRequest(BaseModel):
@@ -150,6 +152,63 @@ class SaveResumeRequest(BaseModel):
 class SaveResumeResponse(BaseModel):
     resume_id: int
     message: str
+
+
+class ResumeVersionItem(BaseModel):
+    id: int
+    resume_id: int
+    version_number: int
+    created_at: datetime
+
+
+class ResumeVersionsResponse(BaseModel):
+    versions: list[ResumeVersionItem]
+
+
+class RestoreVersionResponse(BaseModel):
+    resume_id: int
+    restored_version: int
+    message: str
+
+
+class RewriteRequest(BaseModel):
+    section: Literal["summary", "projects", "skills"]
+    mode: Literal["concise", "ats", "storytelling"]
+    text: str
+    target_role: Literal["frontend", "backend", "fullstack", "data", "ai"] | None = None
+
+
+class RewriteResponse(BaseModel):
+    rewritten_text: str
+
+
+class BrandingSettingsRequest(BaseModel):
+    palette: str = "default"
+    font_family: str = "Inter"
+    logo_url: str | None = None
+
+
+class BrandingSettingsResponse(BaseModel):
+    palette: str
+    font_family: str
+    logo_url: str | None = None
+
+
+class DeployExportRequest(BaseModel):
+    portfolio: PortfolioResponse
+    provider: Literal["netlify", "vercel"]
+    filename: ExportFilename | None = None
+
+
+class DeployExportResponse(BaseModel):
+    provider: Literal["netlify", "vercel"]
+    preview_url: str
+
+
+class AnalyticsSummary(BaseModel):
+    total_views: int
+    total_project_clicks: int
+    top_projects: list[dict[str, int]]
 
 
 class APIError(BaseModel):
