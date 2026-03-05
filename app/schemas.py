@@ -63,7 +63,7 @@ class LinkedInProfile(BaseModel):
 class ProfileResponse(BaseModel):
     profile: GitHubProfile
     repos: list[RepoSummary]
-    linkedin: LinkedInProfile
+    linkedin: LinkedInProfile | None = None
 
 
 class GenerateRequest(BaseModel):
