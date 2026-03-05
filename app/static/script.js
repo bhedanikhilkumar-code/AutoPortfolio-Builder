@@ -575,7 +575,8 @@ function applyCustomProfileFields(portfolio) {
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const normalizedGithub = normalizeGitHubInput(usernameInput.value);
-  const normalizedLinkedIn = normalizeLinkedInInput(linkedinInput?.value || "");
+  const normalizedLinkedInRaw = normalizeLinkedInInput(linkedinInput?.value || "");
+  const normalizedLinkedIn = normalizedLinkedInRaw || normalizedGithub;
   const theme = themeInput.value;
 
   if (!appState.authToken) {
@@ -585,7 +586,9 @@ form.addEventListener("submit", async (event) => {
   }
 
   if (!normalizedGithub) return showError("Enter a valid GitHub username or profile URL.");
-  if (!normalizedLinkedIn) return showError("Enter a valid LinkedIn username or profile URL.");
+  if ((linkedinInput?.value || "").trim() && !normalizedLinkedInRaw) {
+    return showError("LinkedIn URL/username invalid. Leave empty or enter valid LinkedIn profile.");
+  }
   if (profileEmailInput?.value && !/^\S+@\S+\.\S+$/.test(profileEmailInput.value.trim())) {
     return showError("Please enter a valid email address.");
   }
@@ -595,6 +598,9 @@ form.addEventListener("submit", async (event) => {
 
   try {
     const profilePayload = await ensureProfilePayload(normalizedGithub, normalizedLinkedIn);
+    if (!normalizedLinkedInRaw) {
+      setStatus("GitHub-only mode active. LinkedIn enrichment fallback applied automatically.");
+    }
     appState.profileData = profilePayload;
     appState.username = normalizedGithub;
 
