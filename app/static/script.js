@@ -38,6 +38,7 @@ const appState = {
     resumesPage: 1,
     activityPage: 1,
   },
+  currentUserEmail: "",
 };
 let parallaxTargets = [];
 const PERF_LOW_POWER = (navigator.hardwareConcurrency || 4) <= 4;
@@ -191,8 +192,20 @@ function setupAuthDashboard() {
           headers: { ...authHeaders() },
         });
       }
+
+      if (window.google?.accounts?.id) {
+        window.google.accounts.id.disableAutoSelect();
+        if (appState.currentUserEmail) {
+          try {
+            window.google.accounts.id.revoke(appState.currentUserEmail, () => {});
+          } catch {
+            // ignore revoke failures
+          }
+        }
+      }
     } finally {
       appState.authToken = "";
+      appState.currentUserEmail = "";
       localStorage.removeItem("apb_token");
       document.getElementById("dashboard-panels").hidden = true;
       if (adminPanelsEl) adminPanelsEl.hidden = true;
@@ -234,6 +247,7 @@ async function loadDashboard() {
   const drafts = document.getElementById("dash-drafts");
   const history = document.getElementById("dash-history");
 
+  appState.currentUserEmail = data.user?.email || "";
   wrap.hidden = false;
   myResumes.innerHTML = (data.my_resumes || []).map((item) => `<li>${escapeHtml(item.title)} <button class='btn-secondary' data-edit-resume='${item.id}' type='button'>Edit existing resume</button></li>`).join("") || "<li>No resumes yet.</li>";
   drafts.innerHTML = (data.saved_drafts || []).map((item) => `<li>${escapeHtml(item.title)}</li>`).join("") || "<li>No drafts yet.</li>";
