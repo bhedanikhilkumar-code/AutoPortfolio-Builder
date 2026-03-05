@@ -1,5 +1,9 @@
 const form = document.getElementById("builder-form");
 const usernameInput = document.getElementById("username");
+const profileNameInput = document.getElementById("profile-name");
+const profileEmailInput = document.getElementById("profile-email");
+const profileSkillsInput = document.getElementById("profile-skills");
+const profileProjectsInput = document.getElementById("profile-projects");
 const themeInput = document.getElementById("theme");
 const linkedinInput = document.getElementById("linkedin-username");
 const deepModeInput = document.getElementById("deep-mode");
@@ -145,8 +149,11 @@ function setupPerformanceModeToggle() {
 function setupQuickDemos() {
   document.querySelectorAll(".demo-fill").forEach((btn) => {
     btn.addEventListener("click", () => {
-      usernameInput.value = btn.dataset.demoUser || "octocat";
-      if (linkedinInput) linkedinInput.value = btn.dataset.demoUser || "octocat";
+      const demoUser = btn.dataset.demoUser || "octocat";
+      usernameInput.value = demoUser;
+      if (linkedinInput) linkedinInput.value = demoUser;
+      if (profileNameInput && !profileNameInput.value) profileNameInput.value = demoUser;
+      if (profileEmailInput && !profileEmailInput.value) profileEmailInput.value = `${demoUser}@example.dev`;
       themeInput.value = btn.textContent.toLowerCase().includes("prime") ? "minimal" : "modern";
       setStatus("Demo username set. Click Generate.");
       form.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -480,39 +487,89 @@ function resetProfileCacheIfChanged() {
 usernameInput.addEventListener("input", resetProfileCacheIfChanged);
 linkedinInput?.addEventListener("input", resetProfileCacheIfChanged);
 
+function normalizeGitHubInput(value) {
+  const input = (value || "").trim();
+  if (!input) return "";
+  if (/^https?:\/\//i.test(input)) {
+    const match = input.match(/github\.com\/(?:[A-Za-z0-9_.-]+)\/?$/i);
+    if (!match) return "";
+    return input.replace(/\/$/, "").split("/").pop() || "";
+  }
+  return input.replace(/^@/, "");
+}
+
+function normalizeLinkedInInput(value) {
+  const input = (value || "").trim();
+  if (!input) return "";
+  if (/^https?:\/\//i.test(input)) {
+    const match = input.match(/linkedin\.com\/in\/([A-Za-z0-9-]+)/i);
+    return match ? match[1] : "";
+  }
+  return input.replace(/^@/, "");
+}
+
+function applyCustomProfileFields(portfolio) {
+  const name = (profileNameInput?.value || "").trim();
+  const email = (profileEmailInput?.value || "").trim();
+  const skills = (profileSkillsInput?.value || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const projects = (profileProjectsInput?.value || "").split(",").map((s) => s.trim()).filter(Boolean);
+
+  if (name) portfolio.about.content.name = name;
+  if (email) portfolio.contact.content.email = email;
+  if (skills.length) {
+    portfolio.skills.content.highlighted = Array.from(new Set([...(portfolio.skills.content.highlighted || []), ...skills])).slice(0, 16);
+  }
+  if (projects.length && Array.isArray(portfolio.projects.content.items)) {
+    projects.forEach((title) => {
+      portfolio.projects.content.items.push({
+        name: title,
+        description: "Custom project added by user.",
+        tech: "",
+        link: "",
+      });
+    });
+  }
+  return portfolio;
+}
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
-  const username = usernameInput.value.trim();
-  const linkedinUsername = (linkedinInput?.value || "").trim();
+  const normalizedGithub = normalizeGitHubInput(usernameInput.value);
+  const normalizedLinkedIn = normalizeLinkedInInput(linkedinInput?.value || "");
   const theme = themeInput.value;
-  if (!username) return showError("Enter a GitHub username.");
-  if (!linkedinUsername) return showError("LinkedIn username is required for strong resume generation.");
+
+  if (!normalizedGithub) return showError("Enter a valid GitHub username or profile URL.");
+  if (!normalizedLinkedIn) return showError("Enter a valid LinkedIn username or profile URL.");
+  if (profileEmailInput?.value && !/^\S+@\S+\.\S+$/.test(profileEmailInput.value.trim())) {
+    return showError("Please enter a valid email address.");
+  }
 
   setLoading(true);
   clearError();
 
   try {
-    const profilePayload = await ensureProfilePayload(username, linkedinUsername);
+    const profilePayload = await ensureProfilePayload(normalizedGithub, normalizedLinkedIn);
     appState.profileData = profilePayload;
-    appState.username = username;
+    appState.username = normalizedGithub;
 
     const nextTry = Date.now();
     const variantId = appState.selectedVariantId || 1;
     const variantPortfolio = await generateVariant(profilePayload, theme, variantId, nextTry);
+    const enrichedPortfolio = applyCustomProfileFields(deepClone(variantPortfolio));
 
     appState.variants[variantId] = {
-      portfolio: deepClone(variantPortfolio),
+      portfolio: deepClone(enrichedPortfolio),
       tryIndex: nextTry,
       generatedAt: Date.now(),
     };
 
     activateVariant(variantId);
-    setStatus(`Draft variation ${variantId}/3 generated.`);
+    setStatus(`Success! Draft variation ${variantId}/3 generated. You can preview and export now.`);
     setGenerateButtonGenerated();
   } catch (error) {
     portfolioEl.hidden = true;
     portfolioEl.innerHTML = "";
-    showError(error.message);
+    showError(error.message || "Portfolio generation failed. Please try again with valid inputs.");
     setGenerateButtonFailed();
   } finally {
     setLoading(false, { preserveLabel: true });
@@ -520,7 +577,11 @@ form.addEventListener("submit", async (event) => {
 });
 
 async function ensureProfilePayload(username, linkedinUsername) {
-  if (appState.profileData && appState.username.toLowerCase() === username.toLowerCase()) {
+  if (
+    appState.profileData &&
+    appState.username.toLowerCase() === username.toLowerCase() &&
+    (appState.profileData?.linkedin?.username || "").toLowerCase() === linkedinUsername.toLowerCase()
+  ) {
     return appState.profileData;
   }
   setStatus("Fetching GitHub + LinkedIn profile...");
@@ -569,24 +630,28 @@ function activateVariant(variantId) {
 function setLoading(isLoading, options = {}) {
   const { preserveLabel = false } = options;
   submitButton.disabled = isLoading;
+  submitButton.classList.toggle("is-loading", isLoading);
   if (!preserveLabel) {
-    submitButton.textContent = isLoading ? "Generating..." : "Generate";
+    submitButton.textContent = isLoading ? "Generating Portfolio..." : "Generate Portfolio";
   }
 }
 
 function setGenerateButtonGenerated() {
   submitButton.disabled = false;
+  submitButton.classList.remove("is-loading");
   submitButton.textContent = "Generated ✅";
 }
 
 function setGenerateButtonFailed() {
   submitButton.disabled = false;
+  submitButton.classList.remove("is-loading");
   submitButton.textContent = "Failed — Try again";
 }
 
 function resetGenerateButton() {
   submitButton.disabled = false;
-  submitButton.textContent = "Generate";
+  submitButton.classList.remove("is-loading");
+  submitButton.textContent = "Generate Portfolio";
 }
 
 function setStatus(message) { statusEl.textContent = message; }

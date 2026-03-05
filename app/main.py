@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import logging
 import os
 import secrets
 
@@ -78,6 +79,7 @@ from app.services.portfolio import (
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
 SHARED_PORTFOLIOS: dict[str, PortfolioResponse] = {}
+logger = logging.getLogger("autoporfolio_builder")
 
 
 def get_github_service() -> GitHubService:
@@ -335,6 +337,7 @@ def create_app() -> FastAPI:
         github_service: GitHubService = Depends(get_github_service),
         linkedin_service: LinkedInService = Depends(get_linkedin_service),
     ) -> ProfileResponse:
+        logger.info("profile_request github=%s linkedin=%s", payload.username, payload.linkedin_username)
         github_payload = await github_service.fetch_profile(payload.username)
         try:
             linkedin_payload = await linkedin_service.fetch_public_profile(payload.linkedin_username)
@@ -343,6 +346,7 @@ def create_app() -> FastAPI:
         except HTTPException:
             raise
         except Exception:
+            logger.exception("linkedin_enrichment_failed linkedin=%s", payload.linkedin_username)
             linkedin_slug = payload.linkedin_username.strip().strip("/").split("/")[-1].replace("in/", "")
             linkedin_payload = LinkedInProfile(
                 username=linkedin_slug or "unknown",
@@ -356,7 +360,12 @@ def create_app() -> FastAPI:
 
     @app.post("/api/generate", response_model=PortfolioResponse)
     async def generate(payload: GenerateRequest, authorization: str | None = Header(default=None)) -> PortfolioResponse:
-        result = generate_portfolio(payload)
+        logger.info("generate_request github=%s variant=%s", payload.profile.username, payload.variant_id)
+        try:
+            result = generate_portfolio(payload)
+        except Exception as exc:
+            logger.exception("generate_failed github=%s", payload.profile.username)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Portfolio generation failed. Please try again.") from exc
         if authorization and authorization.lower().startswith("bearer "):
             try:
                 user = resolve_user_from_token(authorization.split(" ", 1)[1].strip())
