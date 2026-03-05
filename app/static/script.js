@@ -258,13 +258,17 @@ async function loadAdminDashboard() {
   const activityAction = document.getElementById("admin-activity-action")?.value || "";
   const activityTarget = document.getElementById("admin-activity-target")?.value || "";
 
-  const usersParams = new URLSearchParams({ page: String(appState.adminState.usersPage), page_size: "20" });
+  const [userSortBy, userSortDir] = (document.getElementById("admin-user-sort")?.value || "created_at:desc").split(":");
+  const [resumeSortBy, resumeSortDir] = (document.getElementById("admin-resume-sort")?.value || "updated_at:desc").split(":");
+  const [activitySortBy, activitySortDir] = (document.getElementById("admin-activity-sort")?.value || "created_at:desc").split(":");
+
+  const usersParams = new URLSearchParams({ page: String(appState.adminState.usersPage), page_size: "20", sort_by: userSortBy, sort_dir: userSortDir });
   if (userSearch) usersParams.set("q", userSearch);
 
-  const resumesParams = new URLSearchParams({ page: String(appState.adminState.resumesPage), page_size: "20" });
+  const resumesParams = new URLSearchParams({ page: String(appState.adminState.resumesPage), page_size: "20", sort_by: resumeSortBy, sort_dir: resumeSortDir });
   if (resumeSearch) resumesParams.set("q", resumeSearch);
 
-  const activityParams = new URLSearchParams({ page: String(appState.adminState.activityPage), page_size: "20" });
+  const activityParams = new URLSearchParams({ page: String(appState.adminState.activityPage), page_size: "20", sort_by: activitySortBy, sort_dir: activitySortDir });
   if (activityAction) activityParams.set("action", activityAction);
   if (activityTarget) activityParams.set("target_type", activityTarget);
 
@@ -351,7 +355,7 @@ async function loadAdminDashboard() {
     });
   });
 
-  ["admin-user-search", "admin-resume-search", "admin-activity-action", "admin-activity-target"].forEach((id) => {
+  ["admin-user-search", "admin-user-sort", "admin-resume-search", "admin-resume-sort", "admin-activity-action", "admin-activity-target", "admin-activity-sort"].forEach((id) => {
     const el = document.getElementById(id);
     if (!el || el.dataset.bound) return;
     el.dataset.bound = "1";

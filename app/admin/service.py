@@ -38,12 +38,26 @@ def get_admin_stats() -> AdminStatsResponse:
         conn.close()
 
 
-def get_admin_users_overview(page: int = 1, page_size: int = 20, query: str | None = None) -> AdminUsersResponse:
+def get_admin_users_overview(
+    page: int = 1,
+    page_size: int = 20,
+    query: str | None = None,
+    sort_by: str = "created_at",
+    sort_dir: str = "desc",
+) -> AdminUsersResponse:
     conn = get_connection()
     try:
         offset = (page - 1) * page_size
         where = ""
         params: list[object] = []
+        sort_map = {
+            "created_at": "u.created_at",
+            "email": "u.email",
+            "resume_count": "resume_count",
+            "generation_count": "generation_count",
+        }
+        order_col = sort_map.get(sort_by, "u.created_at")
+        order_dir = "ASC" if sort_dir.lower() == "asc" else "DESC"
         if query:
             where = "WHERE u.email LIKE ?"
             params.append(f"%{query.strip().lower()}%")
@@ -77,7 +91,7 @@ def get_admin_users_overview(page: int = 1, page_size: int = 20, query: str | No
                 GROUP BY user_id
             ) g ON g.user_id = u.id
             {where}
-            ORDER BY u.created_at DESC
+            ORDER BY {order_col} {order_dir}
             LIMIT ? OFFSET ?
             """,
             tuple(params + [page_size, offset]),
@@ -100,12 +114,26 @@ def get_admin_users_overview(page: int = 1, page_size: int = 20, query: str | No
         conn.close()
 
 
-def get_admin_resumes_overview(page: int = 1, page_size: int = 20, query: str | None = None) -> AdminResumesResponse:
+def get_admin_resumes_overview(
+    page: int = 1,
+    page_size: int = 20,
+    query: str | None = None,
+    sort_by: str = "updated_at",
+    sort_dir: str = "desc",
+) -> AdminResumesResponse:
     conn = get_connection()
     try:
         offset = (page - 1) * page_size
         where = ""
         params: list[object] = []
+        sort_map = {
+            "updated_at": "r.updated_at",
+            "title": "r.title",
+            "status": "r.status",
+            "owner_email": "u.email",
+        }
+        order_col = sort_map.get(sort_by, "r.updated_at")
+        order_dir = "ASC" if sort_dir.lower() == "asc" else "DESC"
         if query:
             where = "WHERE (r.title LIKE ? OR u.email LIKE ?)"
             q = f"%{query.strip().lower()}%"
@@ -124,7 +152,7 @@ def get_admin_resumes_overview(page: int = 1, page_size: int = 20, query: str | 
             FROM resumes r
             JOIN users u ON u.id = r.user_id
             {where}
-            ORDER BY r.updated_at DESC
+            ORDER BY {order_col} {order_dir}
             LIMIT ? OFFSET ?
             """,
             tuple(params + [page_size, offset]),
@@ -188,12 +216,22 @@ def get_admin_activity(
     action: str | None = None,
     target_type: str | None = None,
     admin_user_id: int | None = None,
+    sort_by: str = "created_at",
+    sort_dir: str = "desc",
 ) -> AdminActivityResponse:
     conn = get_connection()
     try:
         offset = (page - 1) * page_size
         filters: list[str] = []
         params: list[object] = []
+        sort_map = {
+            "created_at": "created_at",
+            "action": "action",
+            "target_type": "target_type",
+            "admin_user_id": "admin_user_id",
+        }
+        order_col = sort_map.get(sort_by, "created_at")
+        order_dir = "ASC" if sort_dir.lower() == "asc" else "DESC"
         if action:
             filters.append("action = ?")
             params.append(action)
@@ -218,7 +256,7 @@ def get_admin_activity(
             SELECT id, admin_user_id, action, target_type, target_id, details, created_at
             FROM admin_activity_logs
             {where}
-            ORDER BY created_at DESC
+            ORDER BY {order_col} {order_dir}
             LIMIT ? OFFSET ?
             """,
             tuple(params + [page_size, offset]),

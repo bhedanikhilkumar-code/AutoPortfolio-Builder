@@ -126,7 +126,21 @@
           <div class="inline-actions"><button id="admin-refresh" class="btn-secondary magnetic" type="button">Refresh Admin Data</button></div>
           <div class="inline-actions">
             <input id="admin-user-search" placeholder="Search users by email">
+            <select id="admin-user-sort">
+              <option value="created_at:desc">Users: Newest</option>
+              <option value="created_at:asc">Users: Oldest</option>
+              <option value="email:asc">Users: Email A-Z</option>
+              <option value="email:desc">Users: Email Z-A</option>
+            </select>
+          </div>
+          <div class="inline-actions">
             <input id="admin-resume-search" placeholder="Search resumes by title/email">
+            <select id="admin-resume-sort">
+              <option value="updated_at:desc">Resumes: Latest</option>
+              <option value="updated_at:asc">Resumes: Oldest</option>
+              <option value="title:asc">Resumes: Title A-Z</option>
+              <option value="status:asc">Resumes: Status</option>
+            </select>
           </div>
           <div class="inline-actions">
             <select id="admin-activity-action">
@@ -140,6 +154,11 @@
               <option value="">All targets</option>
               <option value="user">User</option>
               <option value="resume">Resume</option>
+            </select>
+            <select id="admin-activity-sort">
+              <option value="created_at:desc">Activity: Latest</option>
+              <option value="created_at:asc">Activity: Oldest</option>
+              <option value="action:asc">Activity: Action A-Z</option>
             </select>
           </div>
           <p id="admin-stats" class="muted-note">No admin data loaded yet.</p>

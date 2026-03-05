@@ -177,8 +177,10 @@ def create_app() -> FastAPI:
         page: int = Query(default=1, ge=1),
         page_size: int = Query(default=20, ge=1, le=100),
         q: str | None = Query(default=None),
+        sort_by: str = Query(default="created_at"),
+        sort_dir: str = Query(default="desc"),
     ) -> AdminUsersResponse:
-        return get_admin_users_overview(page=page, page_size=page_size, query=q)
+        return get_admin_users_overview(page=page, page_size=page_size, query=q, sort_by=sort_by, sort_dir=sort_dir)
 
     @app.get("/api/admin/resumes", response_model=AdminResumesResponse)
     async def admin_resumes(
@@ -186,8 +188,10 @@ def create_app() -> FastAPI:
         page: int = Query(default=1, ge=1),
         page_size: int = Query(default=20, ge=1, le=100),
         q: str | None = Query(default=None),
+        sort_by: str = Query(default="updated_at"),
+        sort_dir: str = Query(default="desc"),
     ) -> AdminResumesResponse:
-        return get_admin_resumes_overview(page=page, page_size=page_size, query=q)
+        return get_admin_resumes_overview(page=page, page_size=page_size, query=q, sort_by=sort_by, sort_dir=sort_dir)
 
     @app.get("/api/admin/activity", response_model=AdminActivityResponse)
     async def admin_activity(
@@ -197,6 +201,8 @@ def create_app() -> FastAPI:
         action: str | None = Query(default=None),
         target_type: str | None = Query(default=None),
         admin_user_id: int | None = Query(default=None, ge=1),
+        sort_by: str = Query(default="created_at"),
+        sort_dir: str = Query(default="desc"),
     ) -> AdminActivityResponse:
         return get_admin_activity(
             page=page,
@@ -204,6 +210,8 @@ def create_app() -> FastAPI:
             action=action,
             target_type=target_type,
             admin_user_id=admin_user_id,
+            sort_by=sort_by,
+            sort_dir=sort_dir,
         )
 
     @app.post("/api/admin/users/{user_id}/suspend", response_model=AdminActionResponse)
