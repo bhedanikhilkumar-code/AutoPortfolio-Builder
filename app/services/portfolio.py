@@ -113,6 +113,9 @@ def generate_portfolio(payload: GenerateRequest) -> PortfolioResponse:
         if payload.variant_id == 1 and payload.try_index == 1
         else rng.choice(hero_templates[payload.variant_id])
     )
+    confidence_tone = _resolve_confidence_tone(payload.linkedin.confidence_score, payload.deep_mode)
+    if confidence_tone and confidence_tone not in about_variant:
+        about_variant.insert(0, confidence_tone)
 
     return PortfolioResponse(
         theme=payload.theme,
@@ -120,7 +123,11 @@ def generate_portfolio(payload: GenerateRequest) -> PortfolioResponse:
             title="Hero",
             content={
                 "headline": headline,
-                "subheadline": rng.choice(subheadline_templates[payload.variant_id]),
+                "subheadline": _merge_confidence_subheadline(
+                    rng.choice(subheadline_templates[payload.variant_id]),
+                    payload.linkedin.confidence_score,
+                    payload.deep_mode,
+                ),
                 "stats": {
                     "public_repos": payload.profile.public_repos,
                     "followers": payload.profile.followers,
@@ -244,6 +251,26 @@ def _build_highlighted_skills(skills: list[str], variant_id: int) -> list[str]:
     if variant_id == 2:
         return skills[:10]
     return skills[:8]
+
+
+def _merge_confidence_subheadline(base: str, confidence: float, deep_mode: bool) -> str:
+    if not deep_mode:
+        return base
+    if confidence >= 0.8:
+        return f"{base} | Confidence: High-signal profile mapping enabled."
+    if confidence >= 0.5:
+        return f"{base} | Confidence: Balanced enrichment mode active."
+    return f"{base} | Confidence: Safe-mode enrichment (limited public signals)."
+
+
+def _resolve_confidence_tone(confidence: float, deep_mode: bool) -> str:
+    if not deep_mode:
+        return ""
+    if confidence >= 0.8:
+        return "Profile confidence high: premium, outcome-focused positioning enabled."
+    if confidence >= 0.5:
+        return "Profile confidence medium: strong but balanced resume language applied."
+    return "Profile confidence low: conservative and ATS-safe wording applied."
 
 
 def _build_ats_keywords(top_languages: list[str], top_topics: list[str]) -> list[str]:

@@ -198,7 +198,7 @@ def test_generate_endpoint_handles_empty_repositories() -> None:
     assert response.status_code == 200
     portfolio = response.json()
     assert portfolio["hero"]["content"]["headline"] == "solo builds software that ships."
-    assert portfolio["about"]["content"]["summary"][0] == "Getting started with open source projects on GitHub"
+    assert "Getting started with open source projects on GitHub" in portfolio["about"]["content"]["summary"]
     assert portfolio["projects"]["content"]["items"] == []
     assert portfolio["skills"]["content"]["highlighted"] == []
 

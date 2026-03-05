@@ -241,8 +241,11 @@ async function ensureProfilePayload(username, linkedinUsername) {
     headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify({ username, linkedin_username: linkedinUsername }),
   });
-  const profilePayload = await profileResponse.json();
+  const profilePayload = await parseErrorPayload(profileResponse);
   if (!profileResponse.ok) throw new Error(getErrorMessage(profilePayload, "Failed to fetch profile."));
+  if (!profilePayload || typeof profilePayload !== "object") {
+    throw new Error("Profile service returned an unexpected response. Please try again.");
+  }
   const li = profilePayload.linkedin || {};
   if (li.provider_used) {
     setStatus(`Profile signals ready • LinkedIn provider: ${li.provider_used} • confidence: ${Math.round((li.confidence_score || 0) * 100)}%`);

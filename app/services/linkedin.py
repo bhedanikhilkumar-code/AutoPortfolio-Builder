@@ -33,13 +33,32 @@ class LinkedInService:
 
         best: LinkedInProfile | None = None
         for provider in providers:
-            candidate = await provider(slug, profile_url)
+            try:
+                candidate = await provider(slug, profile_url)
+            except Exception:
+                candidate = LinkedInProfile(
+                    username=slug,
+                    url=profile_url,
+                    summary=["LinkedIn provider failed; fallback applied."],
+                    provider_used="provider_exception_fallback",
+                    confidence_score=0.08,
+                    signals=["provider_exception"],
+                )
             if best is None or candidate.confidence_score > best.confidence_score:
                 best = candidate
             if candidate.confidence_score >= 0.8:
                 break
 
-        assert best is not None
+        if best is None:
+            best = LinkedInProfile(
+                username=slug,
+                url=profile_url,
+                summary=["LinkedIn profile connected."],
+                provider_used="global_fallback",
+                confidence_score=0.05,
+                signals=["empty_chain_fallback"],
+            )
+
         self._cache[slug] = (now, best)
         return best
 
