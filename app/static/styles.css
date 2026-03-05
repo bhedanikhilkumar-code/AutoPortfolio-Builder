@@ -413,6 +413,22 @@ a { color: var(--accent-2); text-decoration: none; }
   .cursor-ring { display: none; }
 }
 
+body.performance-mode .cursor-dot,
+body.performance-mode .cursor-ring,
+body.performance-mode #bg-animation,
+body.performance-mode .bg-overlay {
+  display: none !important;
+}
+
+body.performance-mode .panel,
+body.performance-mode .project,
+body.performance-mode .editor-section,
+body.performance-mode button,
+body.performance-mode .floating-cta {
+  transition: none !important;
+  transform: none !important;
+}
+
 @media (max-width: 980px) {
   .workspace { grid-template-columns: 1fr; }
   .editor { position: static; }

@@ -3,6 +3,7 @@ const usernameInput = document.getElementById("username");
 const themeInput = document.getElementById("theme");
 const linkedinInput = document.getElementById("linkedin-username");
 const deepModeInput = document.getElementById("deep-mode");
+const performanceModeInput = document.getElementById("performance-mode");
 const submitButton = document.getElementById("submit-button");
 const statusEl = document.getElementById("status");
 const errorBannerEl = document.getElementById("error-banner");
@@ -28,18 +29,21 @@ const appState = {
   pdfTryHistoryByUsername: {},
   pdfTryCountByUsername: {},
   authToken: localStorage.getItem("apb_token") || "",
+  performanceMode: localStorage.getItem("apb_perf_mode") === "1",
 };
 let parallaxTargets = [];
 const PERF_LOW_POWER = (navigator.hardwareConcurrency || 4) <= 4;
+if (PERF_LOW_POWER) appState.performanceMode = true;
 
+setupPerformanceModeToggle();
 setupIntroLoader();
-const warpController = setupWarpBackground();
+const warpController = appState.performanceMode ? null : setupWarpBackground();
 setupAudioReactiveToggle();
-if (!PERF_LOW_POWER) setupCustomCursor();
-if (!PERF_LOW_POWER) setupMouseParallax();
+if (!appState.performanceMode) setupCustomCursor();
+if (!appState.performanceMode) setupMouseParallax();
 setupRevealAnimations();
-setupHeroRotator();
-if (!PERF_LOW_POWER) setupMagnetic();
+if (!appState.performanceMode) setupHeroRotator();
+if (!appState.performanceMode) setupMagnetic();
 setupAuthDashboard();
 setupQuickDemos();
 if (appState.authToken) {
@@ -51,6 +55,18 @@ if (appState.authToken) {
 
 function authHeaders() {
   return appState.authToken ? { Authorization: `Bearer ${appState.authToken}` } : {};
+}
+
+function setupPerformanceModeToggle() {
+  document.body.classList.toggle("performance-mode", appState.performanceMode);
+  if (!performanceModeInput) return;
+  performanceModeInput.checked = appState.performanceMode;
+  performanceModeInput.addEventListener("change", () => {
+    appState.performanceMode = Boolean(performanceModeInput.checked);
+    localStorage.setItem("apb_perf_mode", appState.performanceMode ? "1" : "0");
+    setStatus("Performance mode updated. Reloading UI...");
+    window.setTimeout(() => window.location.reload(), 250);
+  });
 }
 
 function setupQuickDemos() {

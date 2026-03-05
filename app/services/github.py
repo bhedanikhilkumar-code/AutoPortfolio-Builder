@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import time
 from dataclasses import dataclass, field
 
 import httpx
@@ -15,9 +16,17 @@ GITHUB_API_BASE = "https://api.github.com"
 @dataclass(slots=True)
 class GitHubService:
     timeout_seconds: float = 10.0
+    cache_ttl_seconds: int = 600
     github_token: str | None = field(default_factory=lambda: os.getenv("GITHUB_TOKEN"))
+    _cache: dict[str, tuple[float, ProfileResponse]] = field(default_factory=dict)
 
     async def fetch_profile(self, username: str) -> ProfileResponse:
+        cache_key = username.lower().strip()
+        now = time.time()
+        cached = self._cache.get(cache_key)
+        if cached and now - cached[0] < self.cache_ttl_seconds:
+            return cached[1]
+
         try:
             user_response, repo_response = await self._fetch_profile_payload(
                 username,
@@ -60,7 +69,9 @@ class GitHubService:
             for repo in repo_response
             if not repo.get("fork", False)
         ]
-        return ProfileResponse(profile=profile, repos=repos)
+        response = ProfileResponse(profile=profile, repos=repos)
+        self._cache[cache_key] = (now, response)
+        return response
 
     async def _fetch_profile_payload(
         self,
