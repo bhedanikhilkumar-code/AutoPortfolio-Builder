@@ -77,6 +77,18 @@ class FailingGitHubService:
         raise HTTPException(status_code=404, detail="GitHub user not found.")
 
 
+class SlugInferenceLinkedInService:
+    async def fetch_public_profile(self, username: str) -> LinkedInProfile:
+        return LinkedInProfile(
+            username=username,
+            url=f"https://www.linkedin.com/in/{username}/",
+            provider_used="slug_inference",
+            confidence_score=0.25,
+            signals=["slug_inference"],
+            summary=["LinkedIn profile inferred from username."],
+        )
+
+
 client = TestClient(app)
 
 
@@ -133,6 +145,15 @@ def test_profile_endpoint_validates_linkedin_username() -> None:
 
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "validation_error"
+
+
+def test_profile_endpoint_rejects_unverified_linkedin_username() -> None:
+    app.dependency_overrides[get_linkedin_service] = lambda: SlugInferenceLinkedInService()
+
+    response = client.post("/api/profile", json={"username": "octocat", "linkedin_username": "randomslug"})
+
+    assert response.status_code == 404
+    assert response.json()["error"]["message"] == "LinkedIn username not verified. Please enter a valid public LinkedIn username."
 
 
 def test_generate_endpoint_accepts_selected_theme() -> None:
