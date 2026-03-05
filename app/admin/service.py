@@ -38,11 +38,25 @@ def get_admin_stats() -> AdminStatsResponse:
         conn.close()
 
 
-def get_admin_users_overview(limit: int = 100) -> AdminUsersResponse:
+def get_admin_users_overview(page: int = 1, page_size: int = 20, query: str | None = None) -> AdminUsersResponse:
     conn = get_connection()
     try:
+        offset = (page - 1) * page_size
+        where = ""
+        params: list[object] = []
+        if query:
+            where = "WHERE u.email LIKE ?"
+            params.append(f"%{query.strip().lower()}%")
+
+        total = int(
+            conn.execute(
+                f"SELECT COUNT(*) AS count FROM users u {where}",
+                tuple(params),
+            ).fetchone()["count"]
+        )
+
         rows = conn.execute(
-            """
+            f"""
             SELECT
                 u.id,
                 u.email,
@@ -62,10 +76,11 @@ def get_admin_users_overview(limit: int = 100) -> AdminUsersResponse:
                 FROM generation_history
                 GROUP BY user_id
             ) g ON g.user_id = u.id
+            {where}
             ORDER BY u.created_at DESC
-            LIMIT ?
+            LIMIT ? OFFSET ?
             """,
-            (limit,),
+            tuple(params + [page_size, offset]),
         ).fetchall()
 
         users = [
@@ -80,23 +95,39 @@ def get_admin_users_overview(limit: int = 100) -> AdminUsersResponse:
             )
             for row in rows
         ]
-        return AdminUsersResponse(users=users)
+        return AdminUsersResponse(users=users, total=total, page=page, page_size=page_size)
     finally:
         conn.close()
 
 
-def get_admin_resumes_overview(limit: int = 200) -> AdminResumesResponse:
+def get_admin_resumes_overview(page: int = 1, page_size: int = 20, query: str | None = None) -> AdminResumesResponse:
     conn = get_connection()
     try:
+        offset = (page - 1) * page_size
+        where = ""
+        params: list[object] = []
+        if query:
+            where = "WHERE (r.title LIKE ? OR u.email LIKE ?)"
+            q = f"%{query.strip().lower()}%"
+            params.extend([q, q])
+
+        total = int(
+            conn.execute(
+                f"SELECT COUNT(*) AS count FROM resumes r JOIN users u ON u.id = r.user_id {where}",
+                tuple(params),
+            ).fetchone()["count"]
+        )
+
         rows = conn.execute(
-            """
+            f"""
             SELECT r.id, r.user_id, u.email AS owner_email, r.title, r.status, r.updated_at
             FROM resumes r
             JOIN users u ON u.id = r.user_id
+            {where}
             ORDER BY r.updated_at DESC
-            LIMIT ?
+            LIMIT ? OFFSET ?
             """,
-            (limit,),
+            tuple(params + [page_size, offset]),
         ).fetchall()
 
         resumes = [
@@ -110,7 +141,7 @@ def get_admin_resumes_overview(limit: int = 200) -> AdminResumesResponse:
             )
             for row in rows
         ]
-        return AdminResumesResponse(resumes=resumes)
+        return AdminResumesResponse(resumes=resumes, total=total, page=page, page_size=page_size)
     finally:
         conn.close()
 
@@ -151,17 +182,46 @@ def delete_resume_admin(admin_user_id: int, resume_id: int) -> AdminActionRespon
         conn.close()
 
 
-def get_admin_activity(limit: int = 100) -> AdminActivityResponse:
+def get_admin_activity(
+    page: int = 1,
+    page_size: int = 20,
+    action: str | None = None,
+    target_type: str | None = None,
+    admin_user_id: int | None = None,
+) -> AdminActivityResponse:
     conn = get_connection()
     try:
+        offset = (page - 1) * page_size
+        filters: list[str] = []
+        params: list[object] = []
+        if action:
+            filters.append("action = ?")
+            params.append(action)
+        if target_type:
+            filters.append("target_type = ?")
+            params.append(target_type)
+        if admin_user_id is not None:
+            filters.append("admin_user_id = ?")
+            params.append(admin_user_id)
+
+        where = f"WHERE {' AND '.join(filters)}" if filters else ""
+
+        total = int(
+            conn.execute(
+                f"SELECT COUNT(*) AS count FROM admin_activity_logs {where}",
+                tuple(params),
+            ).fetchone()["count"]
+        )
+
         rows = conn.execute(
-            """
+            f"""
             SELECT id, admin_user_id, action, target_type, target_id, details, created_at
             FROM admin_activity_logs
+            {where}
             ORDER BY created_at DESC
-            LIMIT ?
+            LIMIT ? OFFSET ?
             """,
-            (limit,),
+            tuple(params + [page_size, offset]),
         ).fetchall()
         logs = [
             AdminActivityItem(
@@ -175,7 +235,7 @@ def get_admin_activity(limit: int = 100) -> AdminActivityResponse:
             )
             for row in rows
         ]
-        return AdminActivityResponse(logs=logs)
+        return AdminActivityResponse(logs=logs, total=total, page=page, page_size=page_size)
     finally:
         conn.close()
 

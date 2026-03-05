@@ -5,7 +5,7 @@ import os
 import secrets
 
 import httpx
-from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -172,16 +172,39 @@ def create_app() -> FastAPI:
         return get_admin_stats()
 
     @app.get("/api/admin/users", response_model=AdminUsersResponse)
-    async def admin_users(_: dict = Depends(require_admin)) -> AdminUsersResponse:
-        return get_admin_users_overview()
+    async def admin_users(
+        _: dict = Depends(require_admin),
+        page: int = Query(default=1, ge=1),
+        page_size: int = Query(default=20, ge=1, le=100),
+        q: str | None = Query(default=None),
+    ) -> AdminUsersResponse:
+        return get_admin_users_overview(page=page, page_size=page_size, query=q)
 
     @app.get("/api/admin/resumes", response_model=AdminResumesResponse)
-    async def admin_resumes(_: dict = Depends(require_admin)) -> AdminResumesResponse:
-        return get_admin_resumes_overview()
+    async def admin_resumes(
+        _: dict = Depends(require_admin),
+        page: int = Query(default=1, ge=1),
+        page_size: int = Query(default=20, ge=1, le=100),
+        q: str | None = Query(default=None),
+    ) -> AdminResumesResponse:
+        return get_admin_resumes_overview(page=page, page_size=page_size, query=q)
 
     @app.get("/api/admin/activity", response_model=AdminActivityResponse)
-    async def admin_activity(_: dict = Depends(require_admin)) -> AdminActivityResponse:
-        return get_admin_activity()
+    async def admin_activity(
+        _: dict = Depends(require_admin),
+        page: int = Query(default=1, ge=1),
+        page_size: int = Query(default=20, ge=1, le=100),
+        action: str | None = Query(default=None),
+        target_type: str | None = Query(default=None),
+        admin_user_id: int | None = Query(default=None, ge=1),
+    ) -> AdminActivityResponse:
+        return get_admin_activity(
+            page=page,
+            page_size=page_size,
+            action=action,
+            target_type=target_type,
+            admin_user_id=admin_user_id,
+        )
 
     @app.post("/api/admin/users/{user_id}/suspend", response_model=AdminActionResponse)
     async def admin_suspend_user(user_id: int, admin: dict = Depends(require_admin)) -> AdminActionResponse:

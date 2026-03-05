@@ -124,6 +124,24 @@
         <div class="editor-section">
           <h3>Admin Control Panel</h3>
           <div class="inline-actions"><button id="admin-refresh" class="btn-secondary magnetic" type="button">Refresh Admin Data</button></div>
+          <div class="inline-actions">
+            <input id="admin-user-search" placeholder="Search users by email">
+            <input id="admin-resume-search" placeholder="Search resumes by title/email">
+          </div>
+          <div class="inline-actions">
+            <select id="admin-activity-action">
+              <option value="">All actions</option>
+              <option value="suspend">Suspend</option>
+              <option value="activate">Activate</option>
+              <option value="force_publish">Force Publish</option>
+              <option value="delete">Delete</option>
+            </select>
+            <select id="admin-activity-target">
+              <option value="">All targets</option>
+              <option value="user">User</option>
+              <option value="resume">Resume</option>
+            </select>
+          </div>
           <p id="admin-stats" class="muted-note">No admin data loaded yet.</p>
           <h4>Users Overview</h4><ul id="admin-users"></ul>
           <h4>Recent Resumes</h4><ul id="admin-resumes"></ul>

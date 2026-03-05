@@ -32,6 +32,11 @@ const appState = {
   pdfTryCountByUsername: {},
   authToken: localStorage.getItem("apb_token") || "",
   performanceMode: localStorage.getItem("apb_perf_mode") === "1",
+  adminState: {
+    usersPage: 1,
+    resumesPage: 1,
+    activityPage: 1,
+  },
 };
 let parallaxTargets = [];
 const PERF_LOW_POWER = (navigator.hardwareConcurrency || 4) <= 4;
@@ -248,11 +253,26 @@ async function callAdminAction(url, method = "POST") {
 async function loadAdminDashboard() {
   if (!adminPanelsEl) return;
 
+  const userSearch = document.getElementById("admin-user-search")?.value?.trim() || "";
+  const resumeSearch = document.getElementById("admin-resume-search")?.value?.trim() || "";
+  const activityAction = document.getElementById("admin-activity-action")?.value || "";
+  const activityTarget = document.getElementById("admin-activity-target")?.value || "";
+
+  const usersParams = new URLSearchParams({ page: String(appState.adminState.usersPage), page_size: "20" });
+  if (userSearch) usersParams.set("q", userSearch);
+
+  const resumesParams = new URLSearchParams({ page: String(appState.adminState.resumesPage), page_size: "20" });
+  if (resumeSearch) resumesParams.set("q", resumeSearch);
+
+  const activityParams = new URLSearchParams({ page: String(appState.adminState.activityPage), page_size: "20" });
+  if (activityAction) activityParams.set("action", activityAction);
+  if (activityTarget) activityParams.set("target_type", activityTarget);
+
   const [statsRes, usersRes, resumesRes, activityRes] = await Promise.all([
     fetch("/api/admin/stats", { headers: { ...authHeaders() } }),
-    fetch("/api/admin/users", { headers: { ...authHeaders() } }),
-    fetch("/api/admin/resumes", { headers: { ...authHeaders() } }),
-    fetch("/api/admin/activity", { headers: { ...authHeaders() } }),
+    fetch(`/api/admin/users?${usersParams.toString()}`, { headers: { ...authHeaders() } }),
+    fetch(`/api/admin/resumes?${resumesParams.toString()}`, { headers: { ...authHeaders() } }),
+    fetch(`/api/admin/activity?${activityParams.toString()}`, { headers: { ...authHeaders() } }),
   ]);
 
   const stats = await parseErrorPayload(statsRes);
@@ -276,13 +296,16 @@ async function loadAdminDashboard() {
     statsEl.textContent = `Users: ${stats.total_users} | Admins: ${stats.total_admins} | Resumes: ${stats.total_resumes} | Drafts: ${stats.total_drafts} | Published: ${stats.total_published} | Generations: ${stats.total_generations}`;
   }
   if (usersEl) {
-    usersEl.innerHTML = (users.users || []).slice(0, 20).map((u) => `<li>${escapeHtml(u.email)} ${u.is_admin ? "(admin)" : ""} ${u.is_active ? "" : "(suspended)"} • resumes: ${u.resume_count} • generations: ${u.generation_count} <button class='btn-secondary' data-admin-action='${u.is_active ? "suspend" : "activate"}' data-user-id='${u.id}' type='button'>${u.is_active ? "Suspend" : "Activate"}</button></li>`).join("") || "<li>No users.</li>";
+    usersEl.innerHTML = ((users.users || []).map((u) => `<li>${escapeHtml(u.email)} ${u.is_admin ? "(admin)" : ""} ${u.is_active ? "" : "(suspended)"} • resumes: ${u.resume_count} • generations: ${u.generation_count} <button class='btn-secondary' data-admin-action='${u.is_active ? "suspend" : "activate"}' data-user-id='${u.id}' type='button'>${u.is_active ? "Suspend" : "Activate"}</button></li>`).join("")) || "<li>No users.</li>";
+    usersEl.innerHTML += `<li class='muted-note'>Page ${users.page} • showing ${users.users.length} of ${users.total} <button class='btn-secondary' data-admin-page='users-prev' type='button'>Prev</button> <button class='btn-secondary' data-admin-page='users-next' type='button'>Next</button></li>`;
   }
   if (resumesEl) {
-    resumesEl.innerHTML = (resumes.resumes || []).slice(0, 20).map((r) => `<li>#${r.id} ${escapeHtml(r.title)} • ${escapeHtml(r.owner_email)} • ${escapeHtml(r.status)} <button class='btn-secondary' data-admin-resume='publish' data-resume-id='${r.id}' type='button'>Force Publish</button> <button class='btn-danger' data-admin-resume='delete' data-resume-id='${r.id}' type='button'>Delete</button></li>`).join("") || "<li>No resumes.</li>";
+    resumesEl.innerHTML = ((resumes.resumes || []).map((r) => `<li>#${r.id} ${escapeHtml(r.title)} • ${escapeHtml(r.owner_email)} • ${escapeHtml(r.status)} <button class='btn-secondary' data-admin-resume='publish' data-resume-id='${r.id}' type='button'>Force Publish</button> <button class='btn-danger' data-admin-resume='delete' data-resume-id='${r.id}' type='button'>Delete</button></li>`).join("")) || "<li>No resumes.</li>";
+    resumesEl.innerHTML += `<li class='muted-note'>Page ${resumes.page} • showing ${resumes.resumes.length} of ${resumes.total} <button class='btn-secondary' data-admin-page='resumes-prev' type='button'>Prev</button> <button class='btn-secondary' data-admin-page='resumes-next' type='button'>Next</button></li>`;
   }
   if (activityEl) {
-    activityEl.innerHTML = (activity.logs || []).slice(0, 20).map((a) => `<li>${escapeHtml(a.action)} ${escapeHtml(a.target_type)}#${a.target_id} • admin:${a.admin_user_id}</li>`).join("") || "<li>No activity yet.</li>";
+    activityEl.innerHTML = ((activity.logs || []).map((a) => `<li>${escapeHtml(a.action)} ${escapeHtml(a.target_type)}#${a.target_id} • admin:${a.admin_user_id}</li>`).join("")) || "<li>No activity yet.</li>";
+    activityEl.innerHTML += `<li class='muted-note'>Page ${activity.page} • showing ${activity.logs.length} of ${activity.total} <button class='btn-secondary' data-admin-page='activity-prev' type='button'>Prev</button> <button class='btn-secondary' data-admin-page='activity-next' type='button'>Next</button></li>`;
   }
 
   document.querySelectorAll("[data-admin-action]").forEach((btn) => {
@@ -309,6 +332,33 @@ async function loadAdminDashboard() {
         await callAdminAction(`/api/admin/resumes/${resumeId}/publish`);
       }
       showToast(`Resume ${action} action complete.`, "success");
+      await loadAdminDashboard();
+    });
+  });
+
+  document.querySelectorAll("[data-admin-page]").forEach((btn) => {
+    if (btn.dataset.bound) return;
+    btn.dataset.bound = "1";
+    btn.addEventListener("click", async () => {
+      const kind = btn.dataset.adminPage;
+      if (kind === "users-prev") appState.adminState.usersPage = Math.max(1, appState.adminState.usersPage - 1);
+      if (kind === "users-next") appState.adminState.usersPage += 1;
+      if (kind === "resumes-prev") appState.adminState.resumesPage = Math.max(1, appState.adminState.resumesPage - 1);
+      if (kind === "resumes-next") appState.adminState.resumesPage += 1;
+      if (kind === "activity-prev") appState.adminState.activityPage = Math.max(1, appState.adminState.activityPage - 1);
+      if (kind === "activity-next") appState.adminState.activityPage += 1;
+      await loadAdminDashboard();
+    });
+  });
+
+  ["admin-user-search", "admin-resume-search", "admin-activity-action", "admin-activity-target"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el || el.dataset.bound) return;
+    el.dataset.bound = "1";
+    el.addEventListener("change", async () => {
+      appState.adminState.usersPage = 1;
+      appState.adminState.resumesPage = 1;
+      appState.adminState.activityPage = 1;
       await loadAdminDashboard();
     });
   });

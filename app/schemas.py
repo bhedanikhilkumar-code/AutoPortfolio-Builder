@@ -193,6 +193,9 @@ class AdminUserItem(BaseModel):
 
 class AdminUsersResponse(BaseModel):
     users: list[AdminUserItem]
+    total: int
+    page: int
+    page_size: int
 
 
 class AdminResumeItem(BaseModel):
@@ -206,6 +209,9 @@ class AdminResumeItem(BaseModel):
 
 class AdminResumesResponse(BaseModel):
     resumes: list[AdminResumeItem]
+    total: int
+    page: int
+    page_size: int
 
 
 class AdminActivityItem(BaseModel):
@@ -220,6 +226,9 @@ class AdminActivityItem(BaseModel):
 
 class AdminActivityResponse(BaseModel):
     logs: list[AdminActivityItem]
+    total: int
+    page: int
+    page_size: int
 
 
 class AdminActionResponse(BaseModel):
