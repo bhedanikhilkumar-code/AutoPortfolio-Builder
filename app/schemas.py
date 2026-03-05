@@ -118,6 +118,7 @@ class ShareResponse(BaseModel):
 
 
 class RegisterRequest(BaseModel):
+    name: Annotated[str, Field(min_length=2, max_length=80)]
     email: str
     password: Annotated[str, Field(min_length=8, max_length=128)]
 
@@ -143,6 +144,7 @@ class AuthResponse(BaseModel):
 
 class UserSummary(BaseModel):
     id: int
+    name: str | None = None
     email: str
     is_admin: bool = False
     is_active: bool = True

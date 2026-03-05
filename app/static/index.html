@@ -85,8 +85,9 @@
 
     <section id="generate" class="section">
       <div class="container grid-2">
-        <div class="panel glass-card reveal" data-reveal="up">
+        <div id="generator-panel" class="panel glass-card reveal" data-reveal="up">
           <h2>Build Portfolio</h2>
+          <p id="auth-required-msg" class="muted-note" hidden>Login required: please sign in to access portfolio generation.</p>
           <form id="builder-form" class="form-grid">
             <div>
               <label for="profile-name">Name</label>
@@ -144,6 +145,7 @@
         <section id="auth-dashboard" class="panel glass-card reveal" data-reveal="up">
           <h2>Account & Dashboard</h2>
           <div class="inline-actions">
+            <input id="auth-name" type="text" placeholder="Name (for signup)">
             <input id="auth-email" type="email" placeholder="Email">
             <input id="auth-password" type="password" placeholder="Password">
           </div>

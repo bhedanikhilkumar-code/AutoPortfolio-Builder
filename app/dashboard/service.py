@@ -74,6 +74,7 @@ def build_dashboard(user: dict) -> DashboardResponse:
         return DashboardResponse(
             user=UserSummary(
                 id=user["id"],
+                name=user.get("name"),
                 email=user["email"],
                 is_admin=bool(user.get("is_admin", False)),
                 is_active=bool(user.get("is_active", True)),

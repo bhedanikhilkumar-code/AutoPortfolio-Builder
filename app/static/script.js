@@ -13,6 +13,7 @@ const statusEl = document.getElementById("status");
 const errorBannerEl = document.getElementById("error-banner");
 const portfolioEl = document.getElementById("portfolio");
 const audioReactiveToggle = document.getElementById("audio-reactive");
+const authNameInput = document.getElementById("auth-name");
 const authEmailInput = document.getElementById("auth-email");
 const authPasswordInput = document.getElementById("auth-password");
 const authRegisterBtn = document.getElementById("auth-register");
@@ -22,6 +23,8 @@ const authLogoutBtn = document.getElementById("auth-logout");
 const authGoogleBtn = document.getElementById("auth-google");
 const googleSigninSlot = document.getElementById("google-signin-slot");
 const adminPanelsEl = document.getElementById("admin-panels");
+const generatorPanelEl = document.getElementById("generator-panel");
+const authRequiredMsgEl = document.getElementById("auth-required-msg");
 const themeToggleBtn = document.getElementById("theme-toggle");
 
 const appState = {
@@ -63,15 +66,28 @@ if (!appState.performanceMode) setupMagnetic();
 setupAuthDashboard();
 setupQuickDemos();
 initGoogleSignIn();
+refreshAccessUI();
 if (appState.authToken) {
   loadDashboard().catch(() => {
     localStorage.removeItem("apb_token");
     appState.authToken = "";
+    refreshAccessUI();
   });
 }
 
 function authHeaders() {
   return appState.authToken ? { Authorization: `Bearer ${appState.authToken}` } : {};
+}
+
+function refreshAccessUI() {
+  const loggedIn = Boolean(appState.authToken);
+  if (generatorPanelEl) {
+    generatorPanelEl.style.opacity = loggedIn ? "1" : "0.45";
+    generatorPanelEl.style.pointerEvents = loggedIn ? "auto" : "none";
+  }
+  if (authRequiredMsgEl) {
+    authRequiredMsgEl.hidden = loggedIn;
+  }
 }
 
 function setupThemeToggle() {
@@ -97,6 +113,7 @@ async function exchangeGoogleToken(idToken) {
 
   appState.authToken = authData.access_token;
   localStorage.setItem("apb_token", appState.authToken);
+  refreshAccessUI();
   showToast("Logged in with Google.", "success");
   await loadDashboard();
 }
@@ -166,7 +183,10 @@ function setupAuthDashboard() {
 
   authRegisterBtn.addEventListener("click", async () => {
     try {
-      const payload = { email: authEmailInput.value.trim(), password: authPasswordInput.value };
+      const payload = { name: (authNameInput?.value || "").trim(), email: authEmailInput.value.trim(), password: authPasswordInput.value };
+      if (!payload.name) throw new Error("Name is required for signup.");
+      if (!payload.email) throw new Error("Email is required.");
+      if (!payload.password || payload.password.length < 8) throw new Error("Password must be at least 8 characters.");
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -176,6 +196,7 @@ function setupAuthDashboard() {
       if (!response.ok) throw new Error(getErrorMessage(data, "Registration failed."));
       appState.authToken = data.access_token;
       localStorage.setItem("apb_token", appState.authToken);
+      refreshAccessUI();
       showToast("Registered successfully.", "success");
       await loadDashboard();
     } catch (error) {
@@ -195,6 +216,7 @@ function setupAuthDashboard() {
       if (!response.ok) throw new Error(getErrorMessage(data, "Login failed."));
       appState.authToken = data.access_token;
       localStorage.setItem("apb_token", appState.authToken);
+      refreshAccessUI();
       showToast("Logged in.", "success");
       await loadDashboard();
     } catch (error) {
@@ -229,6 +251,7 @@ function setupAuthDashboard() {
       appState.authToken = "";
       appState.currentUserEmail = "";
       localStorage.removeItem("apb_token");
+      refreshAccessUI();
       document.getElementById("dashboard-panels").hidden = true;
       if (adminPanelsEl) adminPanelsEl.hidden = true;
       showToast("Logged out successfully.", "success");
@@ -537,6 +560,12 @@ form.addEventListener("submit", async (event) => {
   const normalizedGithub = normalizeGitHubInput(usernameInput.value);
   const normalizedLinkedIn = normalizeLinkedInInput(linkedinInput?.value || "");
   const theme = themeInput.value;
+
+  if (!appState.authToken) {
+    showError("Please login or signup first to use the portfolio generator.");
+    document.getElementById("auth-dashboard")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
 
   if (!normalizedGithub) return showError("Enter a valid GitHub username or profile URL.");
   if (!normalizedLinkedIn) return showError("Enter a valid LinkedIn username or profile URL.");

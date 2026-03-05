@@ -16,8 +16,11 @@ def _hash_password(password: str, salt: str) -> str:
     return hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), bytes.fromhex(salt), 120_000).hex()
 
 
-def register_user(email: str, password: str) -> int:
+def register_user(name: str, email: str, password: str) -> int:
     email_norm = email.strip().lower()
+    name_clean = (name or "").strip()
+    if not name_clean:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Name is required.")
     if not email_norm:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Email is required.")
 
@@ -31,8 +34,8 @@ def register_user(email: str, password: str) -> int:
         password_hash = _hash_password(password, salt)
         is_admin = 1 if _is_admin_email(email_norm) else 0
         cursor = conn.execute(
-            "INSERT INTO users(email, password_hash, password_salt, is_admin) VALUES(?, ?, ?, ?)",
-            (email_norm, password_hash, salt, is_admin),
+            "INSERT INTO users(name, email, password_hash, password_salt, is_admin) VALUES(?, ?, ?, ?, ?)",
+            (name_clean, email_norm, password_hash, salt, is_admin),
         )
         conn.commit()
         return int(cursor.lastrowid)
@@ -72,7 +75,7 @@ def create_session_for_user(user_id: int) -> str:
         conn.close()
 
 
-def ensure_user_for_google(email: str) -> int:
+def ensure_user_for_google(email: str, name: str | None = None) -> int:
     email_norm = email.strip().lower()
     if not email_norm:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Google account email is missing.")
@@ -87,9 +90,10 @@ def ensure_user_for_google(email: str) -> int:
         random_password = secrets.token_urlsafe(24)
         password_hash = _hash_password(random_password, salt)
         is_admin = 1 if _is_admin_email(email_norm) else 0
+        display_name = (name or "").strip() or email_norm.split("@")[0]
         cursor = conn.execute(
-            "INSERT INTO users(email, password_hash, password_salt, is_admin) VALUES(?, ?, ?, ?)",
-            (email_norm, password_hash, salt, is_admin),
+            "INSERT INTO users(name, email, password_hash, password_salt, is_admin) VALUES(?, ?, ?, ?, ?)",
+            (display_name, email_norm, password_hash, salt, is_admin),
         )
         conn.commit()
         return int(cursor.lastrowid)
@@ -132,7 +136,7 @@ def resolve_user_from_token(token: str) -> dict:
     try:
         row = conn.execute(
             """
-            SELECT u.id, u.email, u.is_admin, u.is_active, u.created_at, s.expires_at
+            SELECT u.id, u.name, u.email, u.is_admin, u.is_active, u.created_at, s.expires_at
             FROM sessions s
             JOIN users u ON u.id = s.user_id
             WHERE s.token_hash = ?
@@ -152,6 +156,7 @@ def resolve_user_from_token(token: str) -> dict:
 
         return {
             "id": int(row["id"]),
+            "name": row["name"],
             "email": row["email"],
             "is_admin": bool(int(row["is_admin"])),
             "is_active": bool(int(row["is_active"])),

@@ -134,7 +134,7 @@ def create_app() -> FastAPI:
 
     @app.post("/api/auth/register", response_model=AuthResponse)
     async def auth_register(payload: RegisterRequest) -> AuthResponse:
-        register_user(payload.email, payload.password)
+        register_user(payload.name, payload.email, payload.password)
         token, _ = create_session(payload.email, payload.password)
         return AuthResponse(access_token=token)
 
@@ -159,7 +159,7 @@ def create_app() -> FastAPI:
     @app.post("/api/auth/google", response_model=AuthResponse)
     async def auth_google(payload: GoogleAuthRequest) -> AuthResponse:
         google_user = await verify_google_id_token(payload.id_token)
-        user_id = ensure_user_for_google(google_user["email"])
+        user_id = ensure_user_for_google(google_user["email"], google_user.get("name"))
         token = create_session_for_user(user_id)
         return AuthResponse(access_token=token)
 
@@ -334,6 +334,7 @@ def create_app() -> FastAPI:
     @app.post("/api/profile", response_model=ProfileResponse)
     async def profile(
         payload: ProfileRequest,
+        _: dict = Depends(get_current_user),
         github_service: GitHubService = Depends(get_github_service),
         linkedin_service: LinkedInService = Depends(get_linkedin_service),
     ) -> ProfileResponse:
@@ -359,19 +360,14 @@ def create_app() -> FastAPI:
         return ProfileResponse(profile=github_payload.profile, repos=github_payload.repos, linkedin=linkedin_payload)
 
     @app.post("/api/generate", response_model=PortfolioResponse)
-    async def generate(payload: GenerateRequest, authorization: str | None = Header(default=None)) -> PortfolioResponse:
+    async def generate(payload: GenerateRequest, user: dict = Depends(get_current_user)) -> PortfolioResponse:
         logger.info("generate_request github=%s variant=%s", payload.profile.username, payload.variant_id)
         try:
             result = generate_portfolio(payload)
         except Exception as exc:
             logger.exception("generate_failed github=%s", payload.profile.username)
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Portfolio generation failed. Please try again.") from exc
-        if authorization and authorization.lower().startswith("bearer "):
-            try:
-                user = resolve_user_from_token(authorization.split(" ", 1)[1].strip())
-                add_generation_history(user["id"], payload.profile.username, payload.variant_id, "auto")
-            except HTTPException:
-                pass
+        add_generation_history(user["id"], payload.profile.username, payload.variant_id, "auto")
         return result
 
     @app.post("/api/export/html")

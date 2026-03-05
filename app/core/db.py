@@ -22,6 +22,7 @@ def init_db() -> None:
 
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT,
                 email TEXT NOT NULL UNIQUE,
                 password_hash TEXT NOT NULL,
                 password_salt TEXT NOT NULL,
@@ -106,6 +107,8 @@ def init_db() -> None:
             """
         )
         user_columns = {row["name"] for row in conn.execute("PRAGMA table_info(users)").fetchall()}
+        if "name" not in user_columns:
+            conn.execute("ALTER TABLE users ADD COLUMN name TEXT")
         if "is_admin" not in user_columns:
             conn.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0")
         if "is_active" not in user_columns:
