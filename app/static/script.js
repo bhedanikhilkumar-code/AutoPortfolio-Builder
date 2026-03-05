@@ -1,6 +1,8 @@
 const form = document.getElementById("builder-form");
 const usernameInput = document.getElementById("username");
 const themeInput = document.getElementById("theme");
+const linkedinInput = document.getElementById("linkedin-username");
+const deepModeInput = document.getElementById("deep-mode");
 const submitButton = document.getElementById("submit-button");
 const statusEl = document.getElementById("status");
 const errorBannerEl = document.getElementById("error-banner");
@@ -55,6 +57,7 @@ function setupQuickDemos() {
   document.querySelectorAll(".demo-fill").forEach((btn) => {
     btn.addEventListener("click", () => {
       usernameInput.value = btn.dataset.demoUser || "octocat";
+      if (linkedinInput) linkedinInput.value = btn.dataset.demoUser || "octocat";
       themeInput.value = btn.textContent.toLowerCase().includes("prime") ? "minimal" : "modern";
       setStatus("Demo username set. Click Generate.");
       form.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -156,25 +159,30 @@ themeInput.addEventListener("change", () => {
   updateDraft(() => { appState.draftPortfolio.theme = themeInput.value; });
 });
 
-usernameInput.addEventListener("input", () => {
+function resetProfileCacheIfChanged() {
   const incoming = usernameInput.value.trim().toLowerCase();
   if (!incoming || incoming === (appState.username || "").toLowerCase()) return;
   appState.profileData = null;
   appState.variants = { 1: null, 2: null, 3: null };
   resetGenerateButton();
-});
+}
+
+usernameInput.addEventListener("input", resetProfileCacheIfChanged);
+linkedinInput?.addEventListener("input", resetProfileCacheIfChanged);
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const username = usernameInput.value.trim();
+  const linkedinUsername = (linkedinInput?.value || "").trim();
   const theme = themeInput.value;
   if (!username) return showError("Enter a GitHub username.");
+  if (!linkedinUsername) return showError("LinkedIn username is required for strong resume generation.");
 
   setLoading(true);
   clearError();
 
   try {
-    const profilePayload = await ensureProfilePayload(username);
+    const profilePayload = await ensureProfilePayload(username, linkedinUsername);
     appState.profileData = profilePayload;
     appState.username = username;
 
@@ -207,15 +215,15 @@ form.addEventListener("submit", async (event) => {
   }
 });
 
-async function ensureProfilePayload(username) {
+async function ensureProfilePayload(username, linkedinUsername) {
   if (appState.profileData && appState.username.toLowerCase() === username.toLowerCase()) {
     return appState.profileData;
   }
-  setStatus("Fetching GitHub profile...");
+  setStatus("Fetching GitHub + LinkedIn profile...");
   const profileResponse = await fetch("/api/profile", {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify({ username }),
+    body: JSON.stringify({ username, linkedin_username: linkedinUsername }),
   });
   const profilePayload = await profileResponse.json();
   if (!profileResponse.ok) throw new Error(getErrorMessage(profilePayload, "Failed to fetch profile."));
@@ -224,10 +232,12 @@ async function ensureProfilePayload(username) {
 
 async function generateVariant(profilePayload, theme, variantId, tryIndex) {
   setStatus(`Generating variation ${variantId}/3...`);
+  const targetRole = document.getElementById("target-role")?.value || null;
+  const deepMode = Boolean(deepModeInput?.checked);
   const generateResponse = await fetch("/api/generate", {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify({ ...profilePayload, theme, variant_id: variantId, try_index: tryIndex }),
+    body: JSON.stringify({ ...profilePayload, theme, variant_id: variantId, try_index: tryIndex, target_role: targetRole, deep_mode: deepMode }),
   });
   const portfolioPayload = await generateResponse.json();
   if (!generateResponse.ok) throw new Error(getErrorMessage(portfolioPayload, "Failed to generate portfolio."));
@@ -346,7 +356,7 @@ function renderWorkspace() {
         <div class="editor-section"><h3>${escapeHtml(draft.hero.title)}</h3><label class="field"><span>Headline</span><input id="hero-headline" value="${escapeHtml(draft.hero.content.headline || "")}"></label><label class="field"><span>Subheadline</span><textarea id="hero-subheadline">${escapeHtml(draft.hero.content.subheadline || "")}</textarea></label></div>
         <div class="editor-section"><h3>${escapeHtml(draft.about.title)}</h3><label class="field"><span>Name</span><input id="about-name" value="${escapeHtml(draft.about.content.name || "")}"></label><label class="field"><span>Summary points</span><textarea id="about-summary">${escapeHtml((draft.about.content.summary || []).join("\n"))}</textarea><small>Use one line per summary point.</small></label></div>
         <div class="editor-section"><h3>${escapeHtml(draft.skills.title)}</h3><label class="field"><span>Highlighted skills</span><textarea id="skills-highlighted">${escapeHtml((draft.skills.content.highlighted || []).join(", "))}</textarea><small>Use commas to separate skills.</small></label></div>
-        <div class="editor-section"><h3>${escapeHtml(draft.contact.title)}</h3><label class="field"><span>GitHub URL</span><input id="contact-github" value="${escapeHtml(draft.contact.content.github || profile.html_url || "")}"></label><label class="field"><span>Blog</span><input id="contact-blog" value="${escapeHtml(draft.contact.content.blog || "")}"></label><label class="field"><span>Email</span><input id="contact-email" value="${escapeHtml(draft.contact.content.email || "")}"></label><label class="field"><span>Location</span><input id="contact-location" value="${escapeHtml(draft.contact.content.location || "")}"></label></div>
+        <div class="editor-section"><h3>${escapeHtml(draft.contact.title)}</h3><label class="field"><span>GitHub URL</span><input id="contact-github" value="${escapeHtml(draft.contact.content.github || profile.html_url || "")}"></label><label class="field"><span>LinkedIn URL</span><input id="contact-linkedin" value="${escapeHtml(draft.contact.content.linkedin || "")}"></label><label class="field"><span>Blog</span><input id="contact-blog" value="${escapeHtml(draft.contact.content.blog || "")}"></label><label class="field"><span>Email</span><input id="contact-email" value="${escapeHtml(draft.contact.content.email || "")}"></label><label class="field"><span>Location</span><input id="contact-location" value="${escapeHtml(draft.contact.content.location || "")}"></label></div>
         <div class="editor-section"><h3>${escapeHtml(draft.projects.title)}</h3>${renderProjectEditors(draft.projects.content.items || [])}</div>
       </section>
       <section class="preview-grid">${renderPreview(saved, profile)}</section>
@@ -368,6 +378,7 @@ function bindEditorEvents() {
   bindInput("about-summary", (v) => appState.draftPortfolio.about.content.summary = splitLines(v));
   bindInput("skills-highlighted", (v) => appState.draftPortfolio.skills.content.highlighted = splitCsv(v));
   bindInput("contact-github", (v) => appState.draftPortfolio.contact.content.github = v);
+  bindInput("contact-linkedin", (v) => appState.draftPortfolio.contact.content.linkedin = v);
   bindInput("contact-blog", (v) => appState.draftPortfolio.contact.content.blog = v);
   bindInput("contact-email", (v) => appState.draftPortfolio.contact.content.email = v);
   bindInput("contact-location", (v) => appState.draftPortfolio.contact.content.location = v);
@@ -645,7 +656,7 @@ function renderPreview(portfolioData, profile) {
     about: `<section class="panel preview-panel glass-card reveal" data-reveal="up"><p>${escapeHtml(portfolioData.about.title)}</p><h2>${escapeHtml(portfolioData.about.content.name || "")}</h2><ul>${(portfolioData.about.content.summary || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("") || "<li>Details coming soon.</li>"}</ul></section>`,
     skills: `<section class="panel preview-panel glass-card reveal" data-reveal="up"><p>${escapeHtml(portfolioData.skills.title)}</p><h2>Highlighted Skills</h2><div class="tags">${(portfolioData.skills.content.highlighted || []).map(renderTag).join("") || "<span class='tag'>No detected skills yet</span>"}</div></section>`,
     projects: `<section class="panel preview-panel wide glass-card reveal" data-reveal="up"><p>${escapeHtml(portfolioData.projects.title)}</p><h2>Featured Work</h2><div class="project-list">${(portfolioData.projects.content.items || []).map((project) => `<article class="project glass-card tilt-card"><div class="project-header"><strong>${escapeHtml(project.name || "Untitled project")}</strong>${safeInlineLink(project.url, "Repository")}</div><p>${escapeHtml(project.description || "Project details coming soon.")}</p><div class="tags">${project.language ? renderTag(project.language) : ""}${(project.topics || []).map(renderTag).join("")}</div></article>`).join("") || "<p>No repositories available.</p>"}</div></section>`,
-    contact: `<section class="panel preview-panel wide glass-card reveal" data-reveal="up"><p>${escapeHtml(portfolioData.contact.title)}</p><h2>Contact</h2>${safeLinkLine(portfolioData.contact.content.github || profile.html_url, portfolioData.contact.content.github || profile.html_url)}${safeLinkLine(portfolioData.contact.content.blog, portfolioData.contact.content.blog)}${portfolioData.contact.content.email ? `<p>${escapeHtml(portfolioData.contact.content.email)}</p>` : ""}${portfolioData.contact.content.location ? `<p>${escapeHtml(portfolioData.contact.content.location)}</p>` : ""}</section>`,
+    contact: `<section class="panel preview-panel wide glass-card reveal" data-reveal="up"><p>${escapeHtml(portfolioData.contact.title)}</p><h2>Contact</h2>${safeLinkLine(portfolioData.contact.content.github || profile.html_url, portfolioData.contact.content.github || profile.html_url)}${safeLinkLine(portfolioData.contact.content.linkedin, portfolioData.contact.content.linkedin)}${safeLinkLine(portfolioData.contact.content.blog, portfolioData.contact.content.blog)}${portfolioData.contact.content.email ? `<p>${escapeHtml(portfolioData.contact.content.email)}</p>` : ""}${portfolioData.contact.content.location ? `<p>${escapeHtml(portfolioData.contact.content.location)}</p>` : ""}</section>`,
   };
 
   const ordered = portfolioData.hero.content.section_order || ["hero", "about", "skills", "projects", "contact"];

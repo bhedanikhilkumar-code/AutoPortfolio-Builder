@@ -83,6 +83,8 @@ def generate_portfolio(payload: GenerateRequest) -> PortfolioResponse:
     }
 
     about_variant = _build_about_summary(payload, display_name, top_languages, top_topics, payload.variant_id)
+    if payload.deep_mode:
+        about_variant.extend([line for line in payload.linkedin.summary[:2] if line])
 
     project_items = [
         {
@@ -155,6 +157,7 @@ def generate_portfolio(payload: GenerateRequest) -> PortfolioResponse:
             title="Contact",
             content={
                 "github": payload.profile.html_url,
+                "linkedin": payload.linkedin.url,
                 "email": payload.profile.email,
                 "blog": payload.profile.blog,
                 "location": payload.profile.location,
@@ -884,6 +887,12 @@ def _render_contact_lines(contact: dict[str, object]) -> str:
     if blog:
         lines.append(
             f"<p><a href=\"{blog}\" target=\"_blank\" rel=\"noreferrer\">{_safe_text(blog)}</a></p>"
+        )
+
+    linkedin = _safe_url(contact.get("linkedin"))
+    if linkedin:
+        lines.append(
+            f"<p><a href=\"{linkedin}\" target=\"_blank\" rel=\"noreferrer\">{_safe_text(linkedin)}</a></p>"
         )
 
     for field in ("email", "location"):

@@ -41,6 +41,7 @@
         <h2>Build Portfolio</h2>
         <form id="builder-form">
           <input id="username" name="username" placeholder="GitHub username" autocomplete="off" required>
+          <input id="linkedin-username" name="linkedin_username" placeholder="LinkedIn username (required)" autocomplete="off" required>
           <select id="theme" name="theme" aria-label="Portfolio theme">
             <option value="modern">Professional</option>
             <option value="minimal">Prime</option>
@@ -58,6 +59,10 @@
         <label class="audio-reactive-toggle">
           <input id="audio-reactive" type="checkbox">
           <span>Neon audio-reactive mode</span>
+        </label>
+        <label class="audio-reactive-toggle">
+          <input id="deep-mode" type="checkbox" checked>
+          <span>Deep Hunt mode (stronger resume signal extraction)</span>
         </label>
         <div id="status" class="status"></div>
         <div id="error-banner" class="error-banner" hidden></div>

@@ -15,8 +15,12 @@ ResumeTemplate = Literal["auto", "classic", "modern", "minimal", "ats", "creativ
 GitHubUsername = Annotated[str, Field(min_length=1, max_length=39, pattern=r"^[A-Za-z0-9-]+$")]
 
 
+LinkedInUsername = Annotated[str, Field(min_length=2, max_length=100)]
+
+
 class ProfileRequest(BaseModel):
     username: GitHubUsername
+    linkedin_username: LinkedInUsername
 
 
 class RepoSummary(BaseModel):
@@ -45,18 +49,29 @@ class GitHubProfile(BaseModel):
     following: int = 0
 
 
+class LinkedInProfile(BaseModel):
+    username: str
+    url: str
+    title: str | None = None
+    headline: str | None = None
+    summary: list[str] = Field(default_factory=list)
+
+
 class ProfileResponse(BaseModel):
     profile: GitHubProfile
     repos: list[RepoSummary]
+    linkedin: LinkedInProfile
 
 
 class GenerateRequest(BaseModel):
     profile: GitHubProfile
     repos: list[RepoSummary]
+    linkedin: LinkedInProfile
     theme: ThemeMode = "modern"
     variant_id: Literal[1, 2, 3] = 1
     try_index: Annotated[int, Field(ge=1, le=3)] = 1
     target_role: Literal["frontend", "backend", "fullstack", "data", "ai"] | None = None
+    deep_mode: bool = True
 
 
 class PortfolioSection(BaseModel):

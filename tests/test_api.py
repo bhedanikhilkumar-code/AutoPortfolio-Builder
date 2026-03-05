@@ -6,8 +6,8 @@ from zipfile import ZipFile
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from app.main import app, get_github_service
-from app.schemas import GenerateRequest, GitHubProfile, ProfileResponse, RepoSummary
+from app.main import app, get_github_service, get_linkedin_service
+from app.schemas import GenerateRequest, GitHubProfile, LinkedInProfile, ProfileResponse, RepoSummary
 from app.services.github import GitHubService
 from app.services.portfolio import generate_portfolio
 
@@ -51,6 +51,24 @@ class StubGitHubService:
                     updated_at="2026-02-27T00:00:00Z",
                 ),
             ],
+            linkedin=LinkedInProfile(
+                username="octocat",
+                url="https://www.linkedin.com/in/octocat/",
+                title="Ada Lovelace",
+                headline="Software Engineer",
+                summary=["Software Engineer", "Public profile connected."],
+            ),
+        )
+
+
+class StubLinkedInService:
+    async def fetch_public_profile(self, username: str) -> LinkedInProfile:
+        return LinkedInProfile(
+            username=username,
+            url=f"https://www.linkedin.com/in/{username}/",
+            title="Ada Lovelace",
+            headline="Software Engineer",
+            summary=["Software Engineer", "Public profile connected."],
         )
 
 
@@ -64,6 +82,7 @@ client = TestClient(app)
 
 def setup_function() -> None:
     app.dependency_overrides[get_github_service] = lambda: StubGitHubService()
+    app.dependency_overrides[get_linkedin_service] = lambda: StubLinkedInService()
 
 
 def teardown_function() -> None:
@@ -78,17 +97,18 @@ def test_health_endpoint() -> None:
 
 
 def test_profile_endpoint_returns_profile_and_repos() -> None:
-    response = client.post("/api/profile", json={"username": "octocat"})
+    response = client.post("/api/profile", json={"username": "octocat", "linkedin_username": "octocat"})
 
     assert response.status_code == 200
     payload = response.json()
     assert payload["profile"]["username"] == "octocat"
+    assert payload["linkedin"]["url"].endswith("/octocat/")
     assert len(payload["repos"]) == 2
     assert payload["repos"][0]["name"] == "engine"
 
 
 def test_generate_endpoint_builds_portfolio_sections() -> None:
-    profile_payload = client.post("/api/profile", json={"username": "octocat"}).json()
+    profile_payload = client.post("/api/profile", json={"username": "octocat", "linkedin_username": "octocat"}).json()
 
     response = client.post("/api/generate", json=profile_payload)
 
@@ -102,14 +122,14 @@ def test_generate_endpoint_builds_portfolio_sections() -> None:
 
 
 def test_profile_endpoint_validates_username() -> None:
-    response = client.post("/api/profile", json={"username": "not valid"})
+    response = client.post("/api/profile", json={"username": "not valid", "linkedin_username": "octocat"})
 
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "validation_error"
 
 
 def test_generate_endpoint_accepts_selected_theme() -> None:
-    profile_payload = client.post("/api/profile", json={"username": "octocat"}).json()
+    profile_payload = client.post("/api/profile", json={"username": "octocat", "linkedin_username": "octocat"}).json()
 
     response = client.post("/api/generate", json={**profile_payload, "theme": "minimal"})
 
@@ -120,7 +140,7 @@ def test_generate_endpoint_accepts_selected_theme() -> None:
 def test_profile_endpoint_returns_consistent_error_payload() -> None:
     app.dependency_overrides[get_github_service] = lambda: FailingGitHubService()
 
-    response = client.post("/api/profile", json={"username": "ghost"})
+    response = client.post("/api/profile", json={"username": "ghost", "linkedin_username": "ghost"})
 
     assert response.status_code == 404
     assert response.json() == {
@@ -163,6 +183,13 @@ def test_generate_endpoint_handles_empty_repositories() -> None:
             "following": 0,
         },
         "repos": [],
+        "linkedin": {
+            "username": "solo",
+            "url": "https://www.linkedin.com/in/solo/",
+            "title": None,
+            "headline": None,
+            "summary": ["Public profile connected."],
+        },
         "theme": "modern",
     }
 
@@ -171,7 +198,7 @@ def test_generate_endpoint_handles_empty_repositories() -> None:
     assert response.status_code == 200
     portfolio = response.json()
     assert portfolio["hero"]["content"]["headline"] == "solo builds software that ships."
-    assert portfolio["about"]["content"]["summary"] == ["Getting started with open source projects on GitHub"]
+    assert portfolio["about"]["content"]["summary"][0] == "Getting started with open source projects on GitHub"
     assert portfolio["projects"]["content"]["items"] == []
     assert portfolio["skills"]["content"]["highlighted"] == []
 
@@ -201,6 +228,11 @@ def test_generate_portfolio_uses_topics_when_languages_are_missing() -> None:
                     topics=["cli", "automation", "cli"],
                 )
             ],
+            linkedin=LinkedInProfile(
+                username="builder",
+                url="https://www.linkedin.com/in/builder/",
+                summary=["Engineering"],
+            ),
         )
     )
 
@@ -209,7 +241,7 @@ def test_generate_portfolio_uses_topics_when_languages_are_missing() -> None:
 
 
 def test_export_html_endpoint_returns_downloadable_file() -> None:
-    profile_payload = client.post("/api/profile", json={"username": "octocat"}).json()
+    profile_payload = client.post("/api/profile", json={"username": "octocat", "linkedin_username": "octocat"}).json()
     portfolio_payload = client.post("/api/generate", json=profile_payload).json()
     portfolio_payload["hero"]["content"]["headline"] = "Custom export headline"
 
@@ -226,7 +258,7 @@ def test_export_html_endpoint_returns_downloadable_file() -> None:
 
 
 def test_export_zip_endpoint_returns_archive_with_expected_files() -> None:
-    profile_payload = client.post("/api/profile", json={"username": "octocat"}).json()
+    profile_payload = client.post("/api/profile", json={"username": "octocat", "linkedin_username": "octocat"}).json()
     portfolio_payload = client.post("/api/generate", json=profile_payload).json()
 
     response = client.post("/api/export/zip", json={"portfolio": portfolio_payload})
@@ -242,7 +274,7 @@ def test_export_zip_endpoint_returns_archive_with_expected_files() -> None:
 
 
 def test_export_pdf_endpoint_returns_downloadable_file() -> None:
-    profile_payload = client.post("/api/profile", json={"username": "octocat"}).json()
+    profile_payload = client.post("/api/profile", json={"username": "octocat", "linkedin_username": "octocat"}).json()
     portfolio_payload = client.post("/api/generate", json=profile_payload).json()
 
     response = client.post(
@@ -257,7 +289,7 @@ def test_export_pdf_endpoint_returns_downloadable_file() -> None:
 
 
 def test_share_endpoint_returns_resume_link(monkeypatch) -> None:
-    profile_payload = client.post("/api/profile", json={"username": "octocat"}).json()
+    profile_payload = client.post("/api/profile", json={"username": "octocat", "linkedin_username": "octocat"}).json()
     portfolio_payload = client.post("/api/generate", json=profile_payload).json()
 
     async def no_shortener(_: str) -> str | None:
@@ -278,7 +310,7 @@ def test_share_endpoint_returns_resume_link(monkeypatch) -> None:
 
 
 def test_shared_resume_endpoint_renders_portfolio(monkeypatch) -> None:
-    profile_payload = client.post("/api/profile", json={"username": "octocat"}).json()
+    profile_payload = client.post("/api/profile", json={"username": "octocat", "linkedin_username": "octocat"}).json()
     portfolio_payload = client.post("/api/generate", json=profile_payload).json()
 
     async def no_shortener(_: str) -> str | None:
@@ -297,7 +329,7 @@ def test_shared_resume_endpoint_renders_portfolio(monkeypatch) -> None:
 
 
 def test_export_endpoint_validates_filename() -> None:
-    profile_payload = client.post("/api/profile", json={"username": "octocat"}).json()
+    profile_payload = client.post("/api/profile", json={"username": "octocat", "linkedin_username": "octocat"}).json()
     portfolio_payload = client.post("/api/generate", json=profile_payload).json()
 
     response = client.post(
@@ -310,7 +342,7 @@ def test_export_endpoint_validates_filename() -> None:
 
 
 def test_full_profile_generate_edit_export_flow() -> None:
-    profile_response = client.post("/api/profile", json={"username": "octocat"})
+    profile_response = client.post("/api/profile", json={"username": "octocat", "linkedin_username": "octocat"})
     assert profile_response.status_code == 200
 
     generated_response = client.post("/api/generate", json={**profile_response.json(), "theme": "minimal"})
@@ -326,3 +358,4 @@ def test_full_profile_generate_edit_export_flow() -> None:
     assert export_response.headers["content-disposition"] == 'attachment; filename="ada-lovelace-frs.html"'
     assert "Ada Lovelace, FRS" in export_response.text
     assert "hello@example.dev" in export_response.text
+

@@ -44,6 +44,7 @@ from app.dashboard.service import add_generation_history, build_dashboard, save_
 from app.deploy_export.service import build_deploy_package
 from app.resume_versions.service import list_versions, restore_version
 from app.services.github import GitHubService
+from app.services.linkedin import LinkedInService
 from app.services.portfolio import (
     build_export_filename,
     build_portfolio_zip,
@@ -60,6 +61,10 @@ SHARED_PORTFOLIOS: dict[str, PortfolioResponse] = {}
 
 def get_github_service() -> GitHubService:
     return GitHubService()
+
+
+def get_linkedin_service() -> LinkedInService:
+    return LinkedInService()
 
 
 def get_current_user(authorization: str | None = Header(default=None)) -> dict:
@@ -188,8 +193,11 @@ def create_app() -> FastAPI:
     async def profile(
         payload: ProfileRequest,
         github_service: GitHubService = Depends(get_github_service),
+        linkedin_service: LinkedInService = Depends(get_linkedin_service),
     ) -> ProfileResponse:
-        return await github_service.fetch_profile(payload.username)
+        github_payload = await github_service.fetch_profile(payload.username)
+        linkedin_payload = await linkedin_service.fetch_public_profile(payload.linkedin_username)
+        return ProfileResponse(profile=github_payload.profile, repos=github_payload.repos, linkedin=linkedin_payload)
 
     @app.post("/api/generate", response_model=PortfolioResponse)
     async def generate(payload: GenerateRequest, authorization: str | None = Header(default=None)) -> PortfolioResponse:
