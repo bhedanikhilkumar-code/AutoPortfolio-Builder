@@ -22,6 +22,7 @@ from app.schemas import (
     GenerateRequest,
     HealthResponse,
     LoginRequest,
+    LinkedInProfile,
     PortfolioResponse,
     ProfileRequest,
     ProfileResponse,
@@ -196,7 +197,18 @@ def create_app() -> FastAPI:
         linkedin_service: LinkedInService = Depends(get_linkedin_service),
     ) -> ProfileResponse:
         github_payload = await github_service.fetch_profile(payload.username)
-        linkedin_payload = await linkedin_service.fetch_public_profile(payload.linkedin_username)
+        try:
+            linkedin_payload = await linkedin_service.fetch_public_profile(payload.linkedin_username)
+        except Exception:
+            linkedin_slug = payload.linkedin_username.strip().strip("/").split("/")[-1].replace("in/", "")
+            linkedin_payload = LinkedInProfile(
+                username=linkedin_slug or "unknown",
+                url=f"https://www.linkedin.com/in/{linkedin_slug or 'unknown'}/",
+                summary=["LinkedIn enrichment temporarily unavailable. GitHub-only mode applied."],
+                provider_used="endpoint_fallback",
+                confidence_score=0.05,
+                signals=["endpoint_fallback"],
+            )
         return ProfileResponse(profile=github_payload.profile, repos=github_payload.repos, linkedin=linkedin_payload)
 
     @app.post("/api/generate", response_model=PortfolioResponse)
