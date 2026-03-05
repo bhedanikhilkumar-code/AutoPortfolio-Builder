@@ -59,24 +59,50 @@ function authHeaders() {
 
 function requestGoogleIdToken(clientId) {
   return new Promise((resolve, reject) => {
+    let settled = false;
+    const failTimer = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      reject(new Error("Google sign-in did not complete. Please allow popups/cookies and try again."));
+    }, 15000);
+
+    const finishResolve = (token) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(failTimer);
+      resolve(token);
+    };
+
+    const finishReject = (message) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(failTimer);
+      reject(new Error(message));
+    };
+
     try {
       window.google.accounts.id.initialize({
         client_id: clientId,
+        ux_mode: "popup",
         callback: (response) => {
           if (!response?.credential) {
-            reject(new Error("Google credential missing."));
+            finishReject("Google credential missing.");
             return;
           }
-          resolve(response.credential);
+          finishResolve(response.credential);
         },
       });
+
       window.google.accounts.id.prompt((notification) => {
-        if (notification.isNotDisplayed?.() || notification.isSkippedMoment?.()) {
-          reject(new Error("Google sign-in was cancelled."));
+        if (notification?.isDismissedMoment?.()) {
+          finishReject("Google sign-in was cancelled.");
+          return;
         }
+        // isNotDisplayed/skipped can happen in One Tap restrictions; keep timer running
+        // and allow credential callback to complete if popup/One Tap appears later.
       });
     } catch (error) {
-      reject(new Error("Google sign-in init failed."));
+      finishReject("Google sign-in init failed.");
     }
   });
 }
