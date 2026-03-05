@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import secrets
 from datetime import datetime, timedelta, timezone
 
@@ -28,9 +29,10 @@ def register_user(email: str, password: str) -> int:
 
         salt = secrets.token_hex(16)
         password_hash = _hash_password(password, salt)
+        is_admin = 1 if _is_admin_email(email_norm) else 0
         cursor = conn.execute(
-            "INSERT INTO users(email, password_hash, password_salt) VALUES(?, ?, ?)",
-            (email_norm, password_hash, salt),
+            "INSERT INTO users(email, password_hash, password_salt, is_admin) VALUES(?, ?, ?, ?)",
+            (email_norm, password_hash, salt, is_admin),
         )
         conn.commit()
         return int(cursor.lastrowid)
@@ -81,9 +83,10 @@ def ensure_user_for_google(email: str) -> int:
         salt = secrets.token_hex(16)
         random_password = secrets.token_urlsafe(24)
         password_hash = _hash_password(random_password, salt)
+        is_admin = 1 if _is_admin_email(email_norm) else 0
         cursor = conn.execute(
-            "INSERT INTO users(email, password_hash, password_salt) VALUES(?, ?, ?)",
-            (email_norm, password_hash, salt),
+            "INSERT INTO users(email, password_hash, password_salt, is_admin) VALUES(?, ?, ?, ?)",
+            (email_norm, password_hash, salt, is_admin),
         )
         conn.commit()
         return int(cursor.lastrowid)
@@ -102,13 +105,21 @@ def _create_session_row(conn, user_id: int) -> str:
     return raw_token
 
 
+def _is_admin_email(email: str) -> bool:
+    configured = os.getenv("ADMIN_EMAILS", "")
+    if not configured.strip():
+        return False
+    emails = {item.strip().lower() for item in configured.split(",") if item.strip()}
+    return email in emails
+
+
 def resolve_user_from_token(token: str) -> dict:
     token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
     conn = get_connection()
     try:
         row = conn.execute(
             """
-            SELECT u.id, u.email, u.created_at, s.expires_at
+            SELECT u.id, u.email, u.is_admin, u.created_at, s.expires_at
             FROM sessions s
             JOIN users u ON u.id = s.user_id
             WHERE s.token_hash = ?
@@ -124,6 +135,11 @@ def resolve_user_from_token(token: str) -> dict:
         if expires_at < datetime.now(timezone.utc):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired.")
 
-        return {"id": int(row["id"]), "email": row["email"], "created_at": row["created_at"]}
+        return {
+            "id": int(row["id"]),
+            "email": row["email"],
+            "is_admin": bool(int(row["is_admin"])),
+            "created_at": row["created_at"],
+        }
     finally:
         conn.close()

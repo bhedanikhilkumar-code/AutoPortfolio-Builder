@@ -16,6 +16,7 @@ const authLoginBtn = document.getElementById("auth-login");
 const authLoadDashboardBtn = document.getElementById("auth-load-dashboard");
 const authGoogleBtn = document.getElementById("auth-google");
 const googleSigninSlot = document.getElementById("google-signin-slot");
+const adminPanelsEl = document.getElementById("admin-panels");
 
 const appState = {
   profileData: null,
@@ -215,6 +216,12 @@ async function loadDashboard() {
   drafts.innerHTML = (data.saved_drafts || []).map((item) => `<li>${escapeHtml(item.title)}</li>`).join("") || "<li>No drafts yet.</li>";
   history.innerHTML = (data.generation_history || []).map((item) => `<li>${escapeHtml(item.username)} • V${item.variant_id} • ${escapeHtml(item.template_id)}</li>`).join("") || "<li>No generation history yet.</li>";
 
+  if (data.user?.is_admin) {
+    await loadAdminDashboard();
+  } else if (adminPanelsEl) {
+    adminPanelsEl.hidden = true;
+  }
+
   document.querySelectorAll("[data-edit-resume]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const resumeId = Number(btn.dataset.editResume);
@@ -229,6 +236,47 @@ async function loadDashboard() {
       setStatus(`Loaded resume #${resumeId} for editing.`);
     });
   });
+}
+
+async function loadAdminDashboard() {
+  if (!adminPanelsEl) return;
+
+  const [statsRes, usersRes, resumesRes] = await Promise.all([
+    fetch("/api/admin/stats", { headers: { ...authHeaders() } }),
+    fetch("/api/admin/users", { headers: { ...authHeaders() } }),
+    fetch("/api/admin/resumes", { headers: { ...authHeaders() } }),
+  ]);
+
+  const stats = await parseErrorPayload(statsRes);
+  const users = await parseErrorPayload(usersRes);
+  const resumes = await parseErrorPayload(resumesRes);
+
+  if (!statsRes.ok) throw new Error(getErrorMessage(stats, "Failed to load admin stats."));
+  if (!usersRes.ok) throw new Error(getErrorMessage(users, "Failed to load admin users."));
+  if (!resumesRes.ok) throw new Error(getErrorMessage(resumes, "Failed to load admin resumes."));
+
+  adminPanelsEl.hidden = false;
+  const statsEl = document.getElementById("admin-stats");
+  const usersEl = document.getElementById("admin-users");
+  const resumesEl = document.getElementById("admin-resumes");
+  const refreshBtn = document.getElementById("admin-refresh");
+
+  if (statsEl) {
+    statsEl.textContent = `Users: ${stats.total_users} | Admins: ${stats.total_admins} | Resumes: ${stats.total_resumes} | Drafts: ${stats.total_drafts} | Published: ${stats.total_published} | Generations: ${stats.total_generations}`;
+  }
+  if (usersEl) {
+    usersEl.innerHTML = (users.users || []).slice(0, 20).map((u) => `<li>${escapeHtml(u.email)} ${u.is_admin ? "(admin)" : ""} • resumes: ${u.resume_count} • generations: ${u.generation_count}</li>`).join("") || "<li>No users.</li>";
+  }
+  if (resumesEl) {
+    resumesEl.innerHTML = (resumes.resumes || []).slice(0, 20).map((r) => `<li>#${r.id} ${escapeHtml(r.title)} • ${escapeHtml(r.owner_email)} • ${escapeHtml(r.status)}</li>`).join("") || "<li>No resumes.</li>";
+  }
+  if (refreshBtn && !refreshBtn.dataset.bound) {
+    refreshBtn.dataset.bound = "1";
+    refreshBtn.addEventListener("click", async () => {
+      await loadAdminDashboard();
+      showToast("Admin data refreshed.", "success");
+    });
+  }
 }
 
 function setupAudioReactiveToggle() {

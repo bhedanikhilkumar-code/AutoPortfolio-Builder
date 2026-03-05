@@ -11,6 +11,9 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from app.schemas import (
+    AdminResumesResponse,
+    AdminStatsResponse,
+    AdminUsersResponse,
     AnalyticsSummary,
     AuthResponse,
     BrandingSettingsRequest,
@@ -39,6 +42,7 @@ from app.schemas import (
     ShareResponse,
     ResumeVersionsResponse,
 )
+from app.admin.service import get_admin_resumes_overview, get_admin_stats, get_admin_users_overview
 from app.ai_rewrite.service import rewrite_section
 from app.analytics.service import get_analytics_for_user, record_page_view, record_project_click
 from app.auth.google import verify_google_id_token
@@ -79,6 +83,12 @@ def get_current_user(authorization: str | None = Header(default=None)) -> dict:
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing bearer token.")
     return resolve_user_from_token(token)
+
+
+def require_admin(user: dict = Depends(get_current_user)) -> dict:
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required.")
+    return user
 
 
 def create_app() -> FastAPI:
@@ -145,6 +155,18 @@ def create_app() -> FastAPI:
             status=payload.status,
             portfolio_json=payload.portfolio.model_dump_json(),
         )
+
+    @app.get("/api/admin/stats", response_model=AdminStatsResponse)
+    async def admin_stats(_: dict = Depends(require_admin)) -> AdminStatsResponse:
+        return get_admin_stats()
+
+    @app.get("/api/admin/users", response_model=AdminUsersResponse)
+    async def admin_users(_: dict = Depends(require_admin)) -> AdminUsersResponse:
+        return get_admin_users_overview()
+
+    @app.get("/api/admin/resumes", response_model=AdminResumesResponse)
+    async def admin_resumes(_: dict = Depends(require_admin)) -> AdminResumesResponse:
+        return get_admin_resumes_overview()
 
     @app.get("/api/dashboard/resumes/{resume_id}")
     async def get_resume_for_edit(resume_id: int, user: dict = Depends(get_current_user)) -> JSONResponse:

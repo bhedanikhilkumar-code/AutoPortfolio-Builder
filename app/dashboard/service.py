@@ -75,6 +75,7 @@ def build_dashboard(user: dict) -> DashboardResponse:
             user=UserSummary(
                 id=user["id"],
                 email=user["email"],
+                is_admin=bool(user.get("is_admin", False)),
                 created_at=datetime.fromisoformat(str(user["created_at"]).replace("Z", "")),
             ),
             my_resumes=resumes,

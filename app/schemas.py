@@ -144,6 +144,7 @@ class AuthResponse(BaseModel):
 class UserSummary(BaseModel):
     id: int
     email: str
+    is_admin: bool = False
     created_at: datetime
 
 
@@ -168,6 +169,41 @@ class DashboardResponse(BaseModel):
     saved_drafts: list[ResumeCard]
     generation_history: list[GenerationHistoryItem]
     analytics: AnalyticsSummary | None = None
+
+
+class AdminStatsResponse(BaseModel):
+    total_users: int
+    total_admins: int
+    total_resumes: int
+    total_drafts: int
+    total_published: int
+    total_generations: int
+
+
+class AdminUserItem(BaseModel):
+    id: int
+    email: str
+    is_admin: bool
+    resume_count: int
+    generation_count: int
+    created_at: datetime
+
+
+class AdminUsersResponse(BaseModel):
+    users: list[AdminUserItem]
+
+
+class AdminResumeItem(BaseModel):
+    id: int
+    user_id: int
+    owner_email: str
+    title: str
+    status: str
+    updated_at: datetime
+
+
+class AdminResumesResponse(BaseModel):
+    resumes: list[AdminResumeItem]
 
 
 class SaveResumeRequest(BaseModel):

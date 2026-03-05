@@ -116,6 +116,33 @@ def test_google_auth_config_endpoint() -> None:
     assert "enabled" in payload
 
 
+def test_admin_endpoint_requires_admin() -> None:
+    response = client.get("/api/admin/stats", headers={"Authorization": "Bearer invalid-token"})
+
+    assert response.status_code == 401
+
+
+def test_admin_endpoints_work_for_admin_user(monkeypatch) -> None:
+    monkeypatch.setenv("ADMIN_EMAILS", "admin@testmail.com")
+
+    register = client.post(
+        "/api/auth/register",
+        json={"email": "admin@testmail.com", "password": "StrongPass@123"},
+    )
+    assert register.status_code == 200
+    token = register.json()["access_token"]
+
+    headers = {"Authorization": f"Bearer {token}"}
+    stats = client.get("/api/admin/stats", headers=headers)
+    users = client.get("/api/admin/users", headers=headers)
+    resumes = client.get("/api/admin/resumes", headers=headers)
+
+    assert stats.status_code == 200
+    assert users.status_code == 200
+    assert resumes.status_code == 200
+    assert "total_users" in stats.json()
+
+
 def test_profile_endpoint_returns_profile_and_repos() -> None:
     response = client.post("/api/profile", json={"username": "octocat", "linkedin_username": "octocat"})
 
