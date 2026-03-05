@@ -11,6 +11,8 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from app.schemas import (
+    AdminActionResponse,
+    AdminActivityResponse,
     AdminResumesResponse,
     AdminStatsResponse,
     AdminUsersResponse,
@@ -42,7 +44,16 @@ from app.schemas import (
     ShareResponse,
     ResumeVersionsResponse,
 )
-from app.admin.service import get_admin_resumes_overview, get_admin_stats, get_admin_users_overview
+from app.admin.service import (
+    activate_user,
+    delete_resume_admin,
+    force_publish_resume,
+    get_admin_activity,
+    get_admin_resumes_overview,
+    get_admin_stats,
+    get_admin_users_overview,
+    suspend_user,
+)
 from app.ai_rewrite.service import rewrite_section
 from app.analytics.service import get_analytics_for_user, record_page_view, record_project_click
 from app.auth.google import verify_google_id_token
@@ -167,6 +178,26 @@ def create_app() -> FastAPI:
     @app.get("/api/admin/resumes", response_model=AdminResumesResponse)
     async def admin_resumes(_: dict = Depends(require_admin)) -> AdminResumesResponse:
         return get_admin_resumes_overview()
+
+    @app.get("/api/admin/activity", response_model=AdminActivityResponse)
+    async def admin_activity(_: dict = Depends(require_admin)) -> AdminActivityResponse:
+        return get_admin_activity()
+
+    @app.post("/api/admin/users/{user_id}/suspend", response_model=AdminActionResponse)
+    async def admin_suspend_user(user_id: int, admin: dict = Depends(require_admin)) -> AdminActionResponse:
+        return suspend_user(admin["id"], user_id)
+
+    @app.post("/api/admin/users/{user_id}/activate", response_model=AdminActionResponse)
+    async def admin_activate_user(user_id: int, admin: dict = Depends(require_admin)) -> AdminActionResponse:
+        return activate_user(admin["id"], user_id)
+
+    @app.post("/api/admin/resumes/{resume_id}/publish", response_model=AdminActionResponse)
+    async def admin_publish_resume(resume_id: int, admin: dict = Depends(require_admin)) -> AdminActionResponse:
+        return force_publish_resume(admin["id"], resume_id)
+
+    @app.delete("/api/admin/resumes/{resume_id}", response_model=AdminActionResponse)
+    async def admin_delete_resume(resume_id: int, admin: dict = Depends(require_admin)) -> AdminActionResponse:
+        return delete_resume_admin(admin["id"], resume_id)
 
     @app.get("/api/dashboard/resumes/{resume_id}")
     async def get_resume_for_edit(resume_id: int, user: dict = Depends(get_current_user)) -> JSONResponse:

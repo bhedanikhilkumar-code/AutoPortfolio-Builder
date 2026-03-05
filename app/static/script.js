@@ -238,38 +238,81 @@ async function loadDashboard() {
   });
 }
 
+async function callAdminAction(url, method = "POST") {
+  const res = await fetch(url, { method, headers: { ...authHeaders() } });
+  const data = await parseErrorPayload(res);
+  if (!res.ok) throw new Error(getErrorMessage(data, "Admin action failed."));
+  return data;
+}
+
 async function loadAdminDashboard() {
   if (!adminPanelsEl) return;
 
-  const [statsRes, usersRes, resumesRes] = await Promise.all([
+  const [statsRes, usersRes, resumesRes, activityRes] = await Promise.all([
     fetch("/api/admin/stats", { headers: { ...authHeaders() } }),
     fetch("/api/admin/users", { headers: { ...authHeaders() } }),
     fetch("/api/admin/resumes", { headers: { ...authHeaders() } }),
+    fetch("/api/admin/activity", { headers: { ...authHeaders() } }),
   ]);
 
   const stats = await parseErrorPayload(statsRes);
   const users = await parseErrorPayload(usersRes);
   const resumes = await parseErrorPayload(resumesRes);
+  const activity = await parseErrorPayload(activityRes);
 
   if (!statsRes.ok) throw new Error(getErrorMessage(stats, "Failed to load admin stats."));
   if (!usersRes.ok) throw new Error(getErrorMessage(users, "Failed to load admin users."));
   if (!resumesRes.ok) throw new Error(getErrorMessage(resumes, "Failed to load admin resumes."));
+  if (!activityRes.ok) throw new Error(getErrorMessage(activity, "Failed to load admin activity."));
 
   adminPanelsEl.hidden = false;
   const statsEl = document.getElementById("admin-stats");
   const usersEl = document.getElementById("admin-users");
   const resumesEl = document.getElementById("admin-resumes");
+  const activityEl = document.getElementById("admin-activity");
   const refreshBtn = document.getElementById("admin-refresh");
 
   if (statsEl) {
     statsEl.textContent = `Users: ${stats.total_users} | Admins: ${stats.total_admins} | Resumes: ${stats.total_resumes} | Drafts: ${stats.total_drafts} | Published: ${stats.total_published} | Generations: ${stats.total_generations}`;
   }
   if (usersEl) {
-    usersEl.innerHTML = (users.users || []).slice(0, 20).map((u) => `<li>${escapeHtml(u.email)} ${u.is_admin ? "(admin)" : ""} • resumes: ${u.resume_count} • generations: ${u.generation_count}</li>`).join("") || "<li>No users.</li>";
+    usersEl.innerHTML = (users.users || []).slice(0, 20).map((u) => `<li>${escapeHtml(u.email)} ${u.is_admin ? "(admin)" : ""} ${u.is_active ? "" : "(suspended)"} • resumes: ${u.resume_count} • generations: ${u.generation_count} <button class='btn-secondary' data-admin-action='${u.is_active ? "suspend" : "activate"}' data-user-id='${u.id}' type='button'>${u.is_active ? "Suspend" : "Activate"}</button></li>`).join("") || "<li>No users.</li>";
   }
   if (resumesEl) {
-    resumesEl.innerHTML = (resumes.resumes || []).slice(0, 20).map((r) => `<li>#${r.id} ${escapeHtml(r.title)} • ${escapeHtml(r.owner_email)} • ${escapeHtml(r.status)}</li>`).join("") || "<li>No resumes.</li>";
+    resumesEl.innerHTML = (resumes.resumes || []).slice(0, 20).map((r) => `<li>#${r.id} ${escapeHtml(r.title)} • ${escapeHtml(r.owner_email)} • ${escapeHtml(r.status)} <button class='btn-secondary' data-admin-resume='publish' data-resume-id='${r.id}' type='button'>Force Publish</button> <button class='btn-danger' data-admin-resume='delete' data-resume-id='${r.id}' type='button'>Delete</button></li>`).join("") || "<li>No resumes.</li>";
   }
+  if (activityEl) {
+    activityEl.innerHTML = (activity.logs || []).slice(0, 20).map((a) => `<li>${escapeHtml(a.action)} ${escapeHtml(a.target_type)}#${a.target_id} • admin:${a.admin_user_id}</li>`).join("") || "<li>No activity yet.</li>";
+  }
+
+  document.querySelectorAll("[data-admin-action]").forEach((btn) => {
+    if (btn.dataset.bound) return;
+    btn.dataset.bound = "1";
+    btn.addEventListener("click", async () => {
+      const action = btn.dataset.adminAction;
+      const userId = Number(btn.dataset.userId);
+      await callAdminAction(`/api/admin/users/${userId}/${action}`);
+      showToast(`User ${action}ed successfully.`, "success");
+      await loadAdminDashboard();
+    });
+  });
+
+  document.querySelectorAll("[data-admin-resume]").forEach((btn) => {
+    if (btn.dataset.bound) return;
+    btn.dataset.bound = "1";
+    btn.addEventListener("click", async () => {
+      const action = btn.dataset.adminResume;
+      const resumeId = Number(btn.dataset.resumeId);
+      if (action === "delete") {
+        await callAdminAction(`/api/admin/resumes/${resumeId}`, "DELETE");
+      } else {
+        await callAdminAction(`/api/admin/resumes/${resumeId}/publish`);
+      }
+      showToast(`Resume ${action} action complete.`, "success");
+      await loadAdminDashboard();
+    });
+  });
+
   if (refreshBtn && !refreshBtn.dataset.bound) {
     refreshBtn.dataset.bound = "1";
     refreshBtn.addEventListener("click", async () => {

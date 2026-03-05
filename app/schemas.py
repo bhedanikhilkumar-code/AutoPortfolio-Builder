@@ -145,6 +145,7 @@ class UserSummary(BaseModel):
     id: int
     email: str
     is_admin: bool = False
+    is_active: bool = True
     created_at: datetime
 
 
@@ -184,6 +185,7 @@ class AdminUserItem(BaseModel):
     id: int
     email: str
     is_admin: bool
+    is_active: bool
     resume_count: int
     generation_count: int
     created_at: datetime
@@ -204,6 +206,25 @@ class AdminResumeItem(BaseModel):
 
 class AdminResumesResponse(BaseModel):
     resumes: list[AdminResumeItem]
+
+
+class AdminActivityItem(BaseModel):
+    id: int
+    admin_user_id: int
+    action: str
+    target_type: str
+    target_id: int
+    details: str | None = None
+    created_at: datetime
+
+
+class AdminActivityResponse(BaseModel):
+    logs: list[AdminActivityItem]
+
+
+class AdminActionResponse(BaseModel):
+    ok: bool = True
+    message: str
 
 
 class SaveResumeRequest(BaseModel):

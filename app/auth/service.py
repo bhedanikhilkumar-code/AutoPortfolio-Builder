@@ -44,9 +44,12 @@ def create_session(email: str, password: str) -> tuple[str, int]:
     email_norm = email.strip().lower()
     conn = get_connection()
     try:
-        row = conn.execute("SELECT id, password_hash, password_salt FROM users WHERE email = ?", (email_norm,)).fetchone()
+        row = conn.execute("SELECT id, password_hash, password_salt, is_active FROM users WHERE email = ?", (email_norm,)).fetchone()
         if not row:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials.")
+
+        if not bool(int(row["is_active"])):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is suspended.")
 
         computed = _hash_password(password, row["password_salt"])
         if computed != row["password_hash"]:
@@ -119,7 +122,7 @@ def resolve_user_from_token(token: str) -> dict:
     try:
         row = conn.execute(
             """
-            SELECT u.id, u.email, u.is_admin, u.created_at, s.expires_at
+            SELECT u.id, u.email, u.is_admin, u.is_active, u.created_at, s.expires_at
             FROM sessions s
             JOIN users u ON u.id = s.user_id
             WHERE s.token_hash = ?
@@ -134,11 +137,14 @@ def resolve_user_from_token(token: str) -> dict:
         expires_at = datetime.fromisoformat(row["expires_at"])
         if expires_at < datetime.now(timezone.utc):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired.")
+        if not bool(int(row["is_active"])):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is suspended.")
 
         return {
             "id": int(row["id"]),
             "email": row["email"],
             "is_admin": bool(int(row["is_admin"])),
+            "is_active": bool(int(row["is_active"])),
             "created_at": row["created_at"],
         }
     finally:

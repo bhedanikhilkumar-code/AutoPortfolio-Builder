@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from io import BytesIO
+from uuid import uuid4
 from zipfile import ZipFile
 
 from fastapi import HTTPException
@@ -116,31 +117,76 @@ def test_google_auth_config_endpoint() -> None:
     assert "enabled" in payload
 
 
-def test_admin_endpoint_requires_admin() -> None:
+def test_admin_endpoint_requires_auth() -> None:
     response = client.get("/api/admin/stats", headers={"Authorization": "Bearer invalid-token"})
 
     assert response.status_code == 401
 
 
-def test_admin_endpoints_work_for_admin_user(monkeypatch) -> None:
-    monkeypatch.setenv("ADMIN_EMAILS", "admin@testmail.com")
-
+def test_non_admin_forbidden_for_admin_endpoint() -> None:
+    normal_email = f"normal-{uuid4().hex[:8]}@testmail.com"
     register = client.post(
         "/api/auth/register",
-        json={"email": "admin@testmail.com", "password": "StrongPass@123"},
+        json={"email": normal_email, "password": "StrongPass@123"},
     )
-    assert register.status_code == 200
     token = register.json()["access_token"]
 
-    headers = {"Authorization": f"Bearer {token}"}
-    stats = client.get("/api/admin/stats", headers=headers)
-    users = client.get("/api/admin/users", headers=headers)
-    resumes = client.get("/api/admin/resumes", headers=headers)
+    response = client.get("/api/admin/stats", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 403
 
-    assert stats.status_code == 200
-    assert users.status_code == 200
-    assert resumes.status_code == 200
-    assert "total_users" in stats.json()
+
+def test_admin_endpoints_and_actions(monkeypatch) -> None:
+    admin_email = f"admin-{uuid4().hex[:8]}@testmail.com"
+    target_email = f"target-{uuid4().hex[:8]}@testmail.com"
+    monkeypatch.setenv("ADMIN_EMAILS", admin_email)
+
+    admin_register = client.post(
+        "/api/auth/register",
+        json={"email": admin_email, "password": "StrongPass@123"},
+    )
+    assert admin_register.status_code == 200
+    admin_token = admin_register.json()["access_token"]
+    admin_headers = {"Authorization": f"Bearer {admin_token}"}
+
+    user_register = client.post(
+        "/api/auth/register",
+        json={"email": target_email, "password": "StrongPass@123"},
+    )
+    assert user_register.status_code == 200
+    user_token = user_register.json()["access_token"]
+
+    users_before = client.get("/api/admin/users", headers=admin_headers).json()["users"]
+    target_user = next(u for u in users_before if u["email"] == target_email)
+    target_user_id = target_user["id"]
+
+    suspend = client.post(f"/api/admin/users/{target_user_id}/suspend", headers=admin_headers)
+    assert suspend.status_code == 200
+
+    dashboard_after_suspend = client.get("/api/dashboard", headers={"Authorization": f"Bearer {user_token}"})
+    assert dashboard_after_suspend.status_code == 403
+
+    activate = client.post(f"/api/admin/users/{target_user_id}/activate", headers=admin_headers)
+    assert activate.status_code == 200
+
+    profile_payload = client.post("/api/profile", json={"username": "octocat", "linkedin_username": "octocat"}).json()
+    portfolio = client.post("/api/generate", json=profile_payload).json()
+    save = client.post(
+        "/api/dashboard/resumes",
+        headers={"Authorization": f"Bearer {user_token}"},
+        json={"title": "Target CV", "portfolio": portfolio, "status": "draft"},
+    )
+    assert save.status_code == 200
+    resume_id = save.json()["resume_id"]
+
+    publish = client.post(f"/api/admin/resumes/{resume_id}/publish", headers=admin_headers)
+    assert publish.status_code == 200
+
+    delete = client.delete(f"/api/admin/resumes/{resume_id}", headers=admin_headers)
+    assert delete.status_code == 200
+
+    activity = client.get("/api/admin/activity", headers=admin_headers)
+    assert activity.status_code == 200
+    assert len(activity.json()["logs"]) >= 3
 
 
 def test_profile_endpoint_returns_profile_and_repos() -> None:
