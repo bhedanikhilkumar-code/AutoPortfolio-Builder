@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import os
 import secrets
 
 import httpx
@@ -20,6 +21,8 @@ from app.schemas import (
     ErrorResponse,
     ExportRequest,
     GenerateRequest,
+    GoogleAuthConfigResponse,
+    GoogleAuthRequest,
     HealthResponse,
     LoginRequest,
     LinkedInProfile,
@@ -38,7 +41,8 @@ from app.schemas import (
 )
 from app.ai_rewrite.service import rewrite_section
 from app.analytics.service import get_analytics_for_user, record_page_view, record_project_click
-from app.auth.service import create_session, register_user, resolve_user_from_token
+from app.auth.google import verify_google_id_token
+from app.auth.service import create_session, create_session_for_user, ensure_user_for_google, register_user, resolve_user_from_token
 from app.branding.service import get_branding, upsert_branding
 from app.core.db import init_db
 from app.dashboard.service import add_generation_history, build_dashboard, save_resume_snapshot
@@ -113,6 +117,18 @@ def create_app() -> FastAPI:
     @app.post("/api/auth/login", response_model=AuthResponse)
     async def auth_login(payload: LoginRequest) -> AuthResponse:
         token, _ = create_session(payload.email, payload.password)
+        return AuthResponse(access_token=token)
+
+    @app.get("/api/auth/google/config", response_model=GoogleAuthConfigResponse)
+    async def auth_google_config() -> GoogleAuthConfigResponse:
+        client_id = os.getenv("GOOGLE_CLIENT_ID", "").strip()
+        return GoogleAuthConfigResponse(enabled=bool(client_id), client_id=client_id or None)
+
+    @app.post("/api/auth/google", response_model=AuthResponse)
+    async def auth_google(payload: GoogleAuthRequest) -> AuthResponse:
+        google_user = await verify_google_id_token(payload.id_token)
+        user_id = ensure_user_for_google(google_user["email"])
+        token = create_session_for_user(user_id)
         return AuthResponse(access_token=token)
 
     @app.get("/api/dashboard", response_model=DashboardResponse)

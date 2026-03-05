@@ -14,6 +14,7 @@ const authPasswordInput = document.getElementById("auth-password");
 const authRegisterBtn = document.getElementById("auth-register");
 const authLoginBtn = document.getElementById("auth-login");
 const authLoadDashboardBtn = document.getElementById("auth-load-dashboard");
+const authGoogleBtn = document.getElementById("auth-google");
 
 const appState = {
   profileData: null,
@@ -54,6 +55,30 @@ if (appState.authToken) {
 
 function authHeaders() {
   return appState.authToken ? { Authorization: `Bearer ${appState.authToken}` } : {};
+}
+
+function requestGoogleIdToken(clientId) {
+  return new Promise((resolve, reject) => {
+    try {
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: (response) => {
+          if (!response?.credential) {
+            reject(new Error("Google credential missing."));
+            return;
+          }
+          resolve(response.credential);
+        },
+      });
+      window.google.accounts.id.prompt((notification) => {
+        if (notification.isNotDisplayed?.() || notification.isSkippedMoment?.()) {
+          reject(new Error("Google sign-in was cancelled."));
+        }
+      });
+    } catch (error) {
+      reject(new Error("Google sign-in init failed."));
+    }
+  });
 }
 
 function setupPerformanceModeToggle() {
@@ -123,6 +148,35 @@ function setupAuthDashboard() {
 
   authLoadDashboardBtn.addEventListener("click", async () => {
     await loadDashboard();
+  });
+
+  authGoogleBtn?.addEventListener("click", async () => {
+    try {
+      const configRes = await fetch("/api/auth/google/config");
+      const config = await parseErrorPayload(configRes);
+      if (!configRes.ok || !config?.enabled || !config?.client_id) {
+        throw new Error("Google login is not configured yet.");
+      }
+      if (!window.google?.accounts?.id) {
+        throw new Error("Google Sign-In script not loaded. Refresh and try again.");
+      }
+
+      const token = await requestGoogleIdToken(config.client_id);
+      const authRes = await fetch("/api/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_token: token }),
+      });
+      const authData = await parseErrorPayload(authRes);
+      if (!authRes.ok) throw new Error(getErrorMessage(authData, "Google login failed."));
+
+      appState.authToken = authData.access_token;
+      localStorage.setItem("apb_token", appState.authToken);
+      showToast("Logged in with Google.", "success");
+      await loadDashboard();
+    } catch (error) {
+      showError(error.message);
+    }
   });
 }
 

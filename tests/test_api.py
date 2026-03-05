@@ -108,6 +108,14 @@ def test_health_endpoint() -> None:
     assert response.json() == {"status": "ok"}
 
 
+def test_google_auth_config_endpoint() -> None:
+    response = client.get("/api/auth/google/config")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "enabled" in payload
+
+
 def test_profile_endpoint_returns_profile_and_repos() -> None:
     response = client.post("/api/profile", json={"username": "octocat", "linkedin_username": "octocat"})
 

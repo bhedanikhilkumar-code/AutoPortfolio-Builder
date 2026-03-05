@@ -127,6 +127,15 @@ class LoginRequest(BaseModel):
     password: Annotated[str, Field(min_length=8, max_length=128)]
 
 
+class GoogleAuthRequest(BaseModel):
+    id_token: Annotated[str, Field(min_length=16)]
+
+
+class GoogleAuthConfigResponse(BaseModel):
+    enabled: bool
+    client_id: str | None = None
+
+
 class AuthResponse(BaseModel):
     access_token: str
     token_type: Literal["bearer"] = "bearer"

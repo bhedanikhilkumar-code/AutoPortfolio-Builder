@@ -50,17 +50,54 @@ def create_session(email: str, password: str) -> tuple[str, int]:
         if computed != row["password_hash"]:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials.")
 
-        raw_token = secrets.token_urlsafe(32)
-        token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
-        expires_at = (datetime.now(timezone.utc) + timedelta(hours=SESSION_HOURS)).isoformat()
-        conn.execute(
-            "INSERT INTO sessions(user_id, token_hash, expires_at) VALUES(?, ?, ?)",
-            (int(row["id"]), token_hash, expires_at),
-        )
-        conn.commit()
-        return raw_token, int(row["id"])
+        return _create_session_row(conn, int(row["id"])), int(row["id"])
     finally:
         conn.close()
+
+
+def create_session_for_user(user_id: int) -> str:
+    conn = get_connection()
+    try:
+        token = _create_session_row(conn, user_id)
+        conn.commit()
+        return token
+    finally:
+        conn.close()
+
+
+def ensure_user_for_google(email: str) -> int:
+    email_norm = email.strip().lower()
+    if not email_norm:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Google account email is missing.")
+
+    conn = get_connection()
+    try:
+        row = conn.execute("SELECT id FROM users WHERE email = ?", (email_norm,)).fetchone()
+        if row:
+            return int(row["id"])
+
+        salt = secrets.token_hex(16)
+        random_password = secrets.token_urlsafe(24)
+        password_hash = _hash_password(random_password, salt)
+        cursor = conn.execute(
+            "INSERT INTO users(email, password_hash, password_salt) VALUES(?, ?, ?)",
+            (email_norm, password_hash, salt),
+        )
+        conn.commit()
+        return int(cursor.lastrowid)
+    finally:
+        conn.close()
+
+
+def _create_session_row(conn, user_id: int) -> str:
+    raw_token = secrets.token_urlsafe(32)
+    token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+    expires_at = (datetime.now(timezone.utc) + timedelta(hours=SESSION_HOURS)).isoformat()
+    conn.execute(
+        "INSERT INTO sessions(user_id, token_hash, expires_at) VALUES(?, ?, ?)",
+        (int(user_id), token_hash, expires_at),
+    )
+    return raw_token
 
 
 def resolve_user_from_token(token: str) -> dict:
