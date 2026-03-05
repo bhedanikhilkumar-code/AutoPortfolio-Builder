@@ -50,7 +50,9 @@ def create_session(email: str, password: str) -> tuple[str, int]:
         if computed != row["password_hash"]:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials.")
 
-        return _create_session_row(conn, int(row["id"])), int(row["id"])
+        token = _create_session_row(conn, int(row["id"]))
+        conn.commit()
+        return token, int(row["id"])
     finally:
         conn.close()
 

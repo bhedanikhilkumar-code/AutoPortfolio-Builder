@@ -217,11 +217,6 @@ def create_app() -> FastAPI:
             linkedin_payload = await linkedin_service.fetch_public_profile(payload.linkedin_username)
             if "not_found" in (linkedin_payload.signals or []):
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="LinkedIn username not found.")
-            if linkedin_payload.provider_used == "slug_inference":
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="LinkedIn username not verified. Please enter a valid public LinkedIn username.",
-                )
         except HTTPException:
             raise
         except Exception:

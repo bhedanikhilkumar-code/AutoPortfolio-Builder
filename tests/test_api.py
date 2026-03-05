@@ -155,13 +155,13 @@ def test_profile_endpoint_validates_linkedin_username() -> None:
     assert response.json()["error"]["code"] == "validation_error"
 
 
-def test_profile_endpoint_rejects_unverified_linkedin_username() -> None:
+def test_profile_endpoint_allows_slug_inference_fallback() -> None:
     app.dependency_overrides[get_linkedin_service] = lambda: SlugInferenceLinkedInService()
 
     response = client.post("/api/profile", json={"username": "octocat", "linkedin_username": "randomslug"})
 
-    assert response.status_code == 404
-    assert response.json()["error"]["message"] == "LinkedIn username not verified. Please enter a valid public LinkedIn username."
+    assert response.status_code == 200
+    assert response.json()["linkedin"]["provider_used"] == "slug_inference"
 
 
 def test_generate_endpoint_accepts_selected_theme() -> None:
