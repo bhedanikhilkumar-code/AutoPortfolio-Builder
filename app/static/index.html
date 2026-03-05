@@ -3,180 +3,217 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AutoPortfolio Builder</title>
-  <meta name="description" content="Generate a premium developer portfolio from your GitHub profile. Edit, export, and share instantly.">
-  <meta name="theme-color" content="#020617">
-  <meta property="og:title" content="AutoPortfolio Builder">
-  <meta property="og:description" content="Generate, edit, and export a modern developer portfolio in seconds.">
-  <meta property="og:type" content="website">
-  <meta name="twitter:card" content="summary_large_image">
-  <link rel="icon" type="image/png" sizes="32x32" href="/static/assets/favicon-32.png">
-  <link rel="icon" type="image/png" sizes="64x64" href="/static/assets/favicon-64.png">
-  <link rel="shortcut icon" href="/static/assets/favicon.ico">
-  <link rel="apple-touch-icon" sizes="180x180" href="/static/assets/apple-touch-icon.png">
+  <title>Auto Portfolio Builder</title>
+  <meta name="description" content="Create and export a professional developer portfolio in seconds.">
+  <meta name="theme-color" content="#4F46E5">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
   <div id="intro-loader" class="intro-loader" aria-hidden="true">
     <div class="intro-loader__content">
-      <p>Booting Portfolio Engine...</p>
+      <p>Preparing your portfolio builder...</p>
       <div class="intro-loader__bar"><span id="intro-loader-bar"></span></div>
     </div>
   </div>
 
   <div id="cursor-dot" class="cursor-dot" aria-hidden="true"></div>
   <div id="cursor-ring" class="cursor-ring" aria-hidden="true"></div>
-
   <canvas id="bg-animation" aria-hidden="true"></canvas>
   <div class="bg-overlay" aria-hidden="true"></div>
 
-  <main class="page">
-    <section class="site-title reveal" data-reveal="up">
-      <p class="site-title__eyebrow">Professional Resume Intelligence</p>
-      <h1 class="site-title__heading">AI Resume & Portfolio Builder</h1>
-      <p class="site-title__sub">Build recruiter-ready resumes from GitHub + LinkedIn signals with high-confidence enrichment.</p>
-    </section>
+  <header class="top-nav">
+    <div class="container nav-inner">
+      <a class="brand" href="#home">Auto Portfolio Builder</a>
+      <nav class="nav-links">
+        <a href="#home">Home</a>
+        <a href="#features">Features</a>
+        <a href="#generate">Generate Portfolio</a>
+      </nav>
+      <a class="btn-primary" href="#generate">Build Portfolio</a>
+    </div>
+  </header>
 
+  <main class="page" id="home">
     <section class="hero">
-      <div class="panel glass-card reveal" data-reveal="up">
-        <p class="hero-eyebrow">GitHub + LinkedIn to Resume</p>
-        <h2 class="hero-support-title">Generate strong, recruiter-ready profile drafts in seconds.</h2>
-        <p id="hero-rotator" class="hero-rotator">AI Portfolio. Auto-built. Always fresh.</p>
-      </div>
-      <div class="panel glass-card reveal" data-reveal="up">
-        <h2>Build Portfolio</h2>
-        <form id="builder-form">
-          <input id="username" name="username" placeholder="GitHub username" autocomplete="off" required>
-          <input id="linkedin-username" name="linkedin_username" placeholder="LinkedIn username (required)" autocomplete="off" required>
-          <select id="theme" name="theme" aria-label="Portfolio theme">
-            <option value="modern">Professional</option>
-            <option value="minimal">Prime</option>
-          </select>
-          <select id="target-role" name="target_role" aria-label="Target role">
-            <option value="">Target Role</option>
-            <option value="frontend">Frontend</option>
-            <option value="backend">Backend</option>
-            <option value="fullstack">Full-stack</option>
-            <option value="data">Data</option>
-            <option value="ai">AI</option>
-          </select>
-          <button id="submit-button" class="btn-primary magnetic" type="submit">Generate</button>
-        </form>
-        <label class="audio-reactive-toggle">
-          <input id="audio-reactive" type="checkbox">
-          <span>Neon audio-reactive mode</span>
-        </label>
-        <label class="audio-reactive-toggle">
-          <input id="deep-mode" type="checkbox" checked>
-          <span>Deep Hunt mode (stronger resume signal extraction)</span>
-        </label>
-        <label class="audio-reactive-toggle">
-          <input id="performance-mode" type="checkbox">
-          <span>Performance mode (faster UI, fewer heavy effects)</span>
-        </label>
-        <div id="status" class="status"></div>
-        <div id="error-banner" class="error-banner" hidden></div>
+      <div class="container hero-content reveal" data-reveal="up">
+        <h1>Create Your Developer Portfolio in Seconds</h1>
+        <p>Turn your GitHub and LinkedIn profile into a polished, recruiter-ready portfolio with export, sharing, and dashboard controls.</p>
+        <a class="btn-primary magnetic" href="#generate">Generate Portfolio</a>
       </div>
     </section>
 
-    <section class="proof-grid reveal" data-reveal="up">
-      <article class="panel glass-card">
-        <h2>3-click onboarding</h2>
-        <ul>
-          <li>1) Enter GitHub username</li>
-          <li>2) Pick style + target role</li>
-          <li>3) Generate, edit, export, share</li>
-        </ul>
-      </article>
-      <article class="panel glass-card">
-        <h2>Instant template previews (no signup)</h2>
-        <div class="inline-actions">
-          <button class="btn-secondary magnetic demo-fill" type="button" data-demo-user="torvalds">Demo: Professional</button>
-          <button class="btn-secondary magnetic demo-fill" type="button" data-demo-user="gaearon">Demo: Prime</button>
-          <button class="btn-secondary magnetic" type="button" onclick="document.getElementById('builder-form').scrollIntoView({behavior:'smooth'})">Start now</button>
+    <section id="features" class="section">
+      <div class="container">
+        <div class="section-title reveal" data-reveal="up">
+          <h2>Why developers choose Auto Portfolio Builder</h2>
         </div>
-      </article>
+        <div class="feature-grid reveal" data-reveal="up">
+          <article class="card panel glass-card">
+            <h3>Smart Profile Enrichment</h3>
+            <p>Combines GitHub + LinkedIn signals into a clean and structured personal brand summary.</p>
+          </article>
+          <article class="card panel glass-card">
+            <h3>Fast Customization</h3>
+            <p>Generate, edit, export, and iterate quickly with modern templates and role-focused output.</p>
+          </article>
+          <article class="card panel glass-card">
+            <h3>Built for Hiring</h3>
+            <p>ATS-safe copy, polished layout, and one-click sharing to present your work professionally.</p>
+          </article>
+        </div>
+      </div>
     </section>
 
-    <section id="auth-dashboard" class="panel glass-card reveal" data-reveal="up">
-      <h2>Account & Dashboard</h2>
-      <div class="inline-actions">
-        <input id="auth-email" type="email" placeholder="Email">
-        <input id="auth-password" type="password" placeholder="Password">
-      </div>
-      <div class="inline-actions">
-        <button id="auth-register" class="btn-secondary magnetic" type="button">Register</button>
-        <button id="auth-login" class="btn-primary magnetic" type="button">Login</button>
-        <button id="auth-load-dashboard" class="btn-secondary magnetic" type="button">Load Dashboard</button>
-        <button id="auth-logout" class="btn-secondary magnetic" type="button">Logout</button>
-      </div>
-      <div class="inline-actions">
-        <button id="auth-google" class="btn-primary magnetic" type="button">Sign in with Google</button>
-      </div>
-      <div class="inline-actions" id="google-signin-wrap">
-        <div id="google-signin-slot"></div>
-      </div>
-      <div id="dashboard-panels" class="dashboard-panels" hidden>
-        <div class="editor-section"><h3>My Resumes</h3><ul id="dash-my-resumes"></ul></div>
-        <div class="editor-section"><h3>Saved Drafts</h3><ul id="dash-drafts"></ul></div>
-        <div class="editor-section"><h3>Generation History</h3><ul id="dash-history"></ul></div>
-      </div>
-      <div id="admin-panels" class="dashboard-panels" hidden>
-        <div class="editor-section">
-          <h3>Admin Control Panel</h3>
-          <div class="inline-actions">
-            <button id="admin-refresh" class="btn-secondary magnetic" type="button">Refresh Admin Data</button>
-            <button id="admin-export-users" class="btn-secondary magnetic" type="button">Export Users CSV</button>
-            <button id="admin-export-resumes" class="btn-secondary magnetic" type="button">Export Resumes CSV</button>
-            <button id="admin-export-activity" class="btn-secondary magnetic" type="button">Export Activity CSV</button>
-          </div>
-          <div class="inline-actions">
-            <input id="admin-user-search" placeholder="Search users by email">
-            <select id="admin-user-sort">
-              <option value="created_at:desc">Users: Newest</option>
-              <option value="created_at:asc">Users: Oldest</option>
-              <option value="email:asc">Users: Email A-Z</option>
-              <option value="email:desc">Users: Email Z-A</option>
-            </select>
-          </div>
-          <div class="inline-actions">
-            <input id="admin-resume-search" placeholder="Search resumes by title/email">
-            <select id="admin-resume-sort">
-              <option value="updated_at:desc">Resumes: Latest</option>
-              <option value="updated_at:asc">Resumes: Oldest</option>
-              <option value="title:asc">Resumes: Title A-Z</option>
-              <option value="status:asc">Resumes: Status</option>
-            </select>
-          </div>
-          <div class="inline-actions">
-            <select id="admin-activity-action">
-              <option value="">All actions</option>
-              <option value="force_publish">Force Publish</option>
-              <option value="delete">Delete</option>
-            </select>
-            <select id="admin-activity-target">
-              <option value="">All targets</option>
-              <option value="user">User</option>
-              <option value="resume">Resume</option>
-            </select>
-            <select id="admin-activity-sort">
-              <option value="created_at:desc">Activity: Latest</option>
-              <option value="created_at:asc">Activity: Oldest</option>
-              <option value="action:asc">Activity: Action A-Z</option>
-            </select>
-          </div>
-          <p id="admin-stats" class="muted-note">No admin data loaded yet.</p>
-          <h4>Users Overview</h4><ul id="admin-users"></ul>
-          <h4>Recent Resumes</h4><ul id="admin-resumes"></ul>
-          <h4>Activity Logs</h4><ul id="admin-activity"></ul>
+    <section class="section">
+      <div class="container">
+        <div class="section-title reveal" data-reveal="up">
+          <h2>How it works</h2>
         </div>
+        <div class="steps-grid reveal" data-reveal="up">
+          <article class="card panel glass-card"><strong>1.</strong> Add GitHub and LinkedIn usernames</article>
+          <article class="card panel glass-card"><strong>2.</strong> Pick theme and target role</article>
+          <article class="card panel glass-card"><strong>3.</strong> Generate, edit, export, and share</article>
+        </div>
+      </div>
+    </section>
+
+    <section id="generate" class="section">
+      <div class="container grid-2">
+        <div class="panel glass-card reveal" data-reveal="up">
+          <h2>Build Portfolio</h2>
+          <form id="builder-form" class="form-grid">
+            <div>
+              <label for="username">GitHub Username</label>
+              <input id="username" name="username" placeholder="e.g. bhedanikhilkumar-code" autocomplete="off" required>
+            </div>
+            <div>
+              <label for="linkedin-username">LinkedIn Username</label>
+              <input id="linkedin-username" name="linkedin_username" placeholder="e.g. bhedanikhilkumar" autocomplete="off" required>
+            </div>
+            <div>
+              <label for="theme">Theme</label>
+              <select id="theme" name="theme" aria-label="Portfolio theme">
+                <option value="modern">Professional</option>
+                <option value="minimal">Prime</option>
+              </select>
+            </div>
+            <div>
+              <label for="target-role">Target Role</label>
+              <select id="target-role" name="target_role" aria-label="Target role">
+                <option value="">Select role</option>
+                <option value="frontend">Frontend</option>
+                <option value="backend">Backend</option>
+                <option value="fullstack">Full-stack</option>
+                <option value="data">Data</option>
+                <option value="ai">AI</option>
+              </select>
+            </div>
+            <button id="submit-button" class="btn-primary magnetic" type="submit">Generate Portfolio</button>
+          </form>
+
+          <label class="audio-reactive-toggle"><input id="audio-reactive" type="checkbox"> <span>Neon audio-reactive mode</span></label>
+          <label class="audio-reactive-toggle"><input id="deep-mode" type="checkbox" checked> <span>Deep Hunt mode (stronger resume signal extraction)</span></label>
+          <label class="audio-reactive-toggle"><input id="performance-mode" type="checkbox"> <span>Performance mode (faster UI)</span></label>
+
+          <div id="status" class="status"></div>
+          <div id="error-banner" class="error-banner" hidden></div>
+        </div>
+
+        <section id="auth-dashboard" class="panel glass-card reveal" data-reveal="up">
+          <h2>Account & Dashboard</h2>
+          <div class="inline-actions">
+            <input id="auth-email" type="email" placeholder="Email">
+            <input id="auth-password" type="password" placeholder="Password">
+          </div>
+          <div class="inline-actions">
+            <button id="auth-register" class="btn-secondary magnetic" type="button">Register</button>
+            <button id="auth-login" class="btn-primary magnetic" type="button">Login</button>
+            <button id="auth-load-dashboard" class="btn-secondary magnetic" type="button">Load Dashboard</button>
+            <button id="auth-logout" class="btn-secondary magnetic" type="button">Logout</button>
+          </div>
+          <div class="inline-actions">
+            <button id="auth-google" class="btn-primary magnetic" type="button">Sign in with Google</button>
+          </div>
+          <div class="inline-actions" id="google-signin-wrap"><div id="google-signin-slot"></div></div>
+
+          <div id="dashboard-panels" class="dashboard-panels" hidden>
+            <div class="editor-section"><h3>My Resumes</h3><ul id="dash-my-resumes"></ul></div>
+            <div class="editor-section"><h3>Saved Drafts</h3><ul id="dash-drafts"></ul></div>
+            <div class="editor-section"><h3>Generation History</h3><ul id="dash-history"></ul></div>
+          </div>
+
+          <div id="admin-panels" class="dashboard-panels" hidden>
+            <div class="editor-section">
+              <h3>Admin Control Panel</h3>
+              <div class="inline-actions">
+                <button id="admin-refresh" class="btn-secondary magnetic" type="button">Refresh Admin Data</button>
+                <button id="admin-export-users" class="btn-secondary magnetic" type="button">Export Users CSV</button>
+                <button id="admin-export-resumes" class="btn-secondary magnetic" type="button">Export Resumes CSV</button>
+                <button id="admin-export-activity" class="btn-secondary magnetic" type="button">Export Activity CSV</button>
+              </div>
+              <div class="inline-actions">
+                <input id="admin-user-search" placeholder="Search users by email">
+                <select id="admin-user-sort">
+                  <option value="created_at:desc">Users: Newest</option>
+                  <option value="created_at:asc">Users: Oldest</option>
+                  <option value="email:asc">Users: Email A-Z</option>
+                  <option value="email:desc">Users: Email Z-A</option>
+                </select>
+              </div>
+              <div class="inline-actions">
+                <input id="admin-resume-search" placeholder="Search resumes by title/email">
+                <select id="admin-resume-sort">
+                  <option value="updated_at:desc">Resumes: Latest</option>
+                  <option value="updated_at:asc">Resumes: Oldest</option>
+                  <option value="title:asc">Resumes: Title A-Z</option>
+                  <option value="status:asc">Resumes: Status</option>
+                </select>
+              </div>
+              <div class="inline-actions">
+                <select id="admin-activity-action">
+                  <option value="">All actions</option>
+                  <option value="force_publish">Force Publish</option>
+                  <option value="delete">Delete</option>
+                </select>
+                <select id="admin-activity-target">
+                  <option value="">All targets</option>
+                  <option value="user">User</option>
+                  <option value="resume">Resume</option>
+                </select>
+                <select id="admin-activity-sort">
+                  <option value="created_at:desc">Activity: Latest</option>
+                  <option value="created_at:asc">Activity: Oldest</option>
+                  <option value="action:asc">Activity: Action A-Z</option>
+                </select>
+              </div>
+              <p id="admin-stats" class="muted-note">No admin data loaded yet.</p>
+              <h4>Users Overview</h4><ul id="admin-users"></ul>
+              <h4>Recent Resumes</h4><ul id="admin-resumes"></ul>
+              <h4>Activity Logs</h4><ul id="admin-activity"></ul>
+            </div>
+          </div>
+        </section>
       </div>
     </section>
 
     <section id="portfolio" hidden></section>
   </main>
 
-  <a class="floating-cta magnetic" href="#builder-form">⚡ Build Now</a>
+  <footer class="footer">
+    <div class="container footer-inner">
+      <p>© 2026 Auto Portfolio Builder. All rights reserved.</p>
+      <div class="footer-links">
+        <a href="#home">Home</a>
+        <a href="#features">Features</a>
+        <a href="#generate">Generate</a>
+      </div>
+    </div>
+  </footer>
+
+  <a class="floating-cta magnetic" href="#generate">Build Portfolio</a>
 
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="/static/script.js"></script>
