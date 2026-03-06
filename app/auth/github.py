@@ -6,12 +6,20 @@ import httpx
 from fastapi import HTTPException, status
 
 
+def _first_env(*keys: str) -> str:
+    for key in keys:
+        value = os.getenv(key, "").strip()
+        if value:
+            return value
+    return ""
+
+
 def get_github_client_id() -> str:
-    return os.getenv("GITHUB_CLIENT_ID", "").strip()
+    return _first_env("GITHUB_CLIENT_ID", "GITHUB_ID", "GITHUB_OAUTH_CLIENT_ID")
 
 
 def get_github_client_secret() -> str:
-    return os.getenv("GITHUB_CLIENT_SECRET", "").strip()
+    return _first_env("GITHUB_CLIENT_SECRET", "GITHUB_SECRET", "GITHUB_OAUTH_CLIENT_SECRET")
 
 
 async def exchange_github_code(code: str) -> str:
