@@ -1,4 +1,4 @@
-import { getDashboard, githubStart, googleConfig, googleLogin, login, logout, register } from "./api.js";
+import { getDashboard, githubStart, googleStart, login, logout, register } from "./api.js";
 import { defaultAfterLoginRoute, navigate, refreshRouterUI } from "./router.js";
 import { clearClientAuthState, setState, setToken, state } from "./state.js";
 import { $, showBanner, validEmail, withButtonLoading } from "./utils.js";
@@ -63,43 +63,15 @@ function bindEmailPasswordAuth() {
   );
 }
 
-async function handleGoogleCredentialResponse(response) {
-  if (!response?.credential) {
-    throw new Error("Google credential missing.");
-  }
-  const payload = await googleLogin(response.credential);
-  setToken(payload.access_token);
-  await syncUserFromToken();
-  showBanner(globalBanner(), "Signed in with Google.", "success");
-  navigate(defaultAfterLoginRoute());
-}
-
 function initGoogleButtons() {
   const loginBtn = $("google-login-btn");
   const signupBtn = $("google-signup-btn");
 
   const trigger = async (button) => {
     await withButtonLoading(button, "Opening Google...", async () => {
-      const config = await googleConfig();
-      if (!config.enabled || !config.client_id) throw new Error("Google login is not configured.");
-      if (!window.google?.accounts?.id) throw new Error("Google script not available. Refresh and try again.");
-
-      window.google.accounts.id.initialize({
-        client_id: config.client_id,
-        auto_select: false,
-        callback: async (credentialResponse) => {
-          try {
-            await handleGoogleCredentialResponse(credentialResponse);
-          } catch (error) {
-            showBanner(globalBanner(), error.message, "error");
-          }
-        },
-      });
-
-      // Manual-only login: never render Google's personalized account button in-page.
-      // Start chooser only after explicit click.
-      window.google.accounts.id.prompt();
-      showBanner(globalBanner(), "Continue in the Google account chooser.", "info");
+      const payload = await googleStart();
+      if (!payload.enabled || !payload.auth_url) throw new Error("Google login is not configured.");
+      window.location.href = payload.auth_url;
     }).catch((error) => showBanner(globalBanner(), error.message, "error"));
   };
 

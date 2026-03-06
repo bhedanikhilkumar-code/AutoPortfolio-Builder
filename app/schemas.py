@@ -137,6 +137,11 @@ class GoogleAuthConfigResponse(BaseModel):
     client_id: str | None = None
 
 
+class GoogleAuthStartResponse(BaseModel):
+    enabled: bool
+    auth_url: str | None = None
+
+
 class GitHubAuthStartResponse(BaseModel):
     enabled: bool
     auth_url: str | None = None

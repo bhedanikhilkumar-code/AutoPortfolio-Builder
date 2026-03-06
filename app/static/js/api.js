@@ -60,6 +60,11 @@ export async function googleLogin(idToken) {
   return parseResponse(response, "Google login failed.");
 }
 
+export async function googleStart() {
+  const response = await fetch("/api/auth/google/start");
+  return parseResponse(response, "Google login is not available.");
+}
+
 export async function githubStart() {
   const response = await fetch("/api/auth/github/start");
   return parseResponse(response, "GitHub login is not available.");

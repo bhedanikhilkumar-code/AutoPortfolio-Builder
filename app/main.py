@@ -30,6 +30,7 @@ from app.schemas import (
     GenerateRequest,
     GitHubAuthStartResponse,
     GoogleAuthConfigResponse,
+    GoogleAuthStartResponse,
     GoogleAuthRequest,
     HealthResponse,
     LoginRequest,
@@ -61,7 +62,7 @@ from app.admin.service import (
 from app.ai_rewrite.service import rewrite_section
 from app.analytics.service import get_analytics_for_user, record_page_view, record_project_click
 from app.auth.github import exchange_github_code, fetch_github_identity, get_github_client_id
-from app.auth.google import verify_google_id_token
+from app.auth.google import build_google_auth_url, exchange_google_code, get_google_client_id, verify_google_id_token
 from app.auth.service import create_session, create_session_for_user, ensure_user_for_google, register_user, resolve_user_from_token, revoke_session
 from app.branding.service import get_branding, upsert_branding
 from app.core.db import init_db
@@ -83,6 +84,7 @@ BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
 SHARED_PORTFOLIOS: dict[str, PortfolioResponse] = {}
 GITHUB_OAUTH_STATES: dict[str, float] = {}
+GOOGLE_OAUTH_STATES: dict[str, float] = {}
 logger = logging.getLogger("autoporfolio_builder")
 
 
@@ -164,8 +166,51 @@ def create_app() -> FastAPI:
 
     @app.get("/api/auth/google/config", response_model=GoogleAuthConfigResponse)
     async def auth_google_config() -> GoogleAuthConfigResponse:
-        client_id = os.getenv("GOOGLE_CLIENT_ID", "").strip()
+        client_id = get_google_client_id()
         return GoogleAuthConfigResponse(enabled=bool(client_id), client_id=client_id or None)
+
+    @app.get("/api/auth/google/start", response_model=GoogleAuthStartResponse)
+    async def auth_google_start(request: Request) -> GoogleAuthStartResponse:
+        client_id = get_google_client_id()
+        if not client_id:
+            return GoogleAuthStartResponse(enabled=False, auth_url=None)
+
+        state = secrets.token_urlsafe(24)
+        GOOGLE_OAUTH_STATES[state] = time.time() + 600
+        for key, expires in list(GOOGLE_OAUTH_STATES.items()):
+            if expires < time.time():
+                GOOGLE_OAUTH_STATES.pop(key, None)
+
+        redirect_uri = str(request.base_url).rstrip("/") + "/api/auth/google/callback"
+        auth_url = build_google_auth_url(redirect_uri=redirect_uri, state=state)
+        return GoogleAuthStartResponse(enabled=True, auth_url=auth_url)
+
+    @app.get("/api/auth/google/callback", include_in_schema=False)
+    async def auth_google_callback(request: Request, code: str | None = None, state: str | None = None) -> Response:
+        if not code or not state:
+            return Response(content="Google login failed: missing code/state.", media_type="text/plain", status_code=400)
+        expires = GOOGLE_OAUTH_STATES.pop(state, None)
+        if not expires or expires < time.time():
+            return Response(content="Google login failed: invalid or expired state.", media_type="text/plain", status_code=400)
+
+        redirect_uri = str(request.base_url).rstrip("/") + "/api/auth/google/callback"
+        try:
+            google_user = await exchange_google_code(code, redirect_uri)
+            user_id = ensure_user_for_google(google_user["email"], google_user.get("name"))
+            app_token = create_session_for_user(user_id)
+        except HTTPException as exc:
+            return Response(content=f"Google login failed: {exc.detail}", media_type="text/plain", status_code=400)
+
+        html = f"""
+        <!doctype html><html><body><script>
+        try {{
+          localStorage.removeItem('apb_token');
+          sessionStorage.setItem('apb_token', {app_token!r});
+        }} catch (_) {{}}
+        window.location.href = '/#/dashboard';
+        </script><p>Login successful. Redirecting…</p></body></html>
+        """
+        return Response(content=html, media_type="text/html")
 
     @app.post("/api/auth/google", response_model=AuthResponse)
     async def auth_google(payload: GoogleAuthRequest) -> AuthResponse:
