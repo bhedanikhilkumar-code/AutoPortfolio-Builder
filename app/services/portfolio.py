@@ -20,6 +20,7 @@ from app.schemas import (
     RepoSummary,
     ResumeTemplate,
 )
+from app.services.ai_portfolio import AIPortfolioService
 
 
 TEMPLATE_IDS: tuple[str, ...] = ("classic", "modern", "minimal", "ats", "creative", "executive")
@@ -44,6 +45,8 @@ def generate_portfolio(payload: GenerateRequest) -> PortfolioResponse:
     top_languages = [name for name, _ in language_counts.most_common(8)]
     top_topics = [name for name, _ in topic_counts.most_common(8)]
     top_skills = top_languages or top_topics
+    ai_service = AIPortfolioService()
+    ai_generated = ai_service.generate_content(payload.profile, payload.repos, top_languages, top_topics)
 
     seed = _build_variant_seed(payload.profile.username, payload.variant_id, payload.try_index)
     rng = random.Random(seed)
@@ -99,6 +102,7 @@ def generate_portfolio(payload: GenerateRequest) -> PortfolioResponse:
         }
         for repo in featured_repos
     ]
+    project_items = _merge_ai_project_descriptions(project_items, ai_generated)
     if payload.variant_id == 2:
         project_items = list(reversed(project_items))
 
@@ -116,6 +120,8 @@ def generate_portfolio(payload: GenerateRequest) -> PortfolioResponse:
     confidence_tone = _resolve_confidence_tone(payload.linkedin.confidence_score, payload.deep_mode)
     if confidence_tone and confidence_tone not in about_variant:
         about_variant.insert(0, confidence_tone)
+    about_variant = _merge_ai_about_and_summary(about_variant, ai_generated)
+    highlighted_skills = _merge_ai_skills(_build_highlighted_skills(top_skills, payload.variant_id), ai_generated)
 
     return PortfolioResponse(
         theme=payload.theme,
@@ -144,6 +150,8 @@ def generate_portfolio(payload: GenerateRequest) -> PortfolioResponse:
             content={
                 "name": display_name,
                 "summary": about_variant,
+                "professional_summary": _extract_professional_summary(ai_generated),
+                "generation_mode": "ai" if ai_generated else "fallback",
                 "github": payload.profile.html_url,
             },
         ),
@@ -156,7 +164,7 @@ def generate_portfolio(payload: GenerateRequest) -> PortfolioResponse:
             content={
                 "languages": top_languages,
                 "topics": top_topics,
-                "highlighted": _build_highlighted_skills(top_skills, payload.variant_id),
+                "highlighted": highlighted_skills,
                 "ats_keywords": _build_ats_keywords(top_languages, top_topics),
             },
         ),
@@ -301,6 +309,85 @@ def _build_project_par_description(repo: RepoSummary) -> str:
         result_bits.append(f"{repo.forks_count} forks")
     result = ", ".join(result_bits) if result_bits else "production-ready repository with practical outcomes"
     return f"Problem: {problem}. Action: {action}. Result: {result}."
+
+
+def _merge_ai_about_and_summary(base_summary: list[str], ai_generated: dict | None) -> list[str]:
+    if not ai_generated:
+        return base_summary
+    ai_about = str(ai_generated.get("about_me") or "").strip()
+    ai_professional = _extract_professional_summary(ai_generated)
+    merged: list[str] = []
+    if ai_about:
+        merged.append(ai_about)
+    merged.extend(ai_professional[:2])
+    merged.extend(base_summary)
+
+    seen: set[str] = set()
+    deduped: list[str] = []
+    for item in merged:
+        token = item.strip()
+        if not token:
+            continue
+        key = token.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(token)
+    return deduped[:8]
+
+
+def _extract_professional_summary(ai_generated: dict | None) -> list[str]:
+    if not ai_generated:
+        return []
+    items = ai_generated.get("professional_summary")
+    if not isinstance(items, list):
+        return []
+    cleaned = [str(item).strip() for item in items if str(item).strip()]
+    return cleaned[:3]
+
+
+def _merge_ai_skills(base_skills: list[str], ai_generated: dict | None) -> list[str]:
+    if not ai_generated:
+        return base_skills
+    ai_skills = ai_generated.get("skills")
+    if not isinstance(ai_skills, list):
+        return base_skills
+    merged = [*ai_skills, *base_skills]
+    seen: set[str] = set()
+    output: list[str] = []
+    for item in merged:
+        token = str(item).strip()
+        if not token:
+            continue
+        key = token.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        output.append(token)
+    return output[:12]
+
+
+def _merge_ai_project_descriptions(project_items: list[dict], ai_generated: dict | None) -> list[dict]:
+    if not ai_generated:
+        return project_items
+    projects = ai_generated.get("projects")
+    if not isinstance(projects, list):
+        return project_items
+
+    by_name: dict[str, str] = {}
+    for item in projects:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "").strip().lower()
+        description = str(item.get("description") or "").strip()
+        if name and description:
+            by_name[name] = description
+
+    for project in project_items:
+        key = str(project.get("name") or "").strip().lower()
+        if key in by_name:
+            project["description"] = by_name[key]
+    return project_items
 
 
 def build_export_filename(payload: ExportRequest) -> str:

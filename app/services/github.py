@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import os
+import re
 import time
 from dataclasses import dataclass, field
+from urllib.parse import urlparse
 
 import httpx
 from fastapi import HTTPException, status
@@ -11,6 +13,31 @@ from app.schemas import GitHubProfile, ProfileResponse, RepoSummary
 
 
 GITHUB_API_BASE = "https://api.github.com"
+GITHUB_HOSTS = {"github.com", "www.github.com"}
+GITHUB_USERNAME_RE = r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$"
+GITHUB_RESERVED_PATHS = {
+    "about",
+    "collections",
+    "contact",
+    "events",
+    "explore",
+    "features",
+    "issues",
+    "join",
+    "login",
+    "marketplace",
+    "new",
+    "notifications",
+    "orgs",
+    "pricing",
+    "pulls",
+    "search",
+    "settings",
+    "sponsors",
+    "topics",
+    "trending",
+    "users",
+}
 
 
 @dataclass(slots=True)
@@ -21,7 +48,8 @@ class GitHubService:
     _cache: dict[str, tuple[float, ProfileResponse]] = field(default_factory=dict)
 
     async def fetch_profile(self, username: str) -> ProfileResponse:
-        cache_key = username.lower().strip()
+        canonical_username = normalize_github_username(username)
+        cache_key = canonical_username.lower()
         now = time.time()
         cached = self._cache.get(cache_key)
         if cached and now - cached[0] < self.cache_ttl_seconds:
@@ -29,13 +57,13 @@ class GitHubService:
 
         try:
             user_response, repo_response = await self._fetch_profile_payload(
-                username,
+                canonical_username,
                 headers=self._build_headers(include_token=True),
             )
         except HTTPException as exc:
             if self.github_token and exc.status_code == status.HTTP_502_BAD_GATEWAY:
                 user_response, repo_response = await self._fetch_profile_payload(
-                    username,
+                    canonical_username,
                     headers=self._build_headers(include_token=False),
                 )
             else:
@@ -137,3 +165,36 @@ class GitHubService:
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail="Unable to reach GitHub API.",
             ) from exc
+
+
+def normalize_github_username(value: str) -> str:
+    raw = (value or "").strip()
+    if not raw:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="GitHub username is required.")
+
+    candidate = raw
+    if candidate.startswith("@"):
+        candidate = candidate[1:]
+
+    if "github.com" in candidate.lower() or candidate.lower().startswith("http://") or candidate.lower().startswith("https://"):
+        if "://" not in candidate:
+            candidate = f"https://{candidate}"
+        parsed = urlparse(candidate)
+        host = parsed.netloc.lower()
+        if host not in GITHUB_HOSTS:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Enter a valid GitHub profile URL.")
+        path_parts = [part for part in parsed.path.split("/") if part]
+        if not path_parts:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Enter a valid GitHub username.")
+        candidate = path_parts[0]
+
+    candidate = candidate.strip("/")
+    if not candidate:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Enter a valid GitHub username.")
+
+    if candidate.lower() in GITHUB_RESERVED_PATHS:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Enter a valid GitHub profile URL.")
+
+    if not re.fullmatch(GITHUB_USERNAME_RE, candidate):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Enter a valid GitHub username.")
+    return candidate

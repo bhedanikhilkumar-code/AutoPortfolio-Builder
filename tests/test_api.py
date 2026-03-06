@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app, get_github_service, get_linkedin_service
 from app.schemas import GenerateRequest, GitHubProfile, LinkedInProfile, ProfileResponse, RepoSummary
-from app.services.github import GitHubService
+from app.services.github import GitHubService, normalize_github_username
 from app.services.portfolio import generate_portfolio
 
 
@@ -217,6 +217,16 @@ def test_profile_endpoint_returns_profile_and_repos() -> None:
     assert payload["repos"][0]["name"] == "engine"
 
 
+def test_profile_endpoint_supports_github_profile_url_and_optional_linkedin() -> None:
+    headers = make_auth_headers()
+    response = client.post("/api/profile", json={"username": "https://github.com/octocat/"}, headers=headers)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["profile"]["username"] == "octocat"
+    assert payload["linkedin"]["provider_used"] == "github_only"
+
+
 def test_generate_endpoint_builds_portfolio_sections() -> None:
     headers = make_auth_headers()
     profile_payload = client.post("/api/profile", json={"username": "octocat", "linkedin_username": "octocat"}, headers=headers).json()
@@ -289,6 +299,22 @@ def test_github_service_reads_token_from_environment(monkeypatch) -> None:
     service = GitHubService()
 
     assert service._build_headers()["Authorization"] == "Bearer secret-token"
+
+
+def test_normalize_github_username_accepts_profile_and_repo_urls() -> None:
+    assert normalize_github_username("https://github.com/octocat") == "octocat"
+    assert normalize_github_username("https://github.com/octocat/hello-world?tab=readme") == "octocat"
+    assert normalize_github_username("@octocat") == "octocat"
+
+
+def test_normalize_github_username_rejects_non_profile_url() -> None:
+    try:
+        normalize_github_username("https://github.com/features")
+    except HTTPException as exc:
+        assert exc.status_code == 422
+        assert "valid GitHub" in str(exc.detail)
+    else:
+        assert False, "Expected HTTPException for reserved GitHub path."
 
 
 def test_github_service_skips_authorization_without_token(monkeypatch) -> None:
@@ -498,7 +524,6 @@ def test_full_profile_generate_edit_export_flow() -> None:
     assert export_response.headers["content-disposition"] == 'attachment; filename="ada-lovelace-frs.html"'
     assert "Ada Lovelace, FRS" in export_response.text
     assert "hello@example.dev" in export_response.text
-
 
 
 

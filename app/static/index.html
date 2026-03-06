@@ -114,10 +114,10 @@
               <input id="profile-projects" name="profile_projects" placeholder="AI Portfolio Builder, Smart Study Planner">
             </div>
             <div>
-              <label for="theme">Theme</label>
-              <select id="theme" name="theme" aria-label="Portfolio theme">
-                <option value="modern">Professional</option>
-                <option value="minimal">Prime</option>
+              <label for="theme">Portfolio Template</label>
+              <select id="theme" name="theme" aria-label="Portfolio template">
+                <option value="modern">Modern Template</option>
+                <option value="minimal">Minimal Template</option>
               </select>
             </div>
             <div>
@@ -131,7 +131,10 @@
                 <option value="ai">AI</option>
               </select>
             </div>
-            <button id="submit-button" class="btn-primary magnetic" type="submit">Generate Portfolio</button>
+            <button id="submit-button" class="btn-primary magnetic" type="submit">
+              <span>Generate Portfolio</span>
+              <span id="generator-spinner" class="loading-spinner" hidden aria-hidden="true"></span>
+            </button>
           </form>
 
           <label class="audio-reactive-toggle"><input id="audio-reactive" type="checkbox"> <span>Neon audio-reactive mode</span></label>

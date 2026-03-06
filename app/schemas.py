@@ -12,15 +12,15 @@ class HealthResponse(BaseModel):
 
 ThemeMode = Literal["modern", "minimal"]
 ResumeTemplate = Literal["auto", "classic", "modern", "minimal", "ats", "creative", "executive"]
-GitHubUsername = Annotated[str, Field(min_length=1, max_length=39, pattern=r"^[A-Za-z0-9-]+$")]
+GitHubInput = Annotated[str, Field(min_length=1, max_length=512)]
 
 
 LinkedInUsername = Annotated[str, Field(min_length=3, max_length=100, pattern=r"^[A-Za-z0-9-]+$")]
 
 
 class ProfileRequest(BaseModel):
-    username: GitHubUsername
-    linkedin_username: LinkedInUsername
+    username: GitHubInput
+    linkedin_username: LinkedInUsername | None = None
 
 
 class RepoSummary(BaseModel):

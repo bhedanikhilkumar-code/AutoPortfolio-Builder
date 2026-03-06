@@ -104,8 +104,7 @@ input:focus, select:focus { outline: 2px solid #c7d2fe; border-color: var(--seco
 .btn-primary:hover, .btn-secondary:hover, .btn-danger:hover { transform: translateY(-1px); }
 
 .btn-primary.is-loading { position: relative; opacity: 0.92; }
-.btn-primary.is-loading::after {
-  content: "";
+.loading-spinner {
   width: 14px;
   height: 14px;
   margin-left: 8px;

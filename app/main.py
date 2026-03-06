@@ -68,7 +68,7 @@ from app.core.db import init_db
 from app.dashboard.service import add_generation_history, build_dashboard, save_resume_snapshot
 from app.deploy_export.service import build_deploy_package
 from app.resume_versions.service import list_versions, restore_version
-from app.services.github import GitHubService
+from app.services.github import GitHubService, normalize_github_username
 from app.services.linkedin import LinkedInService
 from app.services.portfolio import (
     build_export_filename,
@@ -385,25 +385,37 @@ def create_app() -> FastAPI:
         github_service: GitHubService = Depends(get_github_service),
         linkedin_service: LinkedInService = Depends(get_linkedin_service),
     ) -> ProfileResponse:
-        logger.info("profile_request github=%s linkedin=%s", payload.username, payload.linkedin_username)
-        github_payload = await github_service.fetch_profile(payload.username)
-        try:
-            linkedin_payload = await linkedin_service.fetch_public_profile(payload.linkedin_username)
-            if "not_found" in (linkedin_payload.signals or []):
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="LinkedIn username not found.")
-        except HTTPException:
-            raise
-        except Exception:
-            logger.exception("linkedin_enrichment_failed linkedin=%s", payload.linkedin_username)
-            linkedin_slug = payload.linkedin_username.strip().strip("/").split("/")[-1].replace("in/", "")
+        normalized_username = normalize_github_username(payload.username)
+        logger.info("profile_request github=%s linkedin=%s", normalized_username, payload.linkedin_username)
+        github_payload = await github_service.fetch_profile(normalized_username)
+        linkedin_input = (payload.linkedin_username or "").strip()
+        if not linkedin_input:
             linkedin_payload = LinkedInProfile(
-                username=linkedin_slug or "unknown",
-                url=f"https://www.linkedin.com/in/{linkedin_slug or 'unknown'}/",
-                summary=["LinkedIn enrichment temporarily unavailable. GitHub-only mode applied."],
-                provider_used="endpoint_fallback",
-                confidence_score=0.05,
-                signals=["endpoint_fallback"],
+                username=github_payload.profile.username,
+                url="",
+                summary=["GitHub-only mode enabled. Add LinkedIn username for additional enrichment."],
+                provider_used="github_only",
+                confidence_score=0.2,
+                signals=["github_only"],
             )
+        else:
+            try:
+                linkedin_payload = await linkedin_service.fetch_public_profile(linkedin_input)
+                if "not_found" in (linkedin_payload.signals or []):
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="LinkedIn username not found.")
+            except HTTPException:
+                raise
+            except Exception:
+                logger.exception("linkedin_enrichment_failed linkedin=%s", linkedin_input)
+                linkedin_slug = linkedin_input.strip().strip("/").split("/")[-1].replace("in/", "")
+                linkedin_payload = LinkedInProfile(
+                    username=linkedin_slug or github_payload.profile.username,
+                    url=f"https://www.linkedin.com/in/{linkedin_slug or github_payload.profile.username}/",
+                    summary=["LinkedIn enrichment temporarily unavailable. GitHub-only mode applied."],
+                    provider_used="endpoint_fallback",
+                    confidence_score=0.05,
+                    signals=["endpoint_fallback"],
+                )
         return ProfileResponse(profile=github_payload.profile, repos=github_payload.repos, linkedin=linkedin_payload)
 
     @app.post("/api/generate", response_model=PortfolioResponse)

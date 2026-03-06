@@ -6,8 +6,10 @@ AutoPortfolio Builder is a FastAPI application that turns a public GitHub profil
 - `GET /api/health` for health checks
 - `POST /api/profile` to fetch GitHub profile and non-fork repositories
 - Optional `GITHUB_TOKEN` support for authenticated GitHub API requests, with unauthenticated fallback
+- Accepts GitHub username or full profile URL input (for example `https://github.com/username`)
 - Consistent JSON error responses in the format `{ "error": { "code": "...", "message": "..." } }`
 - `POST /api/generate` to build portfolio sections with selectable themes
+- Optional AI content enrichment for About/Skills/Projects using `AI_API_KEY` (deterministic fallback when key is missing)
 - `POST /api/export/html` to download the current portfolio as a standalone HTML file
 - `POST /api/export/zip` to download a ZIP package containing `index.html` and `portfolio.json`
 - Single-page frontend at `/` to generate, edit, save, preview, and export the portfolio in `modern` or `minimal` mode
@@ -18,6 +20,7 @@ AutoPortfolio Builder is a FastAPI application that turns a public GitHub profil
 - Backend: FastAPI
 - Frontend: vanilla HTML, CSS, and JavaScript served by FastAPI
 - Data source: GitHub REST API
+- Optional AI provider: OpenAI-compatible Chat Completions API
 - Testing: pytest
 
 ## Project Structure
@@ -37,7 +40,9 @@ AutoPortfolio Builder is a FastAPI application that turns a public GitHub profil
 pip install -r requirements.txt
 ```
 
-3. Optionally set a GitHub token to reduce rate-limit issues:
+3. Optionally copy `.env.example` and configure secrets.
+
+4. Optionally set a GitHub token to reduce rate-limit issues:
 
 ```bash
 export GITHUB_TOKEN=your_github_token
@@ -49,13 +54,31 @@ On Windows PowerShell:
 $env:GITHUB_TOKEN="your_github_token"
 ```
 
-4. Start the development server:
+5. Optional AI configuration:
+
+```bash
+export AI_API_KEY=your_ai_api_key
+export AI_BASE_URL=https://api.openai.com/v1
+export AI_MODEL=gpt-4o-mini
+```
+
+On Windows PowerShell:
+
+```powershell
+$env:AI_API_KEY="your_ai_api_key"
+$env:AI_BASE_URL="https://api.openai.com/v1"
+$env:AI_MODEL="gpt-4o-mini"
+```
+
+If `AI_API_KEY` is missing, the generator still works using deterministic GitHub-based copy.
+
+6. Start the development server:
 
 ```bash
 uvicorn app.main:app --reload
 ```
 
-5. Open `http://127.0.0.1:8000`.
+7. Open `http://127.0.0.1:8000`.
 
 ## API Usage
 
@@ -151,11 +174,14 @@ Deployment checklist:
 2. Install dependencies with `pip install -r requirements.txt`.
 3. Ensure your platform injects `PORT` (Render does this automatically).
 4. Ensure outbound access to `api.github.com`, since profile generation depends on the GitHub API.
-5. This repo includes `render.yaml`, `Procfile`, and `runtime.txt` for smoother Render deployment.
+5. If AI enrichment is enabled, ensure outbound access to your `AI_BASE_URL`.
+6. This repo includes `render.yaml`, `Procfile`, and `runtime.txt` for smoother Render deployment.
 
 ## Notes
 - If `GITHUB_TOKEN` is set, the backend sends authenticated GitHub API requests with `Authorization: Bearer ...`.
 - If `GITHUB_TOKEN` is not set, the app still works with public GitHub API access and lower rate limits.
+- If `AI_API_KEY` is set, `/api/generate` enriches About/Skills/Projects with AI-generated copy.
+- If `AI_API_KEY` is not set (or AI request fails), deterministic GitHub-derived content is returned.
 - The frontend shows styled error banners for validation errors, missing users, and upstream GitHub API failures.
 - The frontend keeps a draft edit state separate from the saved/exported portfolio state.
 - The existing `LICENSE` file is preserved unchanged.

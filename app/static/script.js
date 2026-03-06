@@ -9,6 +9,7 @@ const linkedinInput = document.getElementById("linkedin-username");
 const deepModeInput = document.getElementById("deep-mode");
 const performanceModeInput = document.getElementById("performance-mode");
 const submitButton = document.getElementById("submit-button");
+const generatorSpinner = document.getElementById("generator-spinner");
 const statusEl = document.getElementById("status");
 const errorBannerEl = document.getElementById("error-banner");
 const portfolioEl = document.getElementById("portfolio");
@@ -530,12 +531,23 @@ linkedinInput?.addEventListener("input", resetProfileCacheIfChanged);
 function normalizeGitHubInput(value) {
   const input = (value || "").trim();
   if (!input) return "";
-  if (/^https?:\/\//i.test(input)) {
-    const match = input.match(/github\.com\/(?:[A-Za-z0-9_.-]+)\/?$/i);
-    if (!match) return "";
-    return input.replace(/\/$/, "").split("/").pop() || "";
+  const cleanAt = input.replace(/^@/, "");
+  const withScheme = /^https?:\/\//i.test(cleanAt) ? cleanAt : (cleanAt.toLowerCase().includes("github.com/") ? `https://${cleanAt}` : cleanAt);
+
+  if (/^https?:\/\//i.test(withScheme)) {
+    try {
+      const parsed = new URL(withScheme);
+      const host = parsed.hostname.toLowerCase();
+      if (host !== "github.com" && host !== "www.github.com") return "";
+      const parts = parsed.pathname.split("/").filter(Boolean);
+      if (!parts.length) return "";
+      const candidate = parts[0].trim();
+      return /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(candidate) ? candidate : "";
+    } catch {
+      return "";
+    }
   }
-  return input.replace(/^@/, "");
+  return /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(cleanAt) ? cleanAt : "";
 }
 
 function normalizeLinkedInInput(value) {
@@ -576,7 +588,7 @@ form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const normalizedGithub = normalizeGitHubInput(usernameInput.value);
   const normalizedLinkedInRaw = normalizeLinkedInInput(linkedinInput?.value || "");
-  const normalizedLinkedIn = normalizedLinkedInRaw || normalizedGithub;
+  const normalizedLinkedIn = normalizedLinkedInRaw || "";
   const theme = themeInput.value;
 
   if (!appState.authToken) {
@@ -598,9 +610,7 @@ form.addEventListener("submit", async (event) => {
 
   try {
     const profilePayload = await ensureProfilePayload(normalizedGithub, normalizedLinkedIn);
-    if (!normalizedLinkedInRaw) {
-      setStatus("GitHub-only mode active. LinkedIn enrichment fallback applied automatically.");
-    }
+    if (!normalizedLinkedInRaw) setStatus("GitHub-only mode active.");
     appState.profileData = profilePayload;
     appState.username = normalizedGithub;
 
@@ -636,11 +646,11 @@ async function ensureProfilePayload(username, linkedinUsername) {
   ) {
     return appState.profileData;
   }
-  setStatus("Fetching GitHub + LinkedIn profile...");
+  setStatus("Fetching GitHub profile data...");
   const profileResponse = await fetch("/api/profile", {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify({ username, linkedin_username: linkedinUsername }),
+    body: JSON.stringify({ username, linkedin_username: linkedinUsername || null }),
   });
   const profilePayload = await parseErrorPayload(profileResponse);
   if (!profileResponse.ok) throw new Error(getErrorMessage(profilePayload, "Failed to fetch profile."));
@@ -683,27 +693,35 @@ function setLoading(isLoading, options = {}) {
   const { preserveLabel = false } = options;
   submitButton.disabled = isLoading;
   submitButton.classList.toggle("is-loading", isLoading);
-  if (!preserveLabel) {
-    submitButton.textContent = isLoading ? "Generating Portfolio..." : "Generate Portfolio";
+  if (generatorSpinner) generatorSpinner.hidden = !isLoading;
+  const label = submitButton?.querySelector("span");
+  if (!preserveLabel && label) {
+    label.textContent = isLoading ? "Generating Portfolio..." : "Generate Portfolio";
   }
 }
 
 function setGenerateButtonGenerated() {
   submitButton.disabled = false;
   submitButton.classList.remove("is-loading");
-  submitButton.textContent = "Generated ✅";
+  if (generatorSpinner) generatorSpinner.hidden = true;
+  const label = submitButton?.querySelector("span");
+  if (label) label.textContent = "Generated ✅";
 }
 
 function setGenerateButtonFailed() {
   submitButton.disabled = false;
   submitButton.classList.remove("is-loading");
-  submitButton.textContent = "Failed — Try again";
+  if (generatorSpinner) generatorSpinner.hidden = true;
+  const label = submitButton?.querySelector("span");
+  if (label) label.textContent = "Failed - Try again";
 }
 
 function resetGenerateButton() {
   submitButton.disabled = false;
   submitButton.classList.remove("is-loading");
-  submitButton.textContent = "Generate Portfolio";
+  if (generatorSpinner) generatorSpinner.hidden = true;
+  const label = submitButton?.querySelector("span");
+  if (label) label.textContent = "Generate Portfolio";
 }
 
 function setStatus(message) { statusEl.textContent = message; }
