@@ -132,6 +132,10 @@ class GoogleAuthRequest(BaseModel):
     id_token: Annotated[str, Field(min_length=16)]
 
 
+class GoogleAccessTokenRequest(BaseModel):
+    access_token: Annotated[str, Field(min_length=16)]
+
+
 class GoogleAuthConfigResponse(BaseModel):
     enabled: bool
     client_id: str | None = None

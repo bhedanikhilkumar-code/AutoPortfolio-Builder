@@ -29,6 +29,7 @@ from app.schemas import (
     ExportRequest,
     GenerateRequest,
     GitHubAuthStartResponse,
+    GoogleAccessTokenRequest,
     GoogleAuthConfigResponse,
     GoogleAuthStartResponse,
     GoogleAuthRequest,
@@ -62,7 +63,13 @@ from app.admin.service import (
 from app.ai_rewrite.service import rewrite_section
 from app.analytics.service import get_analytics_for_user, record_page_view, record_project_click
 from app.auth.github import exchange_github_code, fetch_github_identity, get_github_client_id
-from app.auth.google import build_google_auth_url, exchange_google_code, get_google_client_id, verify_google_id_token
+from app.auth.google import (
+    build_google_auth_url,
+    exchange_google_code,
+    get_google_client_id,
+    verify_google_access_token,
+    verify_google_id_token,
+)
 from app.auth.service import create_session, create_session_for_user, ensure_user_for_google, register_user, resolve_user_from_token, revoke_session
 from app.branding.service import get_branding, upsert_branding
 from app.core.db import init_db
@@ -222,6 +229,13 @@ def create_app() -> FastAPI:
     @app.post("/api/auth/google", response_model=AuthResponse)
     async def auth_google(payload: GoogleAuthRequest) -> AuthResponse:
         google_user = await verify_google_id_token(payload.id_token)
+        user_id = ensure_user_for_google(google_user["email"], google_user.get("name"))
+        token = create_session_for_user(user_id)
+        return AuthResponse(access_token=token)
+
+    @app.post("/api/auth/google/access-token", response_model=AuthResponse)
+    async def auth_google_access_token(payload: GoogleAccessTokenRequest) -> AuthResponse:
+        google_user = await verify_google_access_token(payload.access_token)
         user_id = ensure_user_for_google(google_user["email"], google_user.get("name"))
         token = create_session_for_user(user_id)
         return AuthResponse(access_token=token)

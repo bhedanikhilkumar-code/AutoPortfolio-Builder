@@ -1,4 +1,4 @@
-import { getDashboard, githubStart, googleStart, login, logout, register } from "./api.js";
+import { getDashboard, githubStart, googleAccessTokenLogin, googleConfig, login, logout, register } from "./api.js";
 import { defaultAfterLoginRoute, navigate, refreshRouterUI } from "./router.js";
 import { clearClientAuthState, setState, setToken, state } from "./state.js";
 import { $, showBanner, validEmail, withButtonLoading } from "./utils.js";
@@ -69,9 +69,39 @@ function initGoogleButtons() {
 
   const trigger = async (button) => {
     await withButtonLoading(button, "Opening Google...", async () => {
-      const payload = await googleStart();
-      if (!payload.enabled || !payload.auth_url) throw new Error("Google login is not configured.");
-      window.location.href = payload.auth_url;
+      const config = await googleConfig();
+      if (!config.enabled || !config.client_id) throw new Error("Google login is not configured.");
+      if (!window.google?.accounts?.oauth2) throw new Error("Google login script not available. Refresh and try again.");
+
+      await new Promise((resolve, reject) => {
+        const client = window.google.accounts.oauth2.initTokenClient({
+          client_id: config.client_id,
+          scope: "openid email profile",
+          callback: async (response) => {
+            try {
+              if (response?.error) {
+                reject(new Error("Google login was cancelled or failed."));
+                return;
+              }
+              const accessToken = response?.access_token;
+              if (!accessToken) {
+                reject(new Error("Google access token missing."));
+                return;
+              }
+              const payload = await googleAccessTokenLogin(accessToken);
+              setToken(payload.access_token);
+              await syncUserFromToken();
+              showBanner(globalBanner(), "Signed in with Google.", "success");
+              navigate(defaultAfterLoginRoute());
+              resolve();
+            } catch (error) {
+              reject(error);
+            }
+          },
+        });
+
+        client.requestAccessToken({ prompt: "select_account" });
+      });
     }).catch((error) => showBanner(globalBanner(), error.message, "error"));
   };
 

@@ -65,6 +65,15 @@ export async function googleStart() {
   return parseResponse(response, "Google login is not available.");
 }
 
+export async function googleAccessTokenLogin(accessToken) {
+  const response = await fetch("/api/auth/google/access-token", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ access_token: accessToken }),
+  });
+  return parseResponse(response, "Google login failed.");
+}
+
 export async function githubStart() {
   const response = await fetch("/api/auth/github/start");
   return parseResponse(response, "GitHub login is not available.");

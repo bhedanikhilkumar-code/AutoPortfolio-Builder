@@ -85,6 +85,34 @@ async def exchange_google_code(code: str, redirect_uri: str) -> dict:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Unable to reach Google OAuth services.") from exc
 
 
+async def verify_google_access_token(access_token: str) -> dict:
+    if not access_token.strip():
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Google access token is required.")
+
+    client_id = get_google_client_id()
+    if not client_id:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Google login is not configured.")
+
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            response = await client.get(GOOGLE_TOKENINFO_URL, params={"access_token": access_token})
+        if response.status_code != 200:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Google access token.")
+
+        payload = response.json()
+        aud = str(payload.get("aud") or payload.get("issued_to") or "").strip()
+        if aud != client_id:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Google access token audience mismatch.")
+
+        email = str(payload.get("email") or "").strip().lower()
+        if not email:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Google token missing email.")
+
+        return {"email": email, "name": payload.get("name")}
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Unable to verify Google token.") from exc
+
+
 async def verify_google_id_token(id_token: str) -> dict:
     if not id_token.strip():
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Google ID token is required.")
