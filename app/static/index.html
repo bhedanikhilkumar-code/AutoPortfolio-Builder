@@ -29,7 +29,14 @@
   <main class="container page-shell">
     <div id="global-banner" class="banner" role="status" aria-live="polite" hidden></div>
 
-    <section class="view" data-route="/" id="landing-view">
+    <section class="view" data-route="/auth-loading" id="auth-loading-view">
+      <div class="card">
+        <h2>Checking session…</h2>
+        <p>Please wait while we verify your authentication state.</p>
+      </div>
+    </section>
+
+    <section class="view" data-route="/" id="landing-view" hidden>
       <section class="hero card">
         <h1>Build your portfolio from your dev profile</h1>
         <p>Generate role-focused content, review drafts, and export polished resumes in minutes.</p>

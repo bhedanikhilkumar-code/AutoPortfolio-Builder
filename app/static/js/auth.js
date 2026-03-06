@@ -1,6 +1,6 @@
 import { getDashboard, githubStart, googleConfig, googleLogin, login, logout, register } from "./api.js";
 import { defaultAfterLoginRoute, navigate, refreshRouterUI } from "./router.js";
-import { setState, setToken, state } from "./state.js";
+import { clearClientAuthState, setState, setToken, state } from "./state.js";
 import { $, showBanner, validEmail, withButtonLoading } from "./utils.js";
 
 function globalBanner() {
@@ -8,17 +8,19 @@ function globalBanner() {
 }
 
 async function syncUserFromToken() {
+  setState({ authReady: false });
   if (!state.token) {
-    setState({ user: null });
+    setState({ user: null, authReady: true });
     refreshRouterUI();
     return;
   }
   try {
     const dashboard = await getDashboard();
-    setState({ user: dashboard.user });
+    setState({ user: dashboard.user, dashboardData: dashboard });
   } catch {
-    setToken("");
-    setState({ user: null });
+    clearClientAuthState();
+  } finally {
+    setState({ authReady: true });
   }
   refreshRouterUI();
 }
@@ -84,6 +86,7 @@ function initGoogleButtons() {
 
       window.google.accounts.id.initialize({
         client_id: config.client_id,
+        auto_select: false,
         callback: async (credentialResponse) => {
           try {
             await handleGoogleCredentialResponse(credentialResponse);
@@ -128,16 +131,29 @@ function initGithubButtons() {
   signupBtn?.addEventListener("click", () => start(signupBtn));
 }
 
+function disableGoogleAutoSignIn() {
+  try {
+    if (window.google?.accounts?.id) {
+      window.google.accounts.id.disableAutoSelect();
+      window.google.accounts.id.cancel();
+    }
+  } catch {
+    // best effort
+  }
+}
+
 function initLogout() {
   const logoutBtn = $("logout-btn");
   logoutBtn?.addEventListener("click", () =>
     withButtonLoading(logoutBtn, "Logging out...", async () => {
-      if (state.token) await logout();
-      setToken("");
-      setState({ user: null, pendingRoute: "/" });
+      if (state.token) {
+        await logout();
+      }
+      disableGoogleAutoSignIn();
+      clearClientAuthState();
       refreshRouterUI();
-      showBanner(globalBanner(), "Logged out.", "success");
-      navigate("/");
+      showBanner(globalBanner(), "Logged out. Please sign in manually next time.", "success");
+      navigate("/login");
     }).catch((error) => showBanner(globalBanner(), error.message, "error"))
   );
 }
@@ -147,6 +163,9 @@ export async function initAuth() {
   initGoogleButtons();
   initGithubButtons();
   initLogout();
+  if (!state.token) {
+    disableGoogleAutoSignIn();
+  }
   await syncUserFromToken();
 }
 

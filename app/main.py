@@ -204,8 +204,11 @@ def create_app() -> FastAPI:
 
         html = f"""
         <!doctype html><html><body><script>
-        localStorage.setItem('apb_token', {app_token!r});
-        window.location.href = '/#/generator';
+        try {{
+          localStorage.removeItem('apb_token');
+          sessionStorage.setItem('apb_token', {app_token!r});
+        }} catch (_) {{}}
+        window.location.href = '/#/dashboard';
         </script><p>Login successful. Redirecting…</p></body></html>
         """
         return Response(content=html, media_type="text/html")

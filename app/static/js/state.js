@@ -1,10 +1,27 @@
 const listeners = new Set();
+const TOKEN_KEY = "apb_token";
+
+function readStoredToken() {
+  const sessionToken = sessionStorage.getItem(TOKEN_KEY);
+  if (sessionToken) return sessionToken;
+
+  const legacyLocalToken = localStorage.getItem(TOKEN_KEY);
+  if (legacyLocalToken) {
+    sessionStorage.setItem(TOKEN_KEY, legacyLocalToken);
+    localStorage.removeItem(TOKEN_KEY);
+    return legacyLocalToken;
+  }
+  return "";
+}
 
 export const state = {
-  token: localStorage.getItem("apb_token") || "",
+  token: readStoredToken(),
   user: null,
   pendingRoute: "/",
   generatorResult: null,
+  dashboardData: null,
+  adminData: null,
+  authReady: false,
 };
 
 export function setState(patch) {
@@ -19,11 +36,26 @@ export function subscribe(listener) {
 
 export function setToken(token) {
   if (token) {
-    localStorage.setItem("apb_token", token);
+    sessionStorage.setItem(TOKEN_KEY, token);
+    localStorage.removeItem(TOKEN_KEY);
   } else {
-    localStorage.removeItem("apb_token");
+    sessionStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(TOKEN_KEY);
   }
   setState({ token: token || "" });
+}
+
+export function clearClientAuthState() {
+  sessionStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(TOKEN_KEY);
+  setState({
+    token: "",
+    user: null,
+    pendingRoute: "/",
+    generatorResult: null,
+    dashboardData: null,
+    adminData: null,
+  });
 }
 
 export function isAuthenticated() {

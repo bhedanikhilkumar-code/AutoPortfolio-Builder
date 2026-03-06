@@ -1,7 +1,7 @@
 import { isAdmin, isAuthenticated, state } from "./state.js";
 import { $, showBanner } from "./utils.js";
 
-const ROUTES = ["/", "/login", "/signup", "/dashboard", "/generator", "/admin"];
+const ROUTES = ["/", "/login", "/signup", "/dashboard", "/generator", "/admin", "/auth-loading"];
 const PRIVATE_ROUTES = new Set(["/dashboard", "/generator", "/admin"]);
 
 let onRoute = null;
@@ -18,17 +18,18 @@ export function navigate(route) {
 }
 
 function applyNavVisibility() {
+  const authReady = Boolean(state.authReady);
   document.querySelectorAll("[data-auth-only]").forEach((node) => {
-    node.hidden = !isAuthenticated();
+    node.hidden = !authReady || !isAuthenticated();
   });
   document.querySelectorAll("[data-admin-only]").forEach((node) => {
-    node.hidden = !isAuthenticated() || !isAdmin();
+    node.hidden = !authReady || !isAuthenticated() || !isAdmin();
   });
   document.querySelectorAll("[data-guest-only]").forEach((node) => {
-    node.hidden = isAuthenticated();
+    node.hidden = !authReady || isAuthenticated();
   });
   const logoutBtn = $("logout-btn");
-  if (logoutBtn) logoutBtn.hidden = !isAuthenticated();
+  if (logoutBtn) logoutBtn.hidden = !authReady || !isAuthenticated();
 }
 
 function routeGuard(route) {
@@ -55,6 +56,10 @@ function renderRoute(route) {
 function handleRoute() {
   const route = currentRoute();
   applyNavVisibility();
+  if (!state.authReady) {
+    renderRoute("/auth-loading");
+    return;
+  }
   if (!routeGuard(route)) return;
   renderRoute(route);
   if (onRoute) onRoute(route);

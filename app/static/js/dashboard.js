@@ -1,5 +1,5 @@
 import { getDashboard } from "./api.js";
-import { state } from "./state.js";
+import { setState, state } from "./state.js";
 import { $, showBanner, withButtonLoading } from "./utils.js";
 
 function renderDashboard(data) {
@@ -31,6 +31,7 @@ function renderDashboard(data) {
 
 export async function loadDashboardData() {
   const data = await getDashboard();
+  setState({ dashboardData: data });
   renderDashboard(data);
   return data;
 }

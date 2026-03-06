@@ -1,5 +1,5 @@
 import { initAdmin, refreshAdminData } from "./admin.js";
-import { initAuth, refreshAuthUser } from "./auth.js";
+import { initAuth } from "./auth.js";
 import { initDashboard, loadDashboardData } from "./dashboard.js";
 import { initGenerator } from "./generator.js";
 import { initRouter, navigate } from "./router.js";
@@ -50,11 +50,10 @@ async function bootstrap() {
   initGenerator();
   initDashboard();
   initAdmin();
-  await initAuth();
-  await refreshAuthUser();
   initRouter((route) => {
     handleRouteChange(route);
   });
+  await initAuth();
 }
 
 bootstrap().catch((error) => {
