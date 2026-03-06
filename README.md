@@ -1,4 +1,4 @@
-# AutoPortfolio Builder
+## AutoPortfolio Builder
 
 AutoPortfolio Builder is a FastAPI application that turns a public GitHub profile into a generated portfolio draft. It fetches profile and repository metadata from the GitHub REST API, derives portfolio sections, and renders the result in a minimal single-page UI.
 
