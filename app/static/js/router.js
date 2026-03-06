@@ -49,7 +49,9 @@ function routeGuard(route) {
 
 function renderRoute(route) {
   document.querySelectorAll(".view").forEach((view) => {
-    view.hidden = view.dataset.route !== route;
+    const isActive = view.dataset.route === route;
+    view.hidden = !isActive;
+    view.style.display = isActive ? "block" : "none";
   });
 }
 
