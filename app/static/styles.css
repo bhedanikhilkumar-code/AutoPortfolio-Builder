@@ -78,6 +78,10 @@ legend,
   display: block;
 }
 
+.view[hidden] {
+  display: none !important;
+}
+
 .card {
   background: var(--card);
   border: 1px solid var(--border);
