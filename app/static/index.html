@@ -3,244 +3,204 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Auto Portfolio Builder</title>
-  <meta name="description" content="Create and export a professional developer portfolio in seconds.">
-  <meta name="theme-color" content="#4F46E5">
+  <title>AutoPortfolio Builder</title>
+  <meta name="description" content="Generate and manage developer portfolios with role-based workflows.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-  <div id="intro-loader" class="intro-loader" aria-hidden="true">
-    <div class="intro-loader__content">
-      <p>Preparing your portfolio builder...</p>
-      <div class="intro-loader__bar"><span id="intro-loader-bar"></span></div>
-    </div>
-  </div>
-
-  <div id="cursor-dot" class="cursor-dot" aria-hidden="true"></div>
-  <div id="cursor-ring" class="cursor-ring" aria-hidden="true"></div>
-  <canvas id="bg-animation" aria-hidden="true"></canvas>
-  <div class="bg-overlay" aria-hidden="true"></div>
-
-  <header class="top-nav">
-    <div class="container nav-inner">
-      <a class="brand" href="#home">Auto Portfolio Builder</a>
-      <nav class="nav-links">
-        <a href="#home">Home</a>
-        <a href="#features">Features</a>
-        <a href="#generate">Generate Portfolio</a>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="#/">AutoPortfolio Builder</a>
+      <nav id="main-nav" class="nav-links">
+        <a href="#/">Home</a>
+        <a href="#/generator" data-auth-only hidden>Generator</a>
+        <a href="#/dashboard" data-auth-only hidden>Dashboard</a>
+        <a href="#/admin" data-admin-only hidden>Admin</a>
+        <a href="#/login" data-guest-only>Login</a>
+        <a href="#/signup" data-guest-only>Signup</a>
       </nav>
-      <div class="inline-actions nav-actions">
-        <button id="theme-toggle" class="btn-secondary" type="button">Dark Mode</button>
-        <a class="btn-primary" href="#generate">Build Portfolio</a>
-      </div>
+      <button id="logout-btn" class="btn btn-secondary" type="button" hidden>Logout</button>
     </div>
   </header>
 
-  <main class="page" id="home">
-    <section class="hero">
-      <div class="container hero-content reveal" data-reveal="up">
-        <h1>Create Your Developer Portfolio in Seconds</h1>
-        <p>Turn your GitHub and LinkedIn profile into a polished, recruiter-ready portfolio with export, sharing, and dashboard controls.</p>
-        <a class="btn-primary magnetic" href="#generate">Generate Portfolio</a>
+  <main class="container page-shell">
+    <div id="global-banner" class="banner" role="status" aria-live="polite" hidden></div>
+
+    <section class="view" data-route="/" id="landing-view">
+      <section class="hero card">
+        <h1>Build your portfolio from your dev profile</h1>
+        <p>Generate role-focused content, review drafts, and export polished resumes in minutes.</p>
+        <button id="build-portfolio-btn" class="btn btn-primary" type="button">Build Portfolio</button>
+      </section>
+
+      <section class="card">
+        <h2>Features</h2>
+        <div class="grid three-col">
+          <article>
+            <h3>Profile synthesis</h3>
+            <p>Combines GitHub and LinkedIn public profile signals.</p>
+          </article>
+          <article>
+            <h3>Role targeting</h3>
+            <p>Adapts output by frontend, backend, fullstack, data, or AI roles.</p>
+          </article>
+          <article>
+            <h3>Admin oversight</h3>
+            <p>Role-gated controls for stats, activity, and CSV exports.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>How it works</h2>
+        <ol class="steps">
+          <li>Sign up or log in.</li>
+          <li>Provide profile links and generation options.</li>
+          <li>Generate and manage portfolio output from your dashboard.</li>
+        </ol>
+      </section>
+
+      <footer class="footer card">
+        <p>© 2026 AutoPortfolio Builder</p>
+      </footer>
+    </section>
+
+    <section class="view" data-route="/login" id="login-view" hidden>
+      <div class="card auth-card">
+        <h2>Login</h2>
+        <label>Email
+          <input id="login-email" type="email" autocomplete="email" placeholder="you@example.com">
+        </label>
+        <label>Password
+          <input id="login-password" type="password" autocomplete="current-password" placeholder="At least 8 characters">
+        </label>
+        <button id="login-btn" class="btn btn-primary" type="button">Login</button>
+        <div class="auth-alt">
+          <button id="google-login-btn" class="btn btn-secondary" type="button">Sign in with Google</button>
+          <button id="github-login-btn" class="btn btn-secondary" type="button">Sign in with GitHub</button>
+        </div>
+        <div id="google-signin-slot-login" class="google-slot"></div>
+        <p>Need an account? <a href="#/signup">Create one</a>.</p>
       </div>
     </section>
 
-    <section id="features" class="section">
-      <div class="container">
-        <div class="section-title reveal" data-reveal="up">
-          <h2>Why developers choose Auto Portfolio Builder</h2>
+    <section class="view" data-route="/signup" id="signup-view" hidden>
+      <div class="card auth-card">
+        <h2>Signup</h2>
+        <label>Name
+          <input id="signup-name" type="text" autocomplete="name" placeholder="Your name">
+        </label>
+        <label>Email
+          <input id="signup-email" type="email" autocomplete="email" placeholder="you@example.com">
+        </label>
+        <label>Password
+          <input id="signup-password" type="password" autocomplete="new-password" placeholder="At least 8 characters">
+        </label>
+        <button id="register-btn" class="btn btn-primary" type="button">Register</button>
+        <div class="auth-alt">
+          <button id="google-signup-btn" class="btn btn-secondary" type="button">Sign in with Google</button>
+          <button id="github-signup-btn" class="btn btn-secondary" type="button">Sign in with GitHub</button>
         </div>
-        <div class="feature-grid reveal" data-reveal="up">
-          <article class="card panel glass-card">
-            <h3>Smart Profile Enrichment</h3>
-            <p>Combines GitHub + LinkedIn signals into a clean and structured personal brand summary.</p>
-          </article>
-          <article class="card panel glass-card">
-            <h3>Fast Customization</h3>
-            <p>Generate, edit, export, and iterate quickly with modern templates and role-focused output.</p>
-          </article>
-          <article class="card panel glass-card">
-            <h3>Built for Hiring</h3>
-            <p>ATS-safe copy, polished layout, and one-click sharing to present your work professionally.</p>
-          </article>
-        </div>
+        <div id="google-signin-slot-signup" class="google-slot"></div>
+        <p>Already have an account? <a href="#/login">Login</a>.</p>
       </div>
     </section>
 
-    <section class="section">
-      <div class="container">
-        <div class="section-title reveal" data-reveal="up">
-          <h2>How it works</h2>
-        </div>
-        <div class="steps-grid reveal" data-reveal="up">
-          <article class="card panel glass-card"><strong>1.</strong> Add GitHub and LinkedIn usernames</article>
-          <article class="card panel glass-card"><strong>2.</strong> Pick theme and target role</article>
-          <article class="card panel glass-card"><strong>3.</strong> Generate, edit, export, and share</article>
-        </div>
+    <section class="view" data-route="/dashboard" id="dashboard-view" hidden>
+      <div class="card">
+        <h2>Dashboard</h2>
+        <button id="load-dashboard-btn" class="btn btn-primary" type="button">Load Dashboard</button>
+        <div id="dashboard-content" class="stack"></div>
       </div>
     </section>
 
-    <section id="generate" class="section">
-      <div class="container grid-2">
-        <div id="generator-panel" class="panel glass-card reveal" data-reveal="up">
-          <h2>Build Portfolio</h2>
-          <p id="auth-required-msg" class="muted-note" hidden>Login required: please sign in to access portfolio generation.</p>
-          <form id="builder-form" class="form-grid">
-            <div>
-              <label for="profile-name">Name</label>
-              <input id="profile-name" name="profile_name" placeholder="e.g. Nikhil Bheda" autocomplete="name">
-            </div>
-            <div>
-              <label for="profile-email">Email</label>
-              <input id="profile-email" name="profile_email" type="email" placeholder="e.g. you@example.com" autocomplete="email">
-            </div>
-            <div>
-              <label for="username">GitHub Username or URL</label>
-              <input id="username" name="username" placeholder="e.g. bhedanikhilkumar-code or https://github.com/username" autocomplete="off" required>
-            </div>
-            <div>
-              <label for="linkedin-username">LinkedIn Username or URL (optional)</label>
-              <input id="linkedin-username" name="linkedin_username" placeholder="optional: bhedanikhilkumar or https://linkedin.com/in/username" autocomplete="off">
-            </div>
-            <div>
-              <label for="profile-skills">Skills</label>
-              <input id="profile-skills" name="profile_skills" placeholder="React, Node.js, Python, SQL">
-            </div>
-            <div>
-              <label for="profile-projects">Projects</label>
-              <input id="profile-projects" name="profile_projects" placeholder="AI Portfolio Builder, Smart Study Planner">
-            </div>
-            <div>
-              <label for="theme">Portfolio Template</label>
-              <select id="theme" name="theme" aria-label="Portfolio template">
-                <option value="modern">Modern Template</option>
-                <option value="minimal">Minimal Template</option>
+    <section class="view" data-route="/generator" id="generator-view" hidden>
+      <div class="card">
+        <h2>Generator</h2>
+        <form id="generator-form" class="stack" novalidate>
+          <fieldset>
+            <legend>Basic Info</legend>
+            <label>Name
+              <input id="gen-name" type="text" placeholder="e.g. Ada Lovelace">
+            </label>
+            <label>Email
+              <input id="gen-email" type="email" placeholder="you@example.com" required>
+            </label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Profile Links</legend>
+            <label>GitHub Username or URL
+              <input id="gen-github" type="text" placeholder="octocat or https://github.com/octocat" required>
+            </label>
+            <label>LinkedIn Username or URL
+              <input id="gen-linkedin" type="text" placeholder="optional: octocat or https://linkedin.com/in/octocat">
+            </label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Skills &amp; Projects</legend>
+            <label>Skills (comma separated)
+              <input id="gen-skills" type="text" placeholder="Python, FastAPI, SQL">
+            </label>
+            <label>Projects (comma separated)
+              <input id="gen-projects" type="text" placeholder="Portfolio Builder, Analytics Dashboard">
+            </label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Theme &amp; Role</legend>
+            <label>Theme
+              <select id="gen-theme">
+                <option value="modern">Modern</option>
+                <option value="minimal">Minimal</option>
               </select>
-            </div>
-            <div>
-              <label for="target-role">Target Role</label>
-              <select id="target-role" name="target_role" aria-label="Target role">
-                <option value="">Select role</option>
+            </label>
+            <label>Target Role
+              <select id="gen-role">
+                <option value="">No role target</option>
                 <option value="frontend">Frontend</option>
                 <option value="backend">Backend</option>
-                <option value="fullstack">Full-stack</option>
+                <option value="fullstack">Fullstack</option>
                 <option value="data">Data</option>
                 <option value="ai">AI</option>
               </select>
-            </div>
-            <button id="submit-button" class="btn-primary magnetic" type="submit">
-              <span>Generate Portfolio</span>
-              <span id="generator-spinner" class="loading-spinner" hidden aria-hidden="true"></span>
-            </button>
-          </form>
+            </label>
+          </fieldset>
 
-          <label class="audio-reactive-toggle"><input id="audio-reactive" type="checkbox"> <span>Neon audio-reactive mode</span></label>
-          <label class="audio-reactive-toggle"><input id="deep-mode" type="checkbox" checked> <span>AI Auto mode (generate stronger portfolio content)</span></label>
-          <label class="audio-reactive-toggle"><input id="performance-mode" type="checkbox"> <span>Performance mode (faster UI)</span></label>
+          <details>
+            <summary>Advanced Options</summary>
+            <label><input id="gen-deep-mode" type="checkbox" checked> AI Auto mode</label>
+            <label><input id="gen-performance" type="checkbox"> Performance mode</label>
+            <label><input id="gen-neon" type="checkbox"> Neon mode</label>
+          </details>
 
-          <div id="status" class="status"></div>
-          <div id="error-banner" class="error-banner" hidden></div>
-        </div>
-
-        <section id="auth-dashboard" class="panel glass-card reveal" data-reveal="up">
-          <h2>Account & Dashboard</h2>
-          <div class="inline-actions">
-            <input id="auth-name" type="text" placeholder="Name (for signup)">
-            <input id="auth-email" type="email" placeholder="Email">
-            <input id="auth-password" type="password" placeholder="Password">
-          </div>
-          <div class="inline-actions">
-            <button id="auth-register" class="btn-secondary magnetic" type="button">Register</button>
-            <button id="auth-login" class="btn-primary magnetic" type="button">Login</button>
-            <button id="auth-load-dashboard" class="btn-secondary magnetic" type="button">Load Dashboard</button>
-            <button id="auth-logout" class="btn-secondary magnetic" type="button">Logout</button>
-          </div>
-          <div class="inline-actions">
-            <button id="auth-google" class="btn-primary magnetic" type="button">Sign in with Google</button>
-            <button id="auth-github" class="btn-secondary magnetic" type="button">Sign in with GitHub</button>
-          </div>
-          <div class="inline-actions" id="google-signin-wrap"><div id="google-signin-slot"></div></div>
-
-          <div id="dashboard-panels" class="dashboard-panels" hidden>
-            <div class="editor-section"><h3>My Resumes</h3><ul id="dash-my-resumes"></ul></div>
-            <div class="editor-section"><h3>Saved Drafts</h3><ul id="dash-drafts"></ul></div>
-            <div class="editor-section"><h3>Generation History</h3><ul id="dash-history"></ul></div>
-          </div>
-
-          <div id="admin-panels" class="dashboard-panels" hidden>
-            <div class="editor-section">
-              <h3>Admin Control Panel</h3>
-              <div class="inline-actions">
-                <button id="admin-refresh" class="btn-secondary magnetic" type="button">Refresh Admin Data</button>
-                <button id="admin-export-users" class="btn-secondary magnetic" type="button">Export Users CSV</button>
-                <button id="admin-export-resumes" class="btn-secondary magnetic" type="button">Export Resumes CSV</button>
-                <button id="admin-export-activity" class="btn-secondary magnetic" type="button">Export Activity CSV</button>
-              </div>
-              <div class="inline-actions">
-                <input id="admin-user-search" placeholder="Search users by email">
-                <select id="admin-user-sort">
-                  <option value="created_at:desc">Users: Newest</option>
-                  <option value="created_at:asc">Users: Oldest</option>
-                  <option value="email:asc">Users: Email A-Z</option>
-                  <option value="email:desc">Users: Email Z-A</option>
-                </select>
-              </div>
-              <div class="inline-actions">
-                <input id="admin-resume-search" placeholder="Search resumes by title/email">
-                <select id="admin-resume-sort">
-                  <option value="updated_at:desc">Resumes: Latest</option>
-                  <option value="updated_at:asc">Resumes: Oldest</option>
-                  <option value="title:asc">Resumes: Title A-Z</option>
-                  <option value="status:asc">Resumes: Status</option>
-                </select>
-              </div>
-              <div class="inline-actions">
-                <select id="admin-activity-action">
-                  <option value="">All actions</option>
-                  <option value="force_publish">Force Publish</option>
-                  <option value="delete">Delete</option>
-                </select>
-                <select id="admin-activity-target">
-                  <option value="">All targets</option>
-                  <option value="user">User</option>
-                  <option value="resume">Resume</option>
-                </select>
-                <select id="admin-activity-sort">
-                  <option value="created_at:desc">Activity: Latest</option>
-                  <option value="created_at:asc">Activity: Oldest</option>
-                  <option value="action:asc">Activity: Action A-Z</option>
-                </select>
-              </div>
-              <p id="admin-stats" class="muted-note">No admin data loaded yet.</p>
-              <h4>Users Overview</h4><ul id="admin-users"></ul>
-              <h4>Recent Resumes</h4><ul id="admin-resumes"></ul>
-              <h4>Activity Logs</h4><ul id="admin-activity"></ul>
-            </div>
-          </div>
-        </section>
+          <button id="generate-btn" class="btn btn-primary" type="submit">Generate Portfolio</button>
+        </form>
+        <div id="generator-banner" class="banner" hidden></div>
+        <pre id="generator-result" class="result" hidden></pre>
       </div>
     </section>
 
-    <section id="portfolio" hidden></section>
+    <section class="view" data-route="/admin" id="admin-view" hidden>
+      <div class="card">
+        <h2>Admin Panel</h2>
+        <p id="admin-note">Admin controls are available only for admin users.</p>
+        <div class="actions-row">
+          <button id="admin-refresh-btn" class="btn btn-primary" type="button">Refresh Admin Data</button>
+          <button id="admin-export-users-btn" class="btn btn-secondary" type="button">Export Users CSV</button>
+          <button id="admin-export-resumes-btn" class="btn btn-secondary" type="button">Export Resumes CSV</button>
+          <button id="admin-export-activity-btn" class="btn btn-secondary" type="button">Export Activity CSV</button>
+        </div>
+        <div id="admin-content" class="stack"></div>
+      </div>
+    </section>
   </main>
 
-  <footer class="footer">
-    <div class="container footer-inner">
-      <p>© 2026 Auto Portfolio Builder. All rights reserved.</p>
-      <div class="footer-links">
-        <a href="#home">Home</a>
-        <a href="#features">Features</a>
-        <a href="#generate">Generate</a>
-      </div>
-    </div>
-  </footer>
-
-  <a class="floating-cta magnetic" href="#generate">Build Portfolio</a>
-
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="/static/script.js"></script>
+  <script type="module" src="/static/js/main.js"></script>
 </body>
 </html>

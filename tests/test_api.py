@@ -117,6 +117,19 @@ def test_health_endpoint() -> None:
     assert response.json() == {"status": "ok"}
 
 
+def test_frontend_route_map_is_present() -> None:
+    response = client.get("/")
+
+    assert response.status_code == 200
+    body = response.text
+    assert "data-route=\"/\"" in body
+    assert "data-route=\"/login\"" in body
+    assert "data-route=\"/signup\"" in body
+    assert "data-route=\"/dashboard\"" in body
+    assert "data-route=\"/generator\"" in body
+    assert "data-route=\"/admin\"" in body
+
+
 def test_google_auth_config_endpoint() -> None:
     response = client.get("/api/auth/google/config")
 
@@ -153,6 +166,24 @@ def test_non_admin_forbidden_for_admin_endpoint() -> None:
 
     response = client.get("/api/admin/stats", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 403
+
+
+def test_non_admin_forbidden_for_admin_csv_exports() -> None:
+    normal_email = f"normal-csv-{uuid4().hex[:8]}@testmail.com"
+    register = client.post(
+        "/api/auth/register",
+        json={"name": "Normal User", "email": normal_email, "password": "StrongPass@123"},
+    )
+    token = register.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    users_csv = client.get("/api/admin/export/users.csv", headers=headers)
+    resumes_csv = client.get("/api/admin/export/resumes.csv", headers=headers)
+    activity_csv = client.get("/api/admin/export/activity.csv", headers=headers)
+
+    assert users_csv.status_code == 403
+    assert resumes_csv.status_code == 403
+    assert activity_csv.status_code == 403
 
 
 def test_admin_endpoints_and_actions(monkeypatch) -> None:
