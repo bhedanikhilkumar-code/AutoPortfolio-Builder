@@ -96,18 +96,10 @@ function initGoogleButtons() {
         },
       });
 
-      const loginSlot = $("google-signin-slot-login");
-      const signupSlot = $("google-signin-slot-signup");
-      if (loginSlot) {
-        loginSlot.innerHTML = "";
-        window.google.accounts.id.renderButton(loginSlot, { theme: "outline", size: "large", text: "signin_with" });
-      }
-      if (signupSlot) {
-        signupSlot.innerHTML = "";
-        window.google.accounts.id.renderButton(signupSlot, { theme: "outline", size: "large", text: "signup_with" });
-      }
-
-      showBanner(globalBanner(), "Use the Google button below to continue.", "info");
+      // Manual-only login: never render Google's personalized account button in-page.
+      // Start chooser only after explicit click.
+      window.google.accounts.id.prompt();
+      showBanner(globalBanner(), "Continue in the Google account chooser.", "info");
     }).catch((error) => showBanner(globalBanner(), error.message, "error"));
   };
 
