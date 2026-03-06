@@ -111,6 +111,13 @@ def require_admin(user: dict = Depends(get_current_user)) -> dict:
     return user
 
 
+def _google_redirect_uri(request: Request) -> str:
+    configured = os.getenv("GOOGLE_REDIRECT_URI", "").strip()
+    if configured:
+        return configured
+    return str(request.base_url).rstrip("/") + "/api/auth/google/callback"
+
+
 def create_app() -> FastAPI:
     init_db()
     app = FastAPI(title="AutoPortfolio Builder", version="0.2.0")
@@ -181,7 +188,7 @@ def create_app() -> FastAPI:
             if expires < time.time():
                 GOOGLE_OAUTH_STATES.pop(key, None)
 
-        redirect_uri = str(request.base_url).rstrip("/") + "/api/auth/google/callback"
+        redirect_uri = _google_redirect_uri(request)
         auth_url = build_google_auth_url(redirect_uri=redirect_uri, state=state)
         return GoogleAuthStartResponse(enabled=True, auth_url=auth_url)
 
@@ -193,7 +200,7 @@ def create_app() -> FastAPI:
         if not expires or expires < time.time():
             return Response(content="Google login failed: invalid or expired state.", media_type="text/plain", status_code=400)
 
-        redirect_uri = str(request.base_url).rstrip("/") + "/api/auth/google/callback"
+        redirect_uri = _google_redirect_uri(request)
         try:
             google_user = await exchange_google_code(code, redirect_uri)
             user_id = ensure_user_for_google(google_user["email"], google_user.get("name"))
