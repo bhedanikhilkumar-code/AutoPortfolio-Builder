@@ -50,8 +50,8 @@ function applyNavVisibility() {
   document.querySelectorAll("[data-guest-only]").forEach((node) => {
     node.hidden = !authReady || isAuthenticated();
   });
-  const logoutBtn = $("logout-btn");
-  if (logoutBtn) logoutBtn.hidden = !authReady || !isAuthenticated();
+  const accountMenu = $("account-menu");
+  if (accountMenu) accountMenu.hidden = !authReady || !isAuthenticated();
 }
 
 function routeGuard(route) {

@@ -1,3 +1,4 @@
+import { initAccountMenu } from "./account-menu.js";
 import { initAdmin, refreshAdminData } from "./admin.js";
 import { initAuth } from "./auth.js";
 import { initDashboard, loadDashboardData } from "./dashboard.js";
@@ -50,6 +51,7 @@ async function bootstrap() {
   initGenerator();
   initDashboard();
   initAdmin();
+  initAccountMenu();
   initRouter((route) => {
     handleRouteChange(route);
   });

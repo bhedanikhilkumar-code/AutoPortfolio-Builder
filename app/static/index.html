@@ -34,7 +34,26 @@
         <a href="/login" data-guest-only hidden>Login</a>
         <a href="/signup" data-guest-only hidden>Signup</a>
       </nav>
-      <button id="logout-btn" class="btn btn-secondary" type="button" hidden>Logout</button>
+      <div id="account-menu" class="account-menu" data-auth-only hidden>
+        <button id="account-menu-trigger" class="account-trigger" type="button" aria-expanded="false" aria-haspopup="menu" aria-label="Account menu">
+          <img id="account-avatar-img" class="account-avatar" alt="Profile" hidden>
+          <span id="account-avatar-fallback" class="account-avatar account-avatar-fallback">U</span>
+        </button>
+        <div id="account-dropdown" class="account-dropdown" role="menu" hidden>
+          <div class="account-summary">
+            <img id="account-panel-avatar-img" class="account-avatar account-avatar-lg" alt="Profile" hidden>
+            <span id="account-panel-avatar-fallback" class="account-avatar account-avatar-lg account-avatar-fallback">U</span>
+            <div class="account-meta">
+              <strong id="account-panel-name">Account</strong>
+              <small id="account-panel-email"></small>
+            </div>
+          </div>
+          <button id="account-dashboard-link" class="account-item" type="button" role="menuitem">Dashboard</button>
+          <button id="account-resumes-link" class="account-item" type="button" role="menuitem">My Resumes</button>
+          <button id="account-switch-btn" class="account-item" type="button" role="menuitem">Switch Account</button>
+          <button id="account-logout-btn" class="account-item danger" type="button" role="menuitem">Logout</button>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -222,6 +241,6 @@
   </main>
 
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script type="module" src="/static/js/main.js?v=20260307f"></script>
+  <script type="module" src="/static/js/main.js?v=20260307g"></script>
 </body>
 </html>

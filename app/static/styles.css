@@ -56,6 +56,7 @@ legend,
   display: flex;
   gap: 0.9rem;
   align-items: center;
+  margin-left: auto;
 }
 
 .nav-links a {
@@ -78,6 +79,96 @@ legend,
   height: 28px;
   object-fit: contain;
   flex: 0 0 auto;
+}
+
+.account-menu {
+  position: relative;
+}
+
+.account-trigger {
+  border: 1px solid var(--border);
+  background: #fff;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(23, 32, 51, 0.08);
+}
+
+.account-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+.account-avatar-lg {
+  width: 44px;
+  height: 44px;
+}
+
+.account-avatar-fallback {
+  background: linear-gradient(135deg, #2b7fff, #8d3bff);
+  color: #fff;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.account-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  min-width: 250px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 16px 30px rgba(23, 32, 51, 0.15);
+  padding: 0.5rem;
+  z-index: 40;
+}
+
+.account-summary {
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.25rem;
+}
+
+.account-meta {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.account-meta small {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.account-item {
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  border-radius: 10px;
+  padding: 0.6rem 0.7rem;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.account-item:hover {
+  background: #eef4ff;
+}
+
+.account-item.danger {
+  color: var(--danger);
 }
 
 .page-shell {
@@ -260,5 +351,15 @@ details label {
   .nav-links {
     width: 100%;
     overflow: auto;
+    order: 3;
+  }
+
+  .account-menu {
+    margin-left: auto;
+  }
+
+  .account-dropdown {
+    right: 0;
+    min-width: 220px;
   }
 }

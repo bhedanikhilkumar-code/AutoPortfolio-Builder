@@ -30,6 +30,83 @@ function ensureCredentials(email, password) {
   if (!password || password.length < 8) throw new Error("Password must be at least 8 characters.");
 }
 
+function disableGoogleAutoSignIn() {
+  try {
+    if (window.google?.accounts?.id) {
+      window.google.accounts.id.disableAutoSelect();
+      window.google.accounts.id.cancel();
+    }
+  } catch {
+    // best effort
+  }
+}
+
+async function completeGoogleAccessTokenLogin(accessToken) {
+  const payload = await googleAccessTokenLogin(accessToken);
+  setToken(payload.access_token);
+  await syncUserFromToken();
+}
+
+async function startGoogleChooser(prompt = "select_account") {
+  const config = await googleConfig();
+  if (!config.enabled || !config.client_id || !window.google?.accounts?.oauth2) {
+    return false;
+  }
+
+  await new Promise((resolve, reject) => {
+    const client = window.google.accounts.oauth2.initTokenClient({
+      client_id: config.client_id,
+      scope: "openid email profile",
+      callback: async (response) => {
+        try {
+          if (response?.error || !response?.access_token) {
+            reject(new Error("Google account selection was cancelled or failed."));
+            return;
+          }
+          await completeGoogleAccessTokenLogin(response.access_token);
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      },
+    });
+    client.requestAccessToken({ prompt });
+  });
+  return true;
+}
+
+export async function performLogout({ redirectTo = "/login", announce = true } = {}) {
+  if (state.token) {
+    await logout();
+  }
+  disableGoogleAutoSignIn();
+  clearClientAuthState();
+  refreshRouterUI();
+  if (announce) {
+    showBanner(globalBanner(), "Logged out. Please sign in manually next time.", "success");
+  }
+  if (redirectTo) {
+    navigate(redirectTo);
+  }
+}
+
+export async function switchAccount() {
+  await performLogout({ redirectTo: null, announce: false });
+  try {
+    const startedGoogle = await startGoogleChooser("select_account");
+    if (startedGoogle) {
+      showBanner(globalBanner(), "Switched account successfully.", "success");
+      navigate("/");
+      return;
+    }
+  } catch (error) {
+    showBanner(globalBanner(), error.message || "Switch account failed.", "error");
+  }
+
+  navigate("/login");
+  showBanner(globalBanner(), "Signed out. Choose another account to continue.", "info");
+}
+
 function bindEmailPasswordAuth() {
   const loginBtn = $("login-btn");
   const registerBtn = $("register-btn");
@@ -69,39 +146,10 @@ function initGoogleButtons() {
 
   const trigger = async (button) => {
     await withButtonLoading(button, "Opening Google...", async () => {
-      const config = await googleConfig();
-      if (!config.enabled || !config.client_id) throw new Error("Google login is not configured.");
-      if (!window.google?.accounts?.oauth2) throw new Error("Google login script not available. Refresh and try again.");
-
-      await new Promise((resolve, reject) => {
-        const client = window.google.accounts.oauth2.initTokenClient({
-          client_id: config.client_id,
-          scope: "openid email profile",
-          callback: async (response) => {
-            try {
-              if (response?.error) {
-                reject(new Error("Google login was cancelled or failed."));
-                return;
-              }
-              const accessToken = response?.access_token;
-              if (!accessToken) {
-                reject(new Error("Google access token missing."));
-                return;
-              }
-              const payload = await googleAccessTokenLogin(accessToken);
-              setToken(payload.access_token);
-              await syncUserFromToken();
-              showBanner(globalBanner(), "Signed in with Google.", "success");
-              navigate("/");
-              resolve();
-            } catch (error) {
-              reject(error);
-            }
-          },
-        });
-
-        client.requestAccessToken({ prompt: "select_account" });
-      });
+      const started = await startGoogleChooser("select_account");
+      if (!started) throw new Error("Google login is not configured.");
+      showBanner(globalBanner(), "Signed in with Google.", "success");
+      navigate("/");
     }).catch((error) => showBanner(globalBanner(), error.message, "error"));
   };
 
@@ -125,38 +173,10 @@ function initGithubButtons() {
   signupBtn?.addEventListener("click", () => start(signupBtn));
 }
 
-function disableGoogleAutoSignIn() {
-  try {
-    if (window.google?.accounts?.id) {
-      window.google.accounts.id.disableAutoSelect();
-      window.google.accounts.id.cancel();
-    }
-  } catch {
-    // best effort
-  }
-}
-
-function initLogout() {
-  const logoutBtn = $("logout-btn");
-  logoutBtn?.addEventListener("click", () =>
-    withButtonLoading(logoutBtn, "Logging out...", async () => {
-      if (state.token) {
-        await logout();
-      }
-      disableGoogleAutoSignIn();
-      clearClientAuthState();
-      refreshRouterUI();
-      showBanner(globalBanner(), "Logged out. Please sign in manually next time.", "success");
-      navigate("/login");
-    }).catch((error) => showBanner(globalBanner(), error.message, "error"))
-  );
-}
-
 export async function initAuth() {
   bindEmailPasswordAuth();
   initGoogleButtons();
   initGithubButtons();
-  initLogout();
   if (!state.token) {
     disableGoogleAutoSignIn();
   }
