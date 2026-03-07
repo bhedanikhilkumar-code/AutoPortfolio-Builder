@@ -61,16 +61,26 @@ export function normalizeGithubInput(value) {
 
 export function normalizeLinkedInInput(value) {
   const raw = value.trim();
-  if (!raw) return { ok: true, value: "" };
-  if (/^https?:\/\//i.test(raw)) {
-    const match = raw.match(/^https?:\/\/(www\.)?linkedin\.com\/in\/([A-Za-z0-9-]+)\/?/i);
-    if (!match) return { ok: false, message: "Enter a valid LinkedIn username or /in/ URL." };
-    return { ok: true, value: match[2] };
+  if (!raw) return { ok: true, value: "", profileUrl: "" };
+
+  const normalized = raw.replace(/^@/, "").trim();
+
+  // Accept full URL with/without protocol: linkedin.com/in/username
+  const urlLike = normalized.match(/^(?:https?:\/\/)?(?:[a-z]{2,3}\.)?(?:www\.)?linkedin\.com\/in\/([A-Za-z0-9-]{3,100})(?:[\/?#].*)?$/i);
+  if (urlLike) {
+    const username = urlLike[1];
+    return { ok: true, value: username, profileUrl: `https://www.linkedin.com/in/${username}` };
   }
-  if (!/^[A-Za-z0-9-]{3,100}$/.test(raw)) {
-    return { ok: false, message: "LinkedIn username can only include letters, numbers, or hyphens." };
+
+  // Accept bare username
+  if (/^[A-Za-z0-9-]{3,100}$/.test(normalized)) {
+    return { ok: true, value: normalized, profileUrl: `https://www.linkedin.com/in/${normalized}` };
   }
-  return { ok: true, value: raw };
+
+  return {
+    ok: false,
+    message: "Enter a valid LinkedIn username or profile URL (linkedin.com/in/username).",
+  };
 }
 
 export function splitCsv(value) {

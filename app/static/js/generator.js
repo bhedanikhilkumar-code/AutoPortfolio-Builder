@@ -39,7 +39,7 @@ function validateForm(values) {
   if (!github.ok) return github;
   const linkedin = normalizeLinkedInInput(values.linkedinRaw);
   if (!linkedin.ok) return linkedin;
-  return { ok: true, github: github.value, linkedin: linkedin.value };
+  return { ok: true, github: github.value, linkedin: linkedin.value, linkedinUrl: linkedin.profileUrl || "" };
 }
 
 function setExportButtonsEnabled(enabled) {
@@ -56,7 +56,7 @@ function updateSubmitDisabled() {
   generateBtn.disabled = !validation.ok;
 }
 
-function renderResult(portfolio, values, saveMessage) {
+function renderResult(portfolio, values, saveMessage, linkedinUrl = "") {
   const result = $("generator-result");
   if (!result) return;
   const summary = {
@@ -65,6 +65,9 @@ function renderResult(portfolio, values, saveMessage) {
     role: values.role || "none",
     performance_mode: values.performanceMode,
     neon_mode: values.neonMode,
+    linkedin_input: values.linkedinRaw || "",
+    linkedin_resolved_url: linkedinUrl || "",
+    linkedin_in_portfolio: portfolio.contact?.content?.linkedin || portfolio.about?.content?.linkedin || "",
     skills: values.skills,
     projects: values.projects,
     save_status: saveMessage,
@@ -133,6 +136,10 @@ export function initGenerator() {
       const validation = validateForm(values);
       if (!validation.ok) throw new Error(validation.message);
 
+      if (validation.linkedinUrl && $("gen-linkedin")) {
+        $("gen-linkedin").value = validation.linkedinUrl;
+      }
+
       showBanner(generatorBanner(), "Loading profile data...", "info");
       const profilePayload = await fetchProfile({
         username: validation.github,
@@ -158,7 +165,7 @@ export function initGenerator() {
 
       setState({ generatorResult: portfolio });
       setExportButtonsEnabled(true);
-      renderResult(portfolio, values, saved.message);
+      renderResult(portfolio, values, saved.message, validation.linkedinUrl);
       showBanner(generatorBanner(), "Portfolio generated and saved successfully.", "success");
       showBanner($("global-banner"), "Portfolio generated and saved successfully.", "success");
     })
