@@ -1,10 +1,15 @@
 import { getDashboard } from "./api.js";
-import { setState, state } from "./state.js";
-import { $, showBanner, withButtonLoading } from "./utils.js";
+import { setState, state, subscribe } from "./state.js";
 
 function renderDashboard(data) {
-  const root = $("dashboard-content");
+  const root = document.getElementById("dashboard-content");
   if (!root) return;
+
+  if (!data) {
+    root.innerHTML = "<p>Loading dashboard…</p>";
+    return;
+  }
+
   const resumes = (data.my_resumes || []).map((item) => `<li>${item.title} (${item.status})</li>`).join("") || "<li>No resumes yet.</li>";
   const drafts = (data.saved_drafts || []).map((item) => `<li>${item.title}</li>`).join("") || "<li>No drafts yet.</li>";
   const history = (data.generation_history || []).map((item) => `<li>${item.username} · variant ${item.variant_id}</li>`).join("") || "<li>No generation history.</li>";
@@ -37,13 +42,8 @@ export async function loadDashboardData() {
 }
 
 export function initDashboard() {
-  const loadBtn = $("load-dashboard-btn");
-  loadBtn?.addEventListener("click", () =>
-    withButtonLoading(loadBtn, "Loading...", async () => {
-      if (!state.token) throw new Error("Login required.");
-      const data = await loadDashboardData();
-      showBanner($("global-banner"), "Dashboard loaded.", "success");
-      return data;
-    }).catch((error) => showBanner($("global-banner"), error.message, "error"))
-  );
+  renderDashboard(state.dashboardData);
+  subscribe((nextState) => {
+    renderDashboard(nextState.dashboardData);
+  });
 }

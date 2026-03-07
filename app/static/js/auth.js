@@ -1,5 +1,5 @@
 import { getDashboard, githubStart, googleAccessTokenLogin, googleConfig, login, logout, register } from "./api.js";
-import { defaultAfterLoginRoute, navigate, refreshRouterUI } from "./router.js";
+import { navigate, refreshRouterUI } from "./router.js";
 import { clearClientAuthState, setState, setToken, state } from "./state.js";
 import { $, showBanner, validEmail, withButtonLoading } from "./utils.js";
 
@@ -43,7 +43,7 @@ function bindEmailPasswordAuth() {
       setToken(payload.access_token);
       await syncUserFromToken();
       showBanner(globalBanner(), "Login successful.", "success");
-      navigate(defaultAfterLoginRoute());
+      navigate("/");
     }).catch((error) => showBanner(globalBanner(), error.message, "error"))
   );
 
@@ -58,7 +58,7 @@ function bindEmailPasswordAuth() {
       setToken(payload.access_token);
       await syncUserFromToken();
       showBanner(globalBanner(), "Registration successful.", "success");
-      navigate(defaultAfterLoginRoute());
+      navigate("/");
     }).catch((error) => showBanner(globalBanner(), error.message, "error"))
   );
 }
@@ -92,7 +92,7 @@ function initGoogleButtons() {
               setToken(payload.access_token);
               await syncUserFromToken();
               showBanner(globalBanner(), "Signed in with Google.", "success");
-              navigate(defaultAfterLoginRoute());
+              navigate("/");
               resolve();
             } catch (error) {
               reject(error);
