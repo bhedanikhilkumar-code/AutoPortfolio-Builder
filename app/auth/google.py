@@ -80,7 +80,7 @@ async def exchange_google_code(code: str, redirect_uri: str) -> dict:
             if profile.get("email_verified") not in (True, "true"):
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Google email is not verified.")
 
-            return {"email": email, "name": profile.get("name")}
+            return {"email": email, "name": profile.get("name"), "avatar_url": profile.get("picture")}
     except httpx.HTTPError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Unable to reach Google OAuth services.") from exc
 
@@ -108,7 +108,7 @@ async def verify_google_access_token(access_token: str) -> dict:
         if not email:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Google token missing email.")
 
-        return {"email": email, "name": payload.get("name")}
+        return {"email": email, "name": payload.get("name"), "avatar_url": payload.get("picture")}
     except httpx.HTTPError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Unable to verify Google token.") from exc
 
@@ -137,6 +137,6 @@ async def verify_google_id_token(id_token: str) -> dict:
         if not email:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Google token missing email.")
 
-        return {"email": email, "name": payload.get("name")}
+        return {"email": email, "name": payload.get("name"), "avatar_url": payload.get("picture")}
     except httpx.HTTPError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Unable to verify Google token.") from exc

@@ -160,6 +160,7 @@ class UserSummary(BaseModel):
     id: int
     name: str | None = None
     email: str
+    avatar_url: str | None = None
     is_admin: bool = False
     is_active: bool = True
     created_at: datetime

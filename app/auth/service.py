@@ -75,25 +75,39 @@ def create_session_for_user(user_id: int) -> str:
         conn.close()
 
 
-def ensure_user_for_google(email: str, name: str | None = None) -> int:
+def ensure_user_for_google(email: str, name: str | None = None, avatar_url: str | None = None) -> int:
     email_norm = email.strip().lower()
     if not email_norm:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Google account email is missing.")
 
+    display_name = (name or "").strip() or email_norm.split("@")[0]
+    avatar_clean = (avatar_url or "").strip() or None
+
     conn = get_connection()
     try:
-        row = conn.execute("SELECT id FROM users WHERE email = ?", (email_norm,)).fetchone()
+        row = conn.execute("SELECT id, name, avatar_url FROM users WHERE email = ?", (email_norm,)).fetchone()
         if row:
+            updates = []
+            params: list[object] = []
+            if display_name and display_name != (row["name"] or ""):
+                updates.append("name = ?")
+                params.append(display_name)
+            if avatar_clean and avatar_clean != (row["avatar_url"] or ""):
+                updates.append("avatar_url = ?")
+                params.append(avatar_clean)
+            if updates:
+                params.append(int(row["id"]))
+                conn.execute(f"UPDATE users SET {', '.join(updates)} WHERE id = ?", tuple(params))
+                conn.commit()
             return int(row["id"])
 
         salt = secrets.token_hex(16)
         random_password = secrets.token_urlsafe(24)
         password_hash = _hash_password(random_password, salt)
         is_admin = 1 if _is_admin_email(email_norm) else 0
-        display_name = (name or "").strip() or email_norm.split("@")[0]
         cursor = conn.execute(
-            "INSERT INTO users(name, email, password_hash, password_salt, is_admin) VALUES(?, ?, ?, ?, ?)",
-            (display_name, email_norm, password_hash, salt, is_admin),
+            "INSERT INTO users(name, email, avatar_url, password_hash, password_salt, is_admin) VALUES(?, ?, ?, ?, ?, ?)",
+            (display_name, email_norm, avatar_clean, password_hash, salt, is_admin),
         )
         conn.commit()
         return int(cursor.lastrowid)
@@ -136,7 +150,7 @@ def resolve_user_from_token(token: str) -> dict:
     try:
         row = conn.execute(
             """
-            SELECT u.id, u.name, u.email, u.is_admin, u.is_active, u.created_at, s.expires_at
+            SELECT u.id, u.name, u.email, u.avatar_url, u.is_admin, u.is_active, u.created_at, s.expires_at
             FROM sessions s
             JOIN users u ON u.id = s.user_id
             WHERE s.token_hash = ?
@@ -158,6 +172,7 @@ def resolve_user_from_token(token: str) -> dict:
             "id": int(row["id"]),
             "name": row["name"],
             "email": row["email"],
+            "avatar_url": row["avatar_url"],
             "is_admin": bool(int(row["is_admin"])),
             "is_active": bool(int(row["is_active"])),
             "created_at": row["created_at"],

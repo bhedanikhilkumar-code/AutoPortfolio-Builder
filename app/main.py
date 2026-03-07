@@ -245,7 +245,7 @@ def create_app() -> FastAPI:
         redirect_uri = _google_redirect_uri(request)
         try:
             google_user = await exchange_google_code(code, redirect_uri)
-            user_id = ensure_user_for_google(google_user["email"], google_user.get("name"))
+            user_id = ensure_user_for_google(google_user["email"], google_user.get("name"), google_user.get("avatar_url"))
             app_token = create_session_for_user(user_id)
         except HTTPException as exc:
             return Response(content=f"Google login failed: {exc.detail}", media_type="text/plain", status_code=400)
@@ -264,14 +264,14 @@ def create_app() -> FastAPI:
     @app.post("/api/auth/google", response_model=AuthResponse)
     async def auth_google(payload: GoogleAuthRequest) -> AuthResponse:
         google_user = await verify_google_id_token(payload.id_token)
-        user_id = ensure_user_for_google(google_user["email"], google_user.get("name"))
+        user_id = ensure_user_for_google(google_user["email"], google_user.get("name"), google_user.get("avatar_url"))
         token = create_session_for_user(user_id)
         return AuthResponse(access_token=token)
 
     @app.post("/api/auth/google/access-token", response_model=AuthResponse)
     async def auth_google_access_token(payload: GoogleAccessTokenRequest) -> AuthResponse:
         google_user = await verify_google_access_token(payload.access_token)
-        user_id = ensure_user_for_google(google_user["email"], google_user.get("name"))
+        user_id = ensure_user_for_google(google_user["email"], google_user.get("name"), google_user.get("avatar_url"))
         token = create_session_for_user(user_id)
         return AuthResponse(access_token=token)
 
@@ -305,7 +305,7 @@ def create_app() -> FastAPI:
         try:
             access_token = await exchange_github_code(code)
             gh_user = await fetch_github_identity(access_token)
-            user_id = ensure_user_for_google(gh_user["email"], gh_user.get("name"))
+            user_id = ensure_user_for_google(gh_user["email"], gh_user.get("name"), gh_user.get("avatar_url"))
             app_token = create_session_for_user(user_id)
         except HTTPException as exc:
             return Response(content=f"GitHub login failed: {exc.detail}", media_type="text/plain", status_code=400)

@@ -24,6 +24,7 @@ def init_db() -> None:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT,
                 email TEXT NOT NULL UNIQUE,
+                avatar_url TEXT,
                 password_hash TEXT NOT NULL,
                 password_salt TEXT NOT NULL,
                 is_admin INTEGER NOT NULL DEFAULT 0,
@@ -109,6 +110,8 @@ def init_db() -> None:
         user_columns = {row["name"] for row in conn.execute("PRAGMA table_info(users)").fetchall()}
         if "name" not in user_columns:
             conn.execute("ALTER TABLE users ADD COLUMN name TEXT")
+        if "avatar_url" not in user_columns:
+            conn.execute("ALTER TABLE users ADD COLUMN avatar_url TEXT")
         if "is_admin" not in user_columns:
             conn.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0")
         if "is_active" not in user_columns:

@@ -71,6 +71,10 @@ async def fetch_github_identity(access_token: str) -> dict:
             if not email:
                 raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="GitHub account has no public verified email.")
 
-            return {"email": email, "name": user.get("name") or user.get("login") or email.split("@")[0]}
+            return {
+                "email": email,
+                "name": user.get("name") or user.get("login") or email.split("@")[0],
+                "avatar_url": user.get("avatar_url"),
+            }
     except httpx.HTTPError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Unable to fetch GitHub identity.") from exc
