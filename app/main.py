@@ -158,6 +158,18 @@ def create_app() -> FastAPI:
     async def index() -> FileResponse:
         return _spa_entry()
 
+    @app.get("/favicon.ico", include_in_schema=False)
+    async def favicon_ico() -> FileResponse:
+        return FileResponse(STATIC_DIR / "assets" / "favicon.ico", headers={"Cache-Control": "no-store, max-age=0"})
+
+    @app.get("/favicon-32x32.png", include_in_schema=False)
+    async def favicon_32() -> FileResponse:
+        return FileResponse(STATIC_DIR / "assets" / "favicon-32.png", headers={"Cache-Control": "no-store, max-age=0"})
+
+    @app.get("/favicon-16x16.png", include_in_schema=False)
+    async def favicon_16() -> FileResponse:
+        return FileResponse(STATIC_DIR / "assets" / "favicon-16.png", headers={"Cache-Control": "no-store, max-age=0"})
+
     @app.get("/login", include_in_schema=False)
     async def login_page() -> FileResponse:
         return _spa_entry()
