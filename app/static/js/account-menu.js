@@ -38,6 +38,16 @@ function toggleMenu() {
   else closeMenu();
 }
 
+function resolveUserPhoto(user) {
+  return (
+    user?.photoURL ||
+    user?.providerData?.find((p) => p?.photoURL)?.photoURL ||
+    user?.avatar_url ||
+    user?.photo_url ||
+    null
+  );
+}
+
 function renderAccountMenu(nextState = state) {
   const user = nextState.user;
   const initials = initialsFromUser(user);
@@ -52,7 +62,7 @@ function renderAccountMenu(nextState = state) {
   if (panelName) panelName.textContent = user?.name || "Account";
   if (panelEmail) panelEmail.textContent = user?.email || "";
 
-  const avatarUrl = user?.avatar_url || "";
+  const avatarUrl = resolveUserPhoto(user);
   const hasPhoto = Boolean(avatarUrl);
 
   if (triggerFallback) triggerFallback.textContent = initials;
@@ -61,10 +71,12 @@ function renderAccountMenu(nextState = state) {
   if (triggerImage) {
     triggerImage.hidden = !hasPhoto;
     if (hasPhoto) triggerImage.src = avatarUrl;
+    else triggerImage.removeAttribute("src");
   }
   if (panelImage) {
     panelImage.hidden = !hasPhoto;
     if (hasPhoto) panelImage.src = avatarUrl;
+    else panelImage.removeAttribute("src");
   }
 
   if (triggerFallback) triggerFallback.hidden = hasPhoto;
