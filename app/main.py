@@ -144,8 +144,7 @@ def create_app() -> FastAPI:
             message,
         )
 
-    @app.get("/", include_in_schema=False)
-    async def index() -> FileResponse:
+    def _spa_entry() -> FileResponse:
         return FileResponse(
             STATIC_DIR / "index.html",
             headers={
@@ -154,6 +153,30 @@ def create_app() -> FastAPI:
                 "Expires": "0",
             },
         )
+
+    @app.get("/", include_in_schema=False)
+    async def index() -> FileResponse:
+        return _spa_entry()
+
+    @app.get("/login", include_in_schema=False)
+    async def login_page() -> FileResponse:
+        return _spa_entry()
+
+    @app.get("/signup", include_in_schema=False)
+    async def signup_page() -> FileResponse:
+        return _spa_entry()
+
+    @app.get("/dashboard", include_in_schema=False)
+    async def dashboard_page() -> FileResponse:
+        return _spa_entry()
+
+    @app.get("/generator", include_in_schema=False)
+    async def generator_page() -> FileResponse:
+        return _spa_entry()
+
+    @app.get("/admin", include_in_schema=False)
+    async def admin_page() -> FileResponse:
+        return _spa_entry()
 
     @app.get("/api/health", response_model=HealthResponse)
     async def health() -> HealthResponse:
@@ -221,7 +244,7 @@ def create_app() -> FastAPI:
           localStorage.removeItem('apb_token');
           sessionStorage.setItem('apb_token', {app_token!r});
         }} catch (_) {{}}
-        window.location.href = '/#/dashboard';
+        window.location.href = '/dashboard';
         </script><p>Login successful. Redirecting…</p></body></html>
         """
         return Response(content=html, media_type="text/html")
@@ -281,7 +304,7 @@ def create_app() -> FastAPI:
           localStorage.removeItem('apb_token');
           sessionStorage.setItem('apb_token', {app_token!r});
         }} catch (_) {{}}
-        window.location.href = '/#/dashboard';
+        window.location.href = '/dashboard';
         </script><p>Login successful. Redirecting…</p></body></html>
         """
         return Response(content=html, media_type="text/html")

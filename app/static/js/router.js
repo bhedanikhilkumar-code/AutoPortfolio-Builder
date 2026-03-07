@@ -3,18 +3,40 @@ import { $, showBanner } from "./utils.js";
 
 const ROUTES = ["/", "/login", "/signup", "/dashboard", "/generator", "/admin", "/auth-loading"];
 const PRIVATE_ROUTES = new Set(["/dashboard", "/generator", "/admin"]);
+const PUBLIC_ONLY_ROUTES = new Set(["/login", "/signup"]);
 
 let onRoute = null;
 
-export function currentRoute() {
-  const hash = window.location.hash || "#/";
-  const route = hash.replace(/^#/, "") || "/";
-  return ROUTES.includes(route) ? route : "/";
+function normalizeRoute(pathname = window.location.pathname) {
+  if (!pathname) return "/";
+  const withoutTrailingSlash = pathname !== "/" ? pathname.replace(/\/+$/, "") : "/";
+  return ROUTES.includes(withoutTrailingSlash) ? withoutTrailingSlash : "/";
 }
 
-export function navigate(route) {
-  const next = ROUTES.includes(route) ? route : "/";
-  window.location.hash = `#${next}`;
+function syncLegacyHashRoute() {
+  const hash = window.location.hash || "";
+  if (!hash.startsWith("#/")) return;
+  const legacyRoute = normalizeRoute(hash.slice(1));
+  window.history.replaceState({}, "", legacyRoute);
+}
+
+export function currentRoute() {
+  syncLegacyHashRoute();
+  return normalizeRoute();
+}
+
+export function navigate(route, { replace = false } = {}) {
+  const next = normalizeRoute(route);
+  if (window.location.pathname === next) {
+    handleRoute();
+    return;
+  }
+  if (replace) {
+    window.history.replaceState({}, "", next);
+  } else {
+    window.history.pushState({}, "", next);
+  }
+  handleRoute();
 }
 
 function applyNavVisibility() {
@@ -35,12 +57,17 @@ function applyNavVisibility() {
 function routeGuard(route) {
   if (PRIVATE_ROUTES.has(route) && !isAuthenticated()) {
     state.pendingRoute = route;
-    navigate("/login");
+    navigate("/login", { replace: true });
     showBanner($("global-banner"), "Login required to access that page.", "info");
     return false;
   }
+  if (PUBLIC_ONLY_ROUTES.has(route) && isAuthenticated()) {
+    navigate("/dashboard", { replace: true });
+    showBanner($("global-banner"), "You are already logged in.", "info");
+    return false;
+  }
   if (route === "/admin" && (!isAuthenticated() || !isAdmin())) {
-    navigate(isAuthenticated() ? "/dashboard" : "/login");
+    navigate(isAuthenticated() ? "/dashboard" : "/login", { replace: true });
     showBanner($("global-banner"), "Admin access required.", "error");
     return false;
   }
@@ -53,6 +80,16 @@ function renderRoute(route) {
     view.hidden = !isActive;
     view.style.display = isActive ? "block" : "none";
   });
+}
+
+function handleLinkClicks(event) {
+  const anchor = event.target.closest("a[href]");
+  if (!anchor) return;
+  const href = anchor.getAttribute("href") || "";
+  if (!href.startsWith("/")) return;
+  if (anchor.target && anchor.target !== "_self") return;
+  event.preventDefault();
+  navigate(href);
 }
 
 function handleRoute() {
@@ -69,7 +106,8 @@ function handleRoute() {
 
 export function initRouter(routeHandler) {
   onRoute = routeHandler;
-  window.addEventListener("hashchange", handleRoute);
+  window.addEventListener("popstate", handleRoute);
+  document.addEventListener("click", handleLinkClicks);
   handleRoute();
 }
 

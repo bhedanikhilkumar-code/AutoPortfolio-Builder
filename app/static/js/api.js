@@ -126,3 +126,26 @@ export async function exportAdminCsv(path) {
   }
   return response;
 }
+
+export async function saveResume(payload) {
+  const response = await fetch("/api/dashboard/resumes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify(payload),
+  });
+  return parseResponse(response, "Failed to save resume.");
+}
+
+export async function exportPortfolio(format, payload) {
+  const response = await fetch(`/api/export/${format}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const contentType = response.headers.get("content-type") || "";
+    const err = contentType.includes("application/json") ? await response.json() : { detail: await response.text() };
+    throw new Error(parseApiError(err, `Export ${format.toUpperCase()} failed.`));
+  }
+  return response;
+}
