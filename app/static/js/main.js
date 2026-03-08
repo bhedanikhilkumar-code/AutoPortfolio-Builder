@@ -25,7 +25,7 @@ function initBuildPortfolioButton() {
 }
 
 async function handleRouteChange(route) {
-  if ((route === "/" || route === "/dashboard") && isAuthenticated()) {
+  if (route === "/dashboard" && isAuthenticated()) {
     try {
       await loadDashboardData();
     } catch (error) {
