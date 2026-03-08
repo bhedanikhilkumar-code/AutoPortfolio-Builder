@@ -356,6 +356,30 @@ def test_generate_accepts_meaningful_manual_input() -> None:
     assert response.status_code == 200
 
 
+def test_generate_rejects_empty_skills_projects_manual_input() -> None:
+    headers = make_auth_headers()
+    profile_payload = client.post("/api/profile", json={"username": "octocat", "linkedin_username": "octocat"}, headers=headers).json()
+
+    response = client.post(
+        "/api/generate",
+        json={
+            **profile_payload,
+            "manual_input": {
+                "name": "Ada Lovelace",
+                "email": "ada@example.dev",
+                "github": "octocat",
+                "linkedin": "octocat",
+                "skills": [],
+                "projects": [],
+            },
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "validation_error"
+
+
 def test_profile_endpoint_returns_consistent_error_payload() -> None:
     headers = make_auth_headers()
     app.dependency_overrides[get_github_service] = lambda: FailingGitHubService()

@@ -88,5 +88,10 @@ def validate_manual_inputs(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Enter a valid LinkedIn username or URL.")
     normalize_linkedin_input(linkedin)
 
-    _ = skills
-    _ = projects
+    valid_skills = [item for item in skills if is_meaningful_text(item)]
+    if len(valid_skills) < 2:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Please enter meaningful skills.")
+
+    valid_projects = [item for item in projects if is_meaningful_text(item, min_letters=4, min_unique_letters=3)]
+    if len(valid_projects) < 1:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Please enter meaningful project information.")

@@ -107,7 +107,14 @@ function validateForm(values) {
   }
 
   const meaningfulSkills = values.skills.filter((item) => meaningfulText(item));
+  if (meaningfulSkills.length < 2) {
+    errors.skills = "Please enter meaningful skills.";
+  }
+
   const meaningfulProjects = values.projects.filter((item) => meaningfulText(item, { minLetters: 4, minUniqueLetters: 3 }));
+  if (meaningfulProjects.length < 1) {
+    errors.projects = "Please enter meaningful project information.";
+  }
 
   return {
     ok: Object.keys(errors).length === 0,
