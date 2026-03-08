@@ -254,7 +254,7 @@ def create_app() -> FastAPI:
         html = f"""
         <!doctype html><html><body><script>
         try {{
-          localStorage.removeItem('apb_token');
+          localStorage.setItem('apb_token', {app_token!r});
           sessionStorage.setItem('apb_token', {app_token!r});
         }} catch (_) {{}}
         window.location.href = '/dashboard';
@@ -314,7 +314,7 @@ def create_app() -> FastAPI:
         html = f"""
         <!doctype html><html><body><script>
         try {{
-          localStorage.removeItem('apb_token');
+          localStorage.setItem('apb_token', {app_token!r});
           sessionStorage.setItem('apb_token', {app_token!r});
         }} catch (_) {{}}
         window.location.href = '/dashboard';

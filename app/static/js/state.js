@@ -2,14 +2,13 @@ const listeners = new Set();
 const TOKEN_KEY = "apb_token";
 
 function readStoredToken() {
-  const sessionToken = sessionStorage.getItem(TOKEN_KEY);
-  if (sessionToken) return sessionToken;
+  const localToken = localStorage.getItem(TOKEN_KEY);
+  if (localToken) return localToken;
 
-  const legacyLocalToken = localStorage.getItem(TOKEN_KEY);
-  if (legacyLocalToken) {
-    sessionStorage.setItem(TOKEN_KEY, legacyLocalToken);
-    localStorage.removeItem(TOKEN_KEY);
-    return legacyLocalToken;
+  const legacySessionToken = sessionStorage.getItem(TOKEN_KEY);
+  if (legacySessionToken) {
+    localStorage.setItem(TOKEN_KEY, legacySessionToken);
+    return legacySessionToken;
   }
   return "";
 }
@@ -36,8 +35,8 @@ export function subscribe(listener) {
 
 export function setToken(token) {
   if (token) {
+    localStorage.setItem(TOKEN_KEY, token);
     sessionStorage.setItem(TOKEN_KEY, token);
-    localStorage.removeItem(TOKEN_KEY);
   } else {
     sessionStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(TOKEN_KEY);
