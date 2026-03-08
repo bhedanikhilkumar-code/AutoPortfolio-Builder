@@ -1,7 +1,10 @@
 import { performLogout, switchAccount } from "./auth.js";
 import { navigate } from "./router.js";
 import { state, subscribe } from "./state.js";
-import { $, withButtonLoading } from "./utils.js";
+import { $, showBanner, withButtonLoading } from "./utils.js";
+
+const CLOSE_ANIMATION_MS = 140;
+let closeTimer = null;
 
 function initialsFromUser(user) {
   const name = (user?.name || "").trim();
@@ -15,37 +18,58 @@ function initialsFromUser(user) {
   return (email[0] || "U").toUpperCase();
 }
 
+function resolveUserPhoto(user) {
+  return user?.photoURL || user?.providerData?.find((p) => p?.photoURL)?.photoURL || user?.avatar_url || user?.photo_url || null;
+}
+
+function getMenuElements() {
+  return {
+    menu: $("account-dropdown"),
+    trigger: $("account-menu-trigger"),
+  };
+}
+
 function openMenu() {
-  const menu = $("account-dropdown");
-  const trigger = $("account-menu-trigger");
+  const { menu, trigger } = getMenuElements();
   if (!menu || !trigger) return;
+  if (closeTimer) {
+    clearTimeout(closeTimer);
+    closeTimer = null;
+  }
+
   menu.hidden = false;
+  menu.classList.remove("is-closing");
+  requestAnimationFrame(() => menu.classList.add("is-open"));
   trigger.setAttribute("aria-expanded", "true");
 }
 
 function closeMenu() {
-  const menu = $("account-dropdown");
-  const trigger = $("account-menu-trigger");
-  if (!menu || !trigger) return;
-  menu.hidden = true;
+  const { menu, trigger } = getMenuElements();
+  if (!menu || !trigger || menu.hidden) return;
+
+  menu.classList.remove("is-open");
+  menu.classList.add("is-closing");
   trigger.setAttribute("aria-expanded", "false");
+
+  if (closeTimer) clearTimeout(closeTimer);
+  closeTimer = window.setTimeout(() => {
+    menu.hidden = true;
+    menu.classList.remove("is-closing");
+    closeTimer = null;
+  }, CLOSE_ANIMATION_MS);
 }
 
 function toggleMenu() {
-  const menu = $("account-dropdown");
+  const { menu } = getMenuElements();
   if (!menu) return;
   if (menu.hidden) openMenu();
   else closeMenu();
 }
 
-function resolveUserPhoto(user) {
-  return (
-    user?.photoURL ||
-    user?.providerData?.find((p) => p?.photoURL)?.photoURL ||
-    user?.avatar_url ||
-    user?.photo_url ||
-    null
-  );
+function navigateFromMenu(path, message = "") {
+  closeMenu();
+  navigate(path);
+  if (message) showBanner($("global-banner"), message, "info");
 }
 
 function renderAccountMenu(nextState = state) {
@@ -58,9 +82,13 @@ function renderAccountMenu(nextState = state) {
   const panelImage = $("account-panel-avatar-img");
   const panelName = $("account-panel-name");
   const panelEmail = $("account-panel-email");
+  const panelLabel = $("account-panel-label");
+  const adminItem = $("account-admin-link");
 
   if (panelName) panelName.textContent = user?.name || "Account";
   if (panelEmail) panelEmail.textContent = user?.email || "";
+  if (panelLabel) panelLabel.textContent = user?.is_admin ? "Admin account" : "Personal account";
+  if (adminItem) adminItem.hidden = !Boolean(user?.is_admin);
 
   const avatarUrl = resolveUserPhoto(user);
   const hasPhoto = Boolean(avatarUrl);
@@ -86,8 +114,13 @@ function renderAccountMenu(nextState = state) {
 export function initAccountMenu() {
   const trigger = $("account-menu-trigger");
   const dropdown = $("account-dropdown");
+
   const dashboardLink = $("account-dashboard-link");
+  const generateLink = $("account-generate-link");
   const resumesLink = $("account-resumes-link");
+  const draftsLink = $("account-drafts-link");
+  const settingsLink = $("account-settings-link");
+  const adminLink = $("account-admin-link");
   const switchBtn = $("account-switch-btn");
   const logoutBtn = $("account-logout-btn");
 
@@ -100,14 +133,32 @@ export function initAccountMenu() {
 
   dashboardLink?.addEventListener("click", (event) => {
     event.preventDefault();
-    closeMenu();
-    navigate("/dashboard");
+    navigateFromMenu("/dashboard");
+  });
+
+  generateLink?.addEventListener("click", (event) => {
+    event.preventDefault();
+    navigateFromMenu("/generator");
   });
 
   resumesLink?.addEventListener("click", (event) => {
     event.preventDefault();
-    closeMenu();
-    navigate("/dashboard");
+    navigateFromMenu("/dashboard", "Tip: Use your dashboard to manage resumes.");
+  });
+
+  draftsLink?.addEventListener("click", (event) => {
+    event.preventDefault();
+    navigateFromMenu("/dashboard", "Tip: Saved drafts are available in dashboard.");
+  });
+
+  settingsLink?.addEventListener("click", (event) => {
+    event.preventDefault();
+    navigateFromMenu("/dashboard", "Account settings are available in dashboard.");
+  });
+
+  adminLink?.addEventListener("click", (event) => {
+    event.preventDefault();
+    navigateFromMenu("/admin");
   });
 
   switchBtn?.addEventListener("click", () =>

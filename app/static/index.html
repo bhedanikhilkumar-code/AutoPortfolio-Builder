@@ -44,14 +44,35 @@
             <img id="account-panel-avatar-img" class="account-avatar account-avatar-lg" alt="Profile" hidden>
             <span id="account-panel-avatar-fallback" class="account-avatar account-avatar-lg account-avatar-fallback">U</span>
             <div class="account-meta">
+              <small id="account-panel-label">Personal account</small>
               <strong id="account-panel-name">Account</strong>
               <small id="account-panel-email"></small>
             </div>
           </div>
-          <button id="account-dashboard-link" class="account-item" type="button" role="menuitem">Dashboard</button>
-          <button id="account-resumes-link" class="account-item" type="button" role="menuitem">My Resumes</button>
-          <button id="account-switch-btn" class="account-item" type="button" role="menuitem">Switch Account</button>
-          <button id="account-logout-btn" class="account-item danger" type="button" role="menuitem">Logout</button>
+
+          <div class="account-section">
+            <p class="account-section-title">Quick Access</p>
+            <button id="account-dashboard-link" class="account-item" type="button" role="menuitem"><span class="account-item-icon">📊</span><span>Dashboard</span></button>
+            <button id="account-generate-link" class="account-item" type="button" role="menuitem"><span class="account-item-icon">⚡</span><span>Generate Portfolio</span></button>
+            <button id="account-resumes-link" class="account-item" type="button" role="menuitem"><span class="account-item-icon">📄</span><span>My Resumes</span></button>
+            <button id="account-drafts-link" class="account-item" type="button" role="menuitem"><span class="account-item-icon">📝</span><span>Saved Drafts</span></button>
+            <button id="account-admin-link" class="account-item" type="button" role="menuitem" hidden><span class="account-item-icon">🛡️</span><span>Admin</span></button>
+          </div>
+
+          <div class="account-divider"></div>
+
+          <div class="account-section">
+            <p class="account-section-title">Account</p>
+            <button id="account-settings-link" class="account-item" type="button" role="menuitem"><span class="account-item-icon">⚙️</span><span>Account Settings</span></button>
+            <button id="account-switch-btn" class="account-item" type="button" role="menuitem"><span class="account-item-icon">🔁</span><span>Switch Account</span></button>
+          </div>
+
+          <div class="account-divider"></div>
+
+          <div class="account-section">
+            <p class="account-section-title">Action</p>
+            <button id="account-logout-btn" class="account-item danger" type="button" role="menuitem"><span class="account-item-icon">🚪</span><span>Logout</span></button>
+          </div>
         </div>
       </div>
     </div>

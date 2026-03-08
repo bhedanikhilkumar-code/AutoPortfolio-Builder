@@ -123,32 +123,66 @@ legend,
   position: absolute;
   right: 0;
   top: calc(100% + 10px);
-  min-width: 250px;
+  min-width: 285px;
+  max-width: min(92vw, 320px);
   border: 1px solid var(--border);
   border-radius: 14px;
   background: #fff;
   box-shadow: 0 16px 30px rgba(23, 32, 51, 0.15);
-  padding: 0.5rem;
+  padding: 0.55rem;
   z-index: 40;
+  opacity: 0;
+  transform: translateY(-6px) scale(0.985);
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.account-dropdown.is-open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.account-dropdown.is-closing {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.99);
 }
 
 .account-summary {
   display: flex;
-  gap: 0.7rem;
+  gap: 0.72rem;
   align-items: center;
-  padding: 0.5rem;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 0.25rem;
+  padding: 0.52rem;
+  margin-bottom: 0.2rem;
 }
 
 .account-meta {
   display: grid;
-  gap: 0.1rem;
+  gap: 0.08rem;
 }
 
 .account-meta small {
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.78rem;
+}
+
+.account-section {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.2rem 0;
+}
+
+.account-section-title {
+  margin: 0;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.account-divider {
+  border-top: 1px solid var(--border);
+  margin: 0.15rem 0.25rem;
 }
 
 .account-item {
@@ -157,18 +191,31 @@ legend,
   border: 0;
   background: transparent;
   border-radius: 10px;
-  padding: 0.6rem 0.7rem;
+  padding: 0.62rem 0.65rem;
   cursor: pointer;
   font-weight: 600;
   color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
 }
 
 .account-item:hover {
   background: #eef4ff;
 }
 
+.account-item-icon {
+  width: 1.2rem;
+  text-align: center;
+  opacity: 0.9;
+}
+
 .account-item.danger {
   color: var(--danger);
+}
+
+.account-item.danger:hover {
+  background: #fff2f2;
 }
 
 .page-shell {
@@ -378,6 +425,7 @@ details label {
 
   .account-dropdown {
     right: 0;
-    min-width: 220px;
+    min-width: 240px;
+    max-width: calc(100vw - 1.2rem);
   }
 }
