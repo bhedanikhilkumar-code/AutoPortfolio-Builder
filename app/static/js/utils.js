@@ -116,10 +116,12 @@ export function downloadBlob(blob, filename) {
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = filename;
+  anchor.rel = "noopener";
+  anchor.target = "_blank";
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => URL.revokeObjectURL(url), 3000);
 }
 
 export function contentDispositionFilename(headerValue, fallback) {

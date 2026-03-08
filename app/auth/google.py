@@ -96,19 +96,27 @@ async def verify_google_access_token(access_token: str) -> dict:
     try:
         async with httpx.AsyncClient(timeout=8.0) as client:
             response = await client.get(GOOGLE_TOKENINFO_URL, params={"access_token": access_token})
-        if response.status_code != 200:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Google access token.")
+            if response.status_code != 200:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Google access token.")
 
-        payload = response.json()
-        aud = str(payload.get("aud") or payload.get("issued_to") or "").strip()
-        if aud != client_id:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Google access token audience mismatch.")
+            payload = response.json()
+            aud = str(payload.get("aud") or payload.get("issued_to") or "").strip()
+            if aud != client_id:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Google access token audience mismatch.")
 
-        email = str(payload.get("email") or "").strip().lower()
-        if not email:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Google token missing email.")
+            email = str(payload.get("email") or "").strip().lower()
+            if not email:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Google token missing email.")
 
-        return {"email": email, "name": payload.get("name"), "avatar_url": payload.get("picture")}
+            userinfo_res = await client.get(
+                GOOGLE_USERINFO_URL,
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            userinfo = userinfo_res.json() if userinfo_res.status_code == 200 else {}
+            name = userinfo.get("name") or payload.get("name")
+            picture = userinfo.get("picture") or payload.get("picture")
+
+            return {"email": email, "name": name, "avatar_url": picture}
     except httpx.HTTPError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Unable to verify Google token.") from exc
 
