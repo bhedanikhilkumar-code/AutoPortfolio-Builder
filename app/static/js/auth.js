@@ -61,10 +61,38 @@ function clearTransientInputState() {
   });
 }
 
+async function fetchGoogleUserPhoto(accessToken) {
+  try {
+    const response = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!response.ok) return "";
+    const payload = await response.json();
+    return String(payload?.picture || "").trim();
+  } catch {
+    return "";
+  }
+}
+
 async function completeGoogleAccessTokenLogin(accessToken) {
-  const payload = await googleAccessTokenLogin(accessToken);
+  const [payload, googlePhoto] = await Promise.all([
+    googleAccessTokenLogin(accessToken),
+    fetchGoogleUserPhoto(accessToken),
+  ]);
+
   setToken(payload.access_token);
   await syncUserFromToken();
+
+  if (googlePhoto) {
+    setState({
+      user: {
+        ...(state.user || {}),
+        avatar_url: googlePhoto,
+        photo_url: googlePhoto,
+        photoURL: googlePhoto,
+      },
+    });
+  }
 }
 
 async function startGoogleChooser(prompt = "select_account") {
