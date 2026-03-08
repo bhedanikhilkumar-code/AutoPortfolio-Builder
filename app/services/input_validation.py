@@ -8,6 +8,7 @@ from fastapi import HTTPException, status
 EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 LINKEDIN_URL_RE = re.compile(r"^(?:https?://)?(?:[a-z]{2,3}\.)?(?:www\.)?linkedin\.com/in/([A-Za-z0-9-]{3,100})(?:[/?#].*)?$", re.IGNORECASE)
 LINKEDIN_USERNAME_RE = re.compile(r"^[A-Za-z0-9-]{3,100}$")
+GARBAGE_PATTERNS = ("asdf", "qwer", "zxcv", "sdfg", "poiuy", "lkjh", "testtest", "random")
 
 
 @dataclass(slots=True)
@@ -25,12 +26,24 @@ def is_meaningful_text(value: str, *, min_letters: int = 3, min_unique_letters: 
         return False
     if len(set(ch.lower() for ch in letters)) < min_unique_letters:
         return False
+
+    lower = text.lower()
+    if any(pattern in lower for pattern in GARBAGE_PATTERNS):
+        return False
+
     if re.fullmatch(r"[A-Za-z]{5,}", text) and not re.search(r"[aeiouAEIOU]", text):
         return False
     if re.fullmatch(r"[A-Za-z0-9]+", text) and len(text) >= 7 and not re.search(r"\s", text):
         # blocks obvious gibberish like sdfgrth / asd12345 when standalone
         if not re.search(r"[aeiouAEIOU]", text):
             return False
+
+    vowel_count = len(re.findall(r"[aeiouAEIOU]", text))
+    if len(letters) >= 6 and vowel_count == 0:
+        return False
+    if len(letters) >= 8 and vowel_count <= 1:
+        return False
+
     return True
 
 

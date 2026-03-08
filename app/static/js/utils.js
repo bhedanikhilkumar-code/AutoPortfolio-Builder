@@ -51,8 +51,18 @@ export function meaningfulText(value, { minLetters = 3, minUniqueLetters = 3 } =
   const letters = (text.match(/[A-Za-z]/g) || []);
   if (letters.length < minLetters) return false;
   if (new Set(letters.map((x) => x.toLowerCase())).size < minUniqueLetters) return false;
+
+  const lower = text.toLowerCase();
+  const garbagePatterns = ["asdf", "qwer", "zxcv", "sdfg", "poiuy", "lkjh", "testtest", "random"];
+  if (garbagePatterns.some((p) => lower.includes(p))) return false;
+
   if (/^[A-Za-z]{5,}$/.test(text) && !/[aeiou]/i.test(text)) return false;
   if (/^[A-Za-z0-9]{7,}$/.test(text) && !/[\s]/.test(text) && !/[aeiou]/i.test(text)) return false;
+
+  const vowelCount = (text.match(/[aeiou]/gi) || []).length;
+  if (letters.length >= 6 && vowelCount === 0) return false;
+  if (letters.length >= 8 && vowelCount <= 1) return false;
+
   return true;
 }
 
