@@ -39,9 +39,11 @@ legend,
   position: sticky;
   top: 0;
   z-index: 10;
-  background: rgba(245, 247, 251, 0.94);
-  border-bottom: 1px solid var(--border);
-  backdrop-filter: blur(6px);
+  background: rgba(245, 247, 251, 0.5);
+  border-bottom: 1px solid rgba(217, 223, 234, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 6px 18px rgba(23, 32, 51, 0.08);
 }
 
 .topbar-inner {
