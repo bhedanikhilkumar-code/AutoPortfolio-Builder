@@ -134,6 +134,11 @@ function setExportButtonsEnabled(enabled) {
   });
 }
 
+function setExportButtonsVisible(visible) {
+  const row = $("generator-actions");
+  if (row) row.hidden = !visible;
+}
+
 function updateSubmitDisabled() {
   const generateBtn = $("generate-btn");
   if (!generateBtn) return;
@@ -145,19 +150,53 @@ function updateSubmitDisabled() {
 function renderResult(portfolio, saveMessage, linkedinUrl = "") {
   const result = $("generator-result");
   if (!result) return;
+
   const headline = portfolio.hero?.content?.headline || "Portfolio generated";
+  const subheadline = portfolio.hero?.content?.subheadline || "";
   const topSkills = (portfolio.skills?.content?.highlighted || []).slice(0, 6);
-  const projectCount = (portfolio.projects?.content?.items || []).length;
+  const projectItems = (portfolio.projects?.content?.items || []).slice(0, 3);
+  const aboutPoints = (portfolio.about?.content?.summary || []).slice(0, 3);
+
   result.innerHTML = `
-    <h3>Preview Ready</h3>
-    <p><strong>Headline:</strong> ${headline}</p>
-    <p><strong>Theme:</strong> ${portfolio.theme}</p>
-    <p><strong>Projects:</strong> ${projectCount}</p>
-    <p><strong>Top Skills:</strong> ${topSkills.join(", ") || "N/A"}</p>
-    <p><strong>LinkedIn:</strong> ${linkedinUrl || "Not provided"}</p>
-    <p><strong>Status:</strong> ${saveMessage}</p>
+    <section class="preview-hero">
+      <h3>${headline}</h3>
+      <p class="preview-meta">${subheadline}</p>
+      <p class="preview-meta">${saveMessage}</p>
+    </section>
+    <section class="preview-grid">
+      <article class="preview-card">
+        <h4>About</h4>
+        <ul class="preview-list">
+          ${(aboutPoints.length ? aboutPoints : ["Profile summary generated."]).map((item) => `<li>${item}</li>`).join("")}
+        </ul>
+      </article>
+      <article class="preview-card">
+        <h4>Top Skills</h4>
+        <ul class="preview-list">
+          ${(topSkills.length ? topSkills : ["Skills are available in the exported portfolio."]).map((item) => `<li>${item}</li>`).join("")}
+        </ul>
+      </article>
+      <article class="preview-card">
+        <h4>Featured Projects</h4>
+        <ul class="preview-list">
+          ${
+            (projectItems.length ? projectItems : [{ name: "Projects generated", description: "View full details via export." }])
+              .map((p) => `<li><strong>${p.name || "Project"}</strong>${p.description ? ` — ${p.description}` : ""}</li>`)
+              .join("")
+          }
+        </ul>
+      </article>
+    </section>
+    <p class="preview-meta"><strong>LinkedIn:</strong> ${linkedinUrl || "Not provided"}</p>
   `;
   result.hidden = false;
+}
+
+function clearResult() {
+  const result = $("generator-result");
+  if (!result) return;
+  result.hidden = true;
+  result.innerHTML = "";
 }
 
 function mapServerErrorToField(message) {
@@ -223,7 +262,9 @@ export function initGenerator() {
   );
 
   updateSubmitDisabled();
-  setExportButtonsEnabled(Boolean(state.generatorResult));
+  const hasResult = Boolean(state.generatorResult);
+  setExportButtonsVisible(hasResult);
+  setExportButtonsEnabled(hasResult);
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -235,6 +276,8 @@ export function initGenerator() {
       const validation = validateForm(values);
       applyFieldErrors(validation.errors);
       if (!validation.ok) {
+        clearResult();
+        setExportButtonsVisible(false);
         setExportButtonsEnabled(false);
         return;
       }
@@ -275,10 +318,11 @@ export function initGenerator() {
       });
 
       setState({ generatorResult: portfolio });
+      setExportButtonsVisible(true);
       setExportButtonsEnabled(true);
       renderResult(portfolio, saved.message, validation.linkedinUrl);
-      showBanner(generatorBanner(), "Portfolio generated and saved successfully.", "success");
-      showBanner($("global-banner"), "Portfolio generated and saved successfully.", "success");
+      showBanner(generatorBanner(), "Portfolio generated successfully. Preview ready below.", "success");
+      showBanner($("global-banner"), "Portfolio generated successfully.", "success");
     })
       .catch((error) => {
         const fieldError = mapServerErrorToField(error.message);
@@ -289,7 +333,9 @@ export function initGenerator() {
           showBanner(generatorBanner(), error.message, "error");
           showBanner($("global-banner"), error.message, "error");
         }
-        setExportButtonsEnabled(Boolean(state.generatorResult));
+        clearResult();
+        setExportButtonsVisible(false);
+        setExportButtonsEnabled(false);
       })
       .finally(() => {
         updateSubmitDisabled();
