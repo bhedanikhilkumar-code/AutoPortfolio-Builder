@@ -45,6 +45,17 @@ export function validEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+export function meaningfulText(value, { minLetters = 3, minUniqueLetters = 3 } = {}) {
+  const text = (value || "").trim();
+  if (text.length < minLetters) return false;
+  const letters = (text.match(/[A-Za-z]/g) || []);
+  if (letters.length < minLetters) return false;
+  if (new Set(letters.map((x) => x.toLowerCase())).size < minUniqueLetters) return false;
+  if (/^[A-Za-z]{5,}$/.test(text) && !/[aeiou]/i.test(text)) return false;
+  if (/^[A-Za-z0-9]{7,}$/.test(text) && !/[\s]/.test(text) && !/[aeiou]/i.test(text)) return false;
+  return true;
+}
+
 export function normalizeGithubInput(value) {
   const raw = value.trim();
   if (!raw) return { ok: false, message: "GitHub is required." };

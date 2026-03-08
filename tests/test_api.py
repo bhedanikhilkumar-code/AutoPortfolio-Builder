@@ -289,14 +289,14 @@ def test_profile_endpoint_validates_linkedin_username() -> None:
     assert response.json()["error"]["code"] == "validation_error"
 
 
-def test_profile_endpoint_allows_slug_inference_fallback() -> None:
+def test_profile_endpoint_rejects_low_confidence_linkedin_fallback() -> None:
     headers = make_auth_headers()
     app.dependency_overrides[get_linkedin_service] = lambda: SlugInferenceLinkedInService()
 
     response = client.post("/api/profile", json={"username": "octocat", "linkedin_username": "randomslug"}, headers=headers)
 
-    assert response.status_code == 200
-    assert response.json()["linkedin"]["provider_used"] == "slug_inference"
+    assert response.status_code == 422
+    assert response.json()["error"]["message"] == "Enter a valid LinkedIn username or URL."
 
 
 def test_generate_endpoint_accepts_selected_theme() -> None:
@@ -307,6 +307,53 @@ def test_generate_endpoint_accepts_selected_theme() -> None:
 
     assert response.status_code == 200
     assert response.json()["theme"] == "minimal"
+
+
+def test_generate_rejects_garbage_manual_input() -> None:
+    headers = make_auth_headers()
+    profile_payload = client.post("/api/profile", json={"username": "octocat", "linkedin_username": "octocat"}, headers=headers).json()
+
+    response = client.post(
+        "/api/generate",
+        json={
+            **profile_payload,
+            "manual_input": {
+                "name": "sdfgrth",
+                "email": "bad-email",
+                "github": "not a github",
+                "linkedin": "bad linkedin",
+                "skills": ["asdfgh", "qwrtyu"],
+                "projects": ["zxcvbnm"],
+            },
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "validation_error"
+
+
+def test_generate_accepts_meaningful_manual_input() -> None:
+    headers = make_auth_headers()
+    profile_payload = client.post("/api/profile", json={"username": "octocat", "linkedin_username": "octocat"}, headers=headers).json()
+
+    response = client.post(
+        "/api/generate",
+        json={
+            **profile_payload,
+            "manual_input": {
+                "name": "Ada Lovelace",
+                "email": "ada@example.dev",
+                "github": "octocat",
+                "linkedin": "octocat",
+                "skills": ["Python", "FastAPI", "SQL"],
+                "projects": ["Portfolio Builder", "Analytics Dashboard"],
+            },
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 200
 
 
 def test_profile_endpoint_returns_consistent_error_payload() -> None:

@@ -78,6 +78,7 @@ from app.deploy_export.service import build_deploy_package
 from app.resume_versions.service import list_versions, restore_version
 from app.services.github import GitHubService, normalize_github_username
 from app.services.linkedin import LinkedInService
+from app.services.input_validation import normalize_linkedin_input, validate_manual_inputs
 from app.services.portfolio import (
     build_export_filename,
     build_portfolio_zip,
@@ -510,28 +511,29 @@ def create_app() -> FastAPI:
                 signals=["github_only"],
             )
         else:
-            try:
-                linkedin_payload = await linkedin_service.fetch_public_profile(linkedin_input)
-                if "not_found" in (linkedin_payload.signals or []):
-                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="LinkedIn username not found.")
-            except HTTPException:
-                raise
-            except Exception:
-                logger.exception("linkedin_enrichment_failed linkedin=%s", linkedin_input)
-                linkedin_slug = linkedin_input.strip().strip("/").split("/")[-1].replace("in/", "")
-                linkedin_payload = LinkedInProfile(
-                    username=linkedin_slug or github_payload.profile.username,
-                    url=f"https://www.linkedin.com/in/{linkedin_slug or github_payload.profile.username}/",
-                    summary=["LinkedIn enrichment temporarily unavailable. GitHub-only mode applied."],
-                    provider_used="endpoint_fallback",
-                    confidence_score=0.05,
-                    signals=["endpoint_fallback"],
-                )
+            linkedin_slug = normalize_linkedin_input(linkedin_input)
+            linkedin_payload = await linkedin_service.fetch_public_profile(linkedin_slug)
+            if "not_found" in (linkedin_payload.signals or []):
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="LinkedIn username not found.")
+            if linkedin_payload.provider_used in {"slug_inference", "global_fallback"} and linkedin_payload.confidence_score < 0.35:
+                raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Enter a valid LinkedIn username or URL.")
         return ProfileResponse(profile=github_payload.profile, repos=github_payload.repos, linkedin=linkedin_payload)
 
     @app.post("/api/generate", response_model=PortfolioResponse)
     async def generate(payload: GenerateRequest, user: dict = Depends(get_current_user)) -> PortfolioResponse:
         logger.info("generate_request github=%s variant=%s", payload.profile.username, payload.variant_id)
+        if payload.manual_input:
+            normalized_manual_github = normalize_github_username(payload.manual_input.github)
+            if normalized_manual_github.lower() != payload.profile.username.lower():
+                raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="GitHub input does not match fetched profile.")
+            validate_manual_inputs(
+                name=payload.manual_input.name,
+                email=payload.manual_input.email,
+                github=payload.manual_input.github,
+                linkedin=payload.manual_input.linkedin,
+                skills=payload.manual_input.skills,
+                projects=payload.manual_input.projects,
+            )
         try:
             result = generate_portfolio(payload)
         except Exception as exc:

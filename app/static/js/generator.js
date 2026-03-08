@@ -10,6 +10,7 @@ import {
   showBanner,
   splitCsv,
   validEmail,
+  meaningfulText,
   withButtonLoading,
 } from "./utils.js";
 
@@ -34,12 +35,29 @@ function readFormValues() {
 }
 
 function validateForm(values) {
+  if (!meaningfulText(values.name, { minLetters: 2, minUniqueLetters: 2 }) || values.name.length > 80) {
+    return { ok: false, message: "Enter a valid name." };
+  }
   if (!validEmail(values.email)) return { ok: false, message: "Enter a valid email." };
   const github = normalizeGithubInput(values.githubRaw);
-  if (!github.ok) return github;
+  if (!github.ok) return { ok: false, message: "Enter a valid GitHub username or URL." };
   const linkedin = normalizeLinkedInInput(values.linkedinRaw);
-  if (!linkedin.ok) return linkedin;
-  return { ok: true, github: github.value, linkedin: linkedin.value, linkedinUrl: linkedin.profileUrl || "" };
+  if (!linkedin.ok) return { ok: false, message: "Enter a valid LinkedIn username or URL." };
+
+  const meaningfulSkills = values.skills.filter((item) => meaningfulText(item));
+  if (meaningfulSkills.length < 2) return { ok: false, message: "Please enter meaningful skills." };
+
+  const meaningfulProjects = values.projects.filter((item) => meaningfulText(item, { minLetters: 4, minUniqueLetters: 3 }));
+  if (meaningfulProjects.length < 1) return { ok: false, message: "Please enter meaningful project information." };
+
+  return {
+    ok: true,
+    github: github.value,
+    linkedin: linkedin.value,
+    linkedinUrl: linkedin.profileUrl || "",
+    skills: meaningfulSkills,
+    projects: meaningfulProjects,
+  };
 }
 
 function setExportButtonsEnabled(enabled) {
@@ -59,20 +77,18 @@ function updateSubmitDisabled() {
 function renderResult(portfolio, values, saveMessage, linkedinUrl = "") {
   const result = $("generator-result");
   if (!result) return;
-  const summary = {
-    theme: portfolio.theme,
-    headline: portfolio.hero?.content?.headline,
-    role: values.role || "none",
-    performance_mode: values.performanceMode,
-    neon_mode: values.neonMode,
-    linkedin_input: values.linkedinRaw || "",
-    linkedin_resolved_url: linkedinUrl || "",
-    linkedin_in_portfolio: portfolio.contact?.content?.linkedin || portfolio.about?.content?.linkedin || "",
-    skills: values.skills,
-    projects: values.projects,
-    save_status: saveMessage,
-  };
-  result.textContent = JSON.stringify(summary, null, 2);
+  const headline = portfolio.hero?.content?.headline || "Portfolio generated";
+  const topSkills = (portfolio.skills?.content?.highlighted || []).slice(0, 6);
+  const projectCount = (portfolio.projects?.content?.items || []).length;
+  result.innerHTML = `
+    <h3>Preview Ready</h3>
+    <p><strong>Headline:</strong> ${headline}</p>
+    <p><strong>Theme:</strong> ${portfolio.theme}</p>
+    <p><strong>Projects:</strong> ${projectCount}</p>
+    <p><strong>Top Skills:</strong> ${topSkills.join(", ") || "N/A"}</p>
+    <p><strong>LinkedIn:</strong> ${linkedinUrl || "Not provided"}</p>
+    <p><strong>Status:</strong> ${saveMessage}</p>
+  `;
   result.hidden = false;
 }
 
@@ -98,7 +114,7 @@ export function initGenerator() {
   const exportZipBtn = $("export-zip-btn");
   if (!form || !generateBtn) return;
 
-  ["gen-email", "gen-github", "gen-linkedin"].forEach((id) => {
+  ["gen-name", "gen-email", "gen-github", "gen-linkedin", "gen-skills", "gen-projects"].forEach((id) => {
     $(id)?.addEventListener("input", updateSubmitDisabled);
   });
 
@@ -155,6 +171,14 @@ export function initGenerator() {
         theme: values.theme,
         target_role: values.role || undefined,
         deep_mode: values.deepMode,
+        manual_input: {
+          name: values.name,
+          email: values.email,
+          github: values.githubRaw,
+          linkedin: values.linkedinRaw,
+          skills: validation.skills,
+          projects: validation.projects,
+        },
       });
 
       const saved = await saveResume({
