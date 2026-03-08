@@ -71,8 +71,9 @@ def validate_manual_inputs(
     if not github:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Enter a valid GitHub username or URL.")
 
-    if linkedin:
-        normalize_linkedin_input(linkedin)
+    if not (linkedin or "").strip():
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Enter a valid LinkedIn username or URL.")
+    normalize_linkedin_input(linkedin)
 
     _ = skills
     _ = projects
