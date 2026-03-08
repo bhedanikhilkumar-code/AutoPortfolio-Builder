@@ -158,17 +158,17 @@
         <form id="generator-form" class="stack" novalidate>
           <fieldset>
             <legend>Basic Info</legend>
-            <label>Name
-              <input id="gen-name" type="text" placeholder="e.g. Ada Lovelace">
+            <label>Name *
+              <input id="gen-name" type="text" placeholder="e.g. Ada Lovelace" required>
             </label>
-            <label>Email
+            <label>Email *
               <input id="gen-email" type="email" placeholder="you@example.com" required>
             </label>
           </fieldset>
 
           <fieldset>
             <legend>Profile Links</legend>
-            <label>GitHub Username or URL
+            <label>GitHub Username or URL *
               <input id="gen-github" type="text" placeholder="octocat or https://github.com/octocat" required>
             </label>
             <label>LinkedIn Username or URL
@@ -214,6 +214,7 @@
           </details>
 
           <button id="generate-btn" class="btn btn-primary" type="submit">Generate Portfolio</button>
+          <p class="form-note">Note: * indicates a mandatory field. Any field marked with * must be filled.</p>
         </form>
         <div id="generator-banner" class="banner" hidden></div>
         <div class="actions-row">
