@@ -482,6 +482,51 @@ def create_app() -> FastAPI:
         finally:
             conn.close()
 
+    @app.post("/api/dashboard/resumes/{resume_id}/duplicate", response_model=SaveResumeResponse)
+    async def duplicate_resume(resume_id: int, user: dict = Depends(get_current_user)) -> SaveResumeResponse:
+        from app.core.db import get_connection
+
+        conn = get_connection()
+        try:
+            row = conn.execute(
+                "SELECT title, status, portfolio_json FROM resumes WHERE id = ? AND user_id = ?",
+                (resume_id, user["id"]),
+            ).fetchone()
+            if not row:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found.")
+
+            duplicate_title = f"{row['title']} (Copy)"
+            cursor = conn.execute(
+                "INSERT INTO resumes(user_id, title, status, portfolio_json) VALUES(?, ?, ?, ?)",
+                (user["id"], duplicate_title, row["status"], row["portfolio_json"]),
+            )
+            new_resume_id = int(cursor.lastrowid)
+            conn.execute(
+                "INSERT INTO resume_versions(resume_id, version_number, portfolio_json) VALUES(?, ?, ?)",
+                (new_resume_id, 1, row["portfolio_json"]),
+            )
+            conn.commit()
+            return SaveResumeResponse(resume_id=new_resume_id, message="Resume duplicated successfully.")
+        finally:
+            conn.close()
+
+    @app.delete("/api/dashboard/resumes/{resume_id}", response_model=SaveResumeResponse)
+    async def delete_resume(resume_id: int, user: dict = Depends(get_current_user)) -> SaveResumeResponse:
+        from app.core.db import get_connection
+
+        conn = get_connection()
+        try:
+            row = conn.execute("SELECT id FROM resumes WHERE id = ? AND user_id = ?", (resume_id, user["id"])).fetchone()
+            if not row:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found.")
+
+            conn.execute("DELETE FROM resume_versions WHERE resume_id = ?", (resume_id,))
+            conn.execute("DELETE FROM resumes WHERE id = ? AND user_id = ?", (resume_id, user["id"]))
+            conn.commit()
+            return SaveResumeResponse(resume_id=resume_id, message="Resume deleted successfully.")
+        finally:
+            conn.close()
+
     @app.get("/api/dashboard/resumes/{resume_id}/versions", response_model=ResumeVersionsResponse)
     async def get_resume_versions(resume_id: int, user: dict = Depends(get_current_user)) -> ResumeVersionsResponse:
         return list_versions(user["id"], resume_id)

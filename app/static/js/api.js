@@ -136,6 +136,29 @@ export async function saveResume(payload) {
   return parseResponse(response, "Failed to save resume.");
 }
 
+export async function getResume(resumeId) {
+  const response = await fetch(`/api/dashboard/resumes/${resumeId}`, {
+    headers: { ...authHeaders() },
+  });
+  return parseResponse(response, "Failed to load resume.");
+}
+
+export async function duplicateResume(resumeId) {
+  const response = await fetch(`/api/dashboard/resumes/${resumeId}/duplicate`, {
+    method: "POST",
+    headers: { ...authHeaders() },
+  });
+  return parseResponse(response, "Failed to duplicate resume.");
+}
+
+export async function deleteResume(resumeId) {
+  const response = await fetch(`/api/dashboard/resumes/${resumeId}`, {
+    method: "DELETE",
+    headers: { ...authHeaders() },
+  });
+  return parseResponse(response, "Failed to delete resume.");
+}
+
 export async function exportPortfolio(format, payload) {
   const response = await fetch(`/api/export/${format}`, {
     method: "POST",
