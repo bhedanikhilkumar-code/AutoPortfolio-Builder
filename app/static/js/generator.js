@@ -14,47 +14,111 @@ import {
   withButtonLoading,
 } from "./utils.js";
 
+const FIELD_IDS = {
+  name: "gen-name",
+  email: "gen-email",
+  github: "gen-github",
+  linkedin: "gen-linkedin",
+  skills: "gen-skills",
+  projects: "gen-projects",
+};
+
 function generatorBanner() {
   return $("generator-banner");
 }
 
 function readFormValues() {
   return {
-    name: $("gen-name")?.value.trim() || "",
-    email: $("gen-email")?.value.trim() || "",
-    githubRaw: $("gen-github")?.value.trim() || "",
-    linkedinRaw: $("gen-linkedin")?.value.trim() || "",
-    skills: splitCsv($("gen-skills")?.value || ""),
-    projects: splitCsv($("gen-projects")?.value || ""),
+    name: $(FIELD_IDS.name)?.value.trim() || "",
+    email: $(FIELD_IDS.email)?.value.trim() || "",
+    githubRaw: $(FIELD_IDS.github)?.value.trim() || "",
+    linkedinRaw: $(FIELD_IDS.linkedin)?.value.trim() || "",
+    skills: splitCsv($(FIELD_IDS.skills)?.value || ""),
+    projects: splitCsv($(FIELD_IDS.projects)?.value || ""),
     theme: $("gen-theme")?.value || "modern",
     role: $("gen-role")?.value || "",
     deepMode: Boolean($("gen-deep-mode")?.checked),
-    performanceMode: Boolean($("gen-performance")?.checked),
-    neonMode: Boolean($("gen-neon")?.checked),
   };
 }
 
-function validateForm(values) {
-  if (!meaningfulText(values.name, { minLetters: 2, minUniqueLetters: 2 }) || values.name.length > 80) {
-    return { ok: false, message: "Enter a valid name." };
+function ensureFieldErrorNode(fieldId) {
+  const input = $(fieldId);
+  if (!input) return null;
+  let errorNode = $(`${fieldId}-error`);
+  if (!errorNode) {
+    errorNode = document.createElement("div");
+    errorNode.id = `${fieldId}-error`;
+    errorNode.className = "field-error";
+    errorNode.hidden = true;
+    input.insertAdjacentElement("afterend", errorNode);
   }
-  if (!validEmail(values.email)) return { ok: false, message: "Enter a valid email." };
+  return errorNode;
+}
+
+function setFieldError(fieldId, message = "") {
+  const input = $(fieldId);
+  const errorNode = ensureFieldErrorNode(fieldId);
+  if (!input || !errorNode) return;
+
+  if (!message) {
+    errorNode.hidden = true;
+    errorNode.textContent = "";
+    input.classList.remove("input-invalid");
+    input.setAttribute("aria-invalid", "false");
+    return;
+  }
+
+  errorNode.hidden = false;
+  errorNode.textContent = message;
+  input.classList.add("input-invalid");
+  input.setAttribute("aria-invalid", "true");
+}
+
+function applyFieldErrors(errors = {}) {
+  Object.values(FIELD_IDS).forEach((fieldId) => setFieldError(fieldId, ""));
+  Object.entries(errors).forEach(([field, message]) => {
+    const fieldId = FIELD_IDS[field];
+    if (fieldId) setFieldError(fieldId, message);
+  });
+}
+
+function validateForm(values) {
+  const errors = {};
+
+  if (!meaningfulText(values.name, { minLetters: 2, minUniqueLetters: 2 }) || values.name.length > 80) {
+    errors.name = "Enter a valid name.";
+  }
+
+  if (!validEmail(values.email)) {
+    errors.email = "Enter a valid email.";
+  }
+
   const github = normalizeGithubInput(values.githubRaw);
-  if (!github.ok) return { ok: false, message: "Enter a valid GitHub username or URL." };
+  if (!github.ok) {
+    errors.github = "Enter a valid GitHub username or URL.";
+  }
+
   const linkedin = normalizeLinkedInInput(values.linkedinRaw);
-  if (!linkedin.ok) return { ok: false, message: "Enter a valid LinkedIn username or URL." };
+  if (!linkedin.ok) {
+    errors.linkedin = "Enter a valid LinkedIn username or URL.";
+  }
 
   const meaningfulSkills = values.skills.filter((item) => meaningfulText(item));
-  if (meaningfulSkills.length < 2) return { ok: false, message: "Please enter meaningful skills." };
+  if (meaningfulSkills.length < 2) {
+    errors.skills = "Please enter meaningful skills.";
+  }
 
   const meaningfulProjects = values.projects.filter((item) => meaningfulText(item, { minLetters: 4, minUniqueLetters: 3 }));
-  if (meaningfulProjects.length < 1) return { ok: false, message: "Please enter meaningful project information." };
+  if (meaningfulProjects.length < 1) {
+    errors.projects = "Please enter meaningful project information.";
+  }
 
   return {
-    ok: true,
-    github: github.value,
-    linkedin: linkedin.value,
-    linkedinUrl: linkedin.profileUrl || "",
+    ok: Object.keys(errors).length === 0,
+    errors,
+    github: github.ok ? github.value : "",
+    linkedin: linkedin.ok ? linkedin.value : "",
+    linkedinUrl: linkedin.ok ? (linkedin.profileUrl || "") : "",
     skills: meaningfulSkills,
     projects: meaningfulProjects,
   };
@@ -71,10 +135,11 @@ function updateSubmitDisabled() {
   const generateBtn = $("generate-btn");
   if (!generateBtn) return;
   const validation = validateForm(readFormValues());
+  applyFieldErrors(validation.errors);
   generateBtn.disabled = !validation.ok;
 }
 
-function renderResult(portfolio, values, saveMessage, linkedinUrl = "") {
+function renderResult(portfolio, saveMessage, linkedinUrl = "") {
   const result = $("generator-result");
   if (!result) return;
   const headline = portfolio.hero?.content?.headline || "Portfolio generated";
@@ -90,6 +155,17 @@ function renderResult(portfolio, values, saveMessage, linkedinUrl = "") {
     <p><strong>Status:</strong> ${saveMessage}</p>
   `;
   result.hidden = false;
+}
+
+function mapServerErrorToField(message) {
+  const text = (message || "").toLowerCase();
+  if (text.includes("email")) return { email: "Enter a valid email." };
+  if (text.includes("github")) return { github: "Enter a valid GitHub username or URL." };
+  if (text.includes("linkedin")) return { linkedin: "Enter a valid LinkedIn username or URL." };
+  if (text.includes("skills")) return { skills: "Please enter meaningful skills." };
+  if (text.includes("project")) return { projects: "Please enter meaningful project information." };
+  if (text.includes("name")) return { name: "Enter a valid name." };
+  return {};
 }
 
 async function exportCurrentPortfolio(format) {
@@ -114,8 +190,12 @@ export function initGenerator() {
   const exportZipBtn = $("export-zip-btn");
   if (!form || !generateBtn) return;
 
-  ["gen-name", "gen-email", "gen-github", "gen-linkedin", "gen-skills", "gen-projects"].forEach((id) => {
-    $(id)?.addEventListener("input", updateSubmitDisabled);
+  Object.values(FIELD_IDS).forEach((id) => {
+    ensureFieldErrorNode(id);
+    $(id)?.addEventListener("input", () => {
+      hideBanner(generatorBanner());
+      updateSubmitDisabled();
+    });
   });
 
   exportHtmlBtn?.addEventListener("click", () =>
@@ -150,10 +230,14 @@ export function initGenerator() {
       hideBanner(generatorBanner());
       const values = readFormValues();
       const validation = validateForm(values);
-      if (!validation.ok) throw new Error(validation.message);
+      applyFieldErrors(validation.errors);
+      if (!validation.ok) {
+        setExportButtonsEnabled(false);
+        return;
+      }
 
-      if (validation.linkedinUrl && $("gen-linkedin")) {
-        $("gen-linkedin").value = validation.linkedinUrl;
+      if (validation.linkedinUrl && $(FIELD_IDS.linkedin)) {
+        $(FIELD_IDS.linkedin).value = validation.linkedinUrl;
       }
 
       showBanner(generatorBanner(), "Loading profile data...", "info");
@@ -189,14 +273,20 @@ export function initGenerator() {
 
       setState({ generatorResult: portfolio });
       setExportButtonsEnabled(true);
-      renderResult(portfolio, values, saved.message, validation.linkedinUrl);
+      renderResult(portfolio, saved.message, validation.linkedinUrl);
       showBanner(generatorBanner(), "Portfolio generated and saved successfully.", "success");
       showBanner($("global-banner"), "Portfolio generated and saved successfully.", "success");
     })
       .catch((error) => {
+        const fieldError = mapServerErrorToField(error.message);
+        if (Object.keys(fieldError).length > 0) {
+          applyFieldErrors(fieldError);
+          hideBanner(generatorBanner());
+        } else {
+          showBanner(generatorBanner(), error.message, "error");
+          showBanner($("global-banner"), error.message, "error");
+        }
         setExportButtonsEnabled(Boolean(state.generatorResult));
-        showBanner(generatorBanner(), error.message, "error");
-        showBanner($("global-banner"), error.message, "error");
       })
       .finally(() => {
         updateSubmitDisabled();

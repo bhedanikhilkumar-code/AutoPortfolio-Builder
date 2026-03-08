@@ -240,6 +240,18 @@ select {
   background: #ffffff;
 }
 
+.input-invalid {
+  border-color: #dc2626;
+  background: #fff5f5;
+}
+
+.field-error {
+  color: #b91c1c;
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-top: 0.15rem;
+}
+
 fieldset {
   border: 1px solid var(--border);
   border-radius: 10px;
