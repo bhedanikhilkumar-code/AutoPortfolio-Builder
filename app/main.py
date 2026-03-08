@@ -561,7 +561,11 @@ def create_app() -> FastAPI:
             if "not_found" in (linkedin_payload.signals or []):
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="LinkedIn username not found.")
             if linkedin_payload.provider_used in {"slug_inference", "global_fallback"} and linkedin_payload.confidence_score < 0.35:
-                raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Enter a valid LinkedIn username or URL.")
+                linkedin_payload.summary = [
+                    "LinkedIn profile could not be fully validated right now; generation continued with low-confidence LinkedIn enrichment.",
+                    *(linkedin_payload.summary or []),
+                ][:4]
+                linkedin_payload.signals = list(dict.fromkeys([*(linkedin_payload.signals or []), "low_confidence_accepted"]))
         return ProfileResponse(profile=github_payload.profile, repos=github_payload.repos, linkedin=linkedin_payload)
 
     @app.post("/api/generate", response_model=PortfolioResponse)

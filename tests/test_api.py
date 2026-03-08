@@ -289,14 +289,16 @@ def test_profile_endpoint_validates_linkedin_username() -> None:
     assert response.json()["error"]["code"] == "validation_error"
 
 
-def test_profile_endpoint_rejects_low_confidence_linkedin_fallback() -> None:
+def test_profile_endpoint_accepts_low_confidence_linkedin_fallback() -> None:
     headers = make_auth_headers()
     app.dependency_overrides[get_linkedin_service] = lambda: SlugInferenceLinkedInService()
 
     response = client.post("/api/profile", json={"username": "octocat", "linkedin_username": "randomslug"}, headers=headers)
 
-    assert response.status_code == 422
-    assert response.json()["error"]["message"] == "Enter a valid LinkedIn username or URL."
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["linkedin"]["provider_used"] == "slug_inference"
+    assert "low_confidence_accepted" in payload["linkedin"]["signals"]
 
 
 def test_generate_endpoint_accepts_selected_theme() -> None:

@@ -41,6 +41,26 @@ function disableGoogleAutoSignIn() {
   }
 }
 
+function clearTransientInputState() {
+  const ids = [
+    "login-email",
+    "login-password",
+    "signup-name",
+    "signup-email",
+    "signup-password",
+    "gen-name",
+    "gen-email",
+    "gen-github",
+    "gen-linkedin",
+    "gen-skills",
+    "gen-projects",
+  ];
+  ids.forEach((id) => {
+    const el = $(id);
+    if (el) el.value = "";
+  });
+}
+
 async function completeGoogleAccessTokenLogin(accessToken) {
   const payload = await googleAccessTokenLogin(accessToken);
   setToken(payload.access_token);
@@ -81,6 +101,7 @@ export async function performLogout({ redirectTo = "/login", announce = true } =
   }
   disableGoogleAutoSignIn();
   clearClientAuthState();
+  clearTransientInputState();
   refreshRouterUI();
   if (announce) {
     showBanner(globalBanner(), "Logged out. Please sign in manually next time.", "success");
