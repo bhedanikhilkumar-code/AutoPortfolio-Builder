@@ -424,10 +424,10 @@ a:hover {
 }
 
 #generator-view .card {
-  padding: 1.35rem;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(250, 253, 255, 0.72));
-  border: 1px solid rgba(159, 186, 225, 0.62);
-  box-shadow: 0 14px 32px rgba(20, 41, 75, 0.1), var(--glass-sheen);
+  padding: 1.4rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(250, 253, 255, 0.74));
+  border: 1px solid rgba(156, 185, 226, 0.64);
+  box-shadow: 0 16px 34px rgba(20, 41, 75, 0.11), var(--glass-sheen);
 }
 
 .generator-shell {
@@ -443,14 +443,15 @@ a:hover {
 .generator-head h2 {
   margin: 0;
   color: var(--text-strong);
-  font-size: clamp(1.42rem, 1.9vw, 1.7rem);
-  letter-spacing: -0.01em;
+  font-size: clamp(1.45rem, 2vw, 1.78rem);
+  letter-spacing: -0.012em;
 }
 
 .generator-subtitle {
   margin: 0;
   color: #4f5f7c;
-  font-size: 0.95rem;
+  font-size: 0.96rem;
+  max-width: 64ch;
 }
 
 #generator-form {
@@ -522,9 +523,9 @@ a:hover {
 
 #generator-view fieldset {
   position: relative;
-  border: 1px solid rgba(164, 191, 228, 0.68);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(251, 253, 255, 0.7));
-  box-shadow: 0 8px 22px rgba(26, 50, 92, 0.08), var(--glass-sheen);
+  border: 1px solid rgba(162, 190, 227, 0.68);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(251, 253, 255, 0.72));
+  box-shadow: 0 9px 22px rgba(26, 50, 92, 0.08), var(--glass-sheen);
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
 }
 
@@ -534,18 +535,22 @@ a:hover {
 }
 
 #generator-view label {
-  gap: 0.44rem;
+  gap: 0.46rem;
   font-weight: 650;
   color: #1d2d49;
 }
 
+#generator-view label > :is(input, select) {
+  margin-top: 0.05rem;
+}
+
 #generator-view input,
 #generator-view select {
-  min-height: 44px;
+  min-height: 45px;
   border-radius: 12px;
-  border-color: rgba(155, 181, 218, 0.8);
-  background: rgba(255, 255, 255, 0.86);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86), 0 1px 2px rgba(27, 49, 86, 0.04);
+  border-color: rgba(152, 180, 218, 0.8);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.88), 0 1px 2px rgba(27, 49, 86, 0.04);
 }
 
 #generator-view input:hover,
@@ -561,26 +566,26 @@ a:hover {
 }
 
 #generator-view .input-invalid {
-  border-color: rgba(220, 96, 96, 0.72) !important;
-  background: rgba(255, 241, 241, 0.88) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86);
+  border-color: rgba(214, 106, 106, 0.68) !important;
+  background: rgba(255, 244, 244, 0.9) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86), 0 0 0 1px rgba(223, 147, 147, 0.16);
 }
 
 #generator-view .field-error {
-  color: #a33a3a;
+  color: #9b3b3b;
   font-size: 0.8rem;
   font-weight: 600;
 }
 
 #generate-btn {
   width: 100%;
-  min-height: 48px;
+  min-height: 49px;
   font-size: 1rem;
   font-weight: 700;
   letter-spacing: 0.012em;
   border-color: rgba(24, 86, 199, 0.92);
-  background: linear-gradient(145deg, rgba(28, 95, 221, 0.97), rgba(46, 142, 230, 0.94));
-  box-shadow: 0 12px 30px rgba(17, 83, 213, 0.3), 0 0 16px rgba(88, 155, 255, 0.2);
+  background: linear-gradient(145deg, rgba(28, 95, 221, 0.98), rgba(44, 137, 224, 0.94));
+  box-shadow: 0 12px 30px rgba(17, 83, 213, 0.31), 0 0 15px rgba(88, 155, 255, 0.18);
 }
 
 #generate-btn:hover {
@@ -601,10 +606,10 @@ a:hover {
   display: grid;
   gap: 0.6rem;
   margin-top: 0.3rem;
-  padding: 0.35rem;
+  padding: 0.4rem;
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.5);
-  border: 1px solid rgba(175, 198, 229, 0.45);
+  background: rgba(255, 255, 255, 0.56);
+  border: 1px solid rgba(175, 198, 229, 0.5);
 }
 
 #generator-view legend {
