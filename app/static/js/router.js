@@ -92,9 +92,20 @@ function handleLinkClicks(event) {
   navigate(href);
 }
 
+function updateActiveNav(route) {
+  document.querySelectorAll("#main-nav a[href^='/']").forEach((link) => {
+    const href = link.getAttribute("href") || "/";
+    const isActive = route === href;
+    link.classList.toggle("is-active", isActive);
+    if (isActive) link.setAttribute("aria-current", "page");
+    else link.removeAttribute("aria-current");
+  });
+}
+
 function handleRoute() {
   const route = currentRoute();
   applyNavVisibility();
+  updateActiveNav(route);
   if (!state.authReady) {
     renderRoute("/auth-loading");
     return;
