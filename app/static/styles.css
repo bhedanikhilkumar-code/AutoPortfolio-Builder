@@ -107,8 +107,14 @@ a:hover {
 }
 
 .container {
-  width: min(1040px, calc(100% - 2rem));
+  width: min(1240px, calc(100% - 2.5rem));
   margin: 0 auto;
+}
+
+@media (min-width: 1400px) {
+  .container {
+    width: min(1320px, calc(100% - 3rem));
+  }
 }
 
 /* === Phase 1: Accessibility and Interactive Foundations === */
@@ -1395,9 +1401,15 @@ summary {
   }
 }
 
+@media (max-width: 1024px) {
+  .container {
+    width: min(1240px, calc(100% - 2rem));
+  }
+}
+
 @media (max-width: 640px) {
   .container {
-    width: min(1040px, calc(100% - 1rem));
+    width: min(1240px, calc(100% - 1rem));
   }
 
   .page-shell {
