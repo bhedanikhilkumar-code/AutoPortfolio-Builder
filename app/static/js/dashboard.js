@@ -10,6 +10,23 @@ function formatDate(value) {
   return date.toLocaleString();
 }
 
+function formatRelative(value) {
+  if (!value) return "No activity yet";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Recently";
+
+  const now = Date.now();
+  const diffMs = Math.max(0, now - date.getTime());
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hr ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days} day${days === 1 ? "" : "s"} ago`;
+  return formatDate(value);
+}
+
 function renderResumeCard(item, sectionType) {
   return `
     <article class="dash-item-card">
@@ -42,13 +59,41 @@ function renderHistoryCard(item) {
   `;
 }
 
-function renderSection(title, itemsHtml, emptyText) {
+function renderCollectionSection({ id, title, subtitle, itemsHtml, emptyTitle, emptyText }) {
   return `
-    <section class="dash-section">
+    <section id="${id}" class="dash-section">
       <div class="dash-section-head">
         <h3>${title}</h3>
+        ${subtitle ? `<p class="dash-section-subtitle">${subtitle}</p>` : ""}
       </div>
-      ${itemsHtml ? `<div class="dash-grid">${itemsHtml}</div>` : `<div class="dash-empty">${emptyText}</div>`}
+      ${
+        itemsHtml
+          ? `<div class="dash-grid">${itemsHtml}</div>`
+          : `<div class="dash-empty"><strong>${emptyTitle}</strong><span>${emptyText}</span></div>`
+      }
+    </section>
+  `;
+}
+
+function renderStatsCards({ resumesCount, draftsCount, exportsCount, lastActivityText }) {
+  return `
+    <section class="dash-stats-grid" aria-label="Dashboard statistics">
+      <article class="dash-stat-card">
+        <p class="dash-stat-label">Total Resumes</p>
+        <p class="dash-stat-value">${resumesCount}</p>
+      </article>
+      <article class="dash-stat-card">
+        <p class="dash-stat-label">Drafts</p>
+        <p class="dash-stat-value">${draftsCount}</p>
+      </article>
+      <article class="dash-stat-card">
+        <p class="dash-stat-label">Exports</p>
+        <p class="dash-stat-value">${exportsCount}</p>
+      </article>
+      <article class="dash-stat-card">
+        <p class="dash-stat-label">Last Activity</p>
+        <p class="dash-stat-value dash-stat-value-sm">${lastActivityText}</p>
+      </article>
     </section>
   `;
 }
@@ -58,22 +103,109 @@ function renderDashboard(data) {
   if (!root) return;
 
   if (!data) {
-    root.innerHTML = "<p>Loading dashboard…</p>";
+    root.innerHTML = '<div class="dash-empty"><strong>Loading dashboard…</strong><span>Please wait while we fetch your latest activity.</span></div>';
     return;
   }
 
-  const resumesHtml = (data.my_resumes || []).map((item) => renderResumeCard(item, "resume")).join("");
-  const draftsHtml = (data.saved_drafts || []).map((item) => renderResumeCard(item, "draft")).join("");
-  const historyHtml = (data.generation_history || []).map((item) => renderHistoryCard(item)).join("");
+  const resumes = data.my_resumes || [];
+  const drafts = data.saved_drafts || [];
+  const history = data.generation_history || [];
+
+  const resumesHtml = resumes.map((item) => renderResumeCard(item, "resume")).join("");
+  const draftsHtml = drafts.map((item) => renderResumeCard(item, "draft")).join("");
+  const historyHtml = history.map((item) => renderHistoryCard(item)).join("");
+
+  const recentTimes = [...resumes, ...drafts, ...history]
+    .map((item) => item.updated_at || item.created_at)
+    .filter(Boolean)
+    .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+  const lastActivityText = formatRelative(recentTimes[0]);
+
+  const exportCount = resumes.filter((item) => item.status === "published").length;
+  const latestResumeId = resumes[0]?.id || drafts[0]?.id || "";
 
   root.innerHTML = `
-    <section class="dash-section dash-account">
-      <h3>Account</h3>
-      <p>${data.user.email} ${data.user.is_admin ? "(admin)" : ""}</p>
+    <section class="dash-hero card">
+      <div class="dash-hero-copy">
+        <p class="dash-eyebrow">Dashboard</p>
+        <h3>Welcome back${data.user?.email ? `, ${data.user.email.split("@")[0]}` : ""}.</h3>
+        <p>Track your resume pipeline, manage drafts, and continue where you left off.</p>
+      </div>
+      <div class="dash-hero-actions">
+        <button class="btn btn-primary" type="button" data-dash-action="go-generator">Generate Portfolio</button>
+        <button class="btn btn-secondary" type="button" data-dash-action="jump-resumes">My Resumes</button>
+      </div>
     </section>
-    ${renderSection("My Resumes", resumesHtml, "No resumes yet. Generate your first portfolio to get started.")}
-    ${renderSection("Saved Drafts", draftsHtml, "No draft snapshots available yet.")}
-    ${renderSection("Generation History", historyHtml, "No generation history yet.")}
+
+    ${renderStatsCards({
+      resumesCount: resumes.length,
+      draftsCount: drafts.length,
+      exportsCount: exportCount,
+      lastActivityText,
+    })}
+
+    <section class="dash-layout-grid">
+      <div class="dash-main-col">
+        ${renderCollectionSection({
+          id: "dash-resumes",
+          title: "Recent Resumes",
+          subtitle: "Your latest generated and published portfolios.",
+          itemsHtml: resumesHtml,
+          emptyTitle: "No resumes yet",
+          emptyText: "Generate your first portfolio to start building your resume library.",
+        })}
+        ${renderCollectionSection({
+          id: "dash-drafts",
+          title: "Saved Drafts",
+          subtitle: "Work-in-progress versions you can refine anytime.",
+          itemsHtml: draftsHtml,
+          emptyTitle: "No draft snapshots",
+          emptyText: "Drafts will appear here after you save or duplicate a resume.",
+        })}
+        ${renderCollectionSection({
+          id: "dash-history",
+          title: "Generation History",
+          subtitle: "Recent generation activity from your account.",
+          itemsHtml: historyHtml,
+          emptyTitle: "No generation history",
+          emptyText: "Once you generate content, this timeline will show your latest activity.",
+        })}
+      </div>
+
+      <aside class="dash-side-col">
+        <section class="dash-section">
+          <div class="dash-section-head">
+            <h3>Quick Actions</h3>
+          </div>
+          <div class="dash-quick-actions">
+            <button class="btn btn-primary" type="button" data-dash-action="go-generator">+ New Generation</button>
+            <button class="btn btn-secondary" type="button" data-dash-action="jump-drafts">Open Drafts</button>
+            <button class="btn btn-secondary" type="button" data-dash-action="jump-history">View History</button>
+          </div>
+        </section>
+
+        <section class="dash-section dash-account">
+          <div class="dash-section-head">
+            <h3>Account Summary</h3>
+          </div>
+          <p class="dash-meta">${data.user.email} ${data.user.is_admin ? "(admin)" : ""}</p>
+          <p class="dash-meta">Active resumes: ${resumes.length}</p>
+          <p class="dash-meta">Saved drafts: ${drafts.length}</p>
+        </section>
+
+        <section class="dash-section">
+          <div class="dash-section-head">
+            <h3>Export Shortcuts</h3>
+          </div>
+          <div class="dash-quick-actions">
+            <button class="btn btn-secondary" type="button" data-dash-action="export-latest" data-resume-id="${latestResumeId}" ${
+              latestResumeId ? "" : "disabled"
+            }>Export Latest PDF</button>
+            <button class="btn btn-secondary" type="button" data-dash-action="jump-resumes">Go to Resumes</button>
+          </div>
+        </section>
+      </aside>
+    </section>
   `;
 }
 
@@ -114,7 +246,51 @@ async function editResume(resumeId) {
   showBanner($("global-banner"), "Loaded resume into generator preview.", "success");
 }
 
+function jumpToSection(selector) {
+  const node = document.querySelector(selector);
+  if (!node) return;
+  node.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 async function handleDashboardAction(event) {
+  const quickAction = event.target.closest("[data-dash-action]");
+  if (quickAction) {
+    const action = quickAction.dataset.dashAction;
+
+    if (action === "go-generator") {
+      navigate("/generator");
+      return;
+    }
+
+    if (action === "jump-resumes") {
+      jumpToSection("#dash-resumes");
+      return;
+    }
+
+    if (action === "jump-drafts") {
+      jumpToSection("#dash-drafts");
+      return;
+    }
+
+    if (action === "jump-history") {
+      jumpToSection("#dash-history");
+      return;
+    }
+
+    if (action === "export-latest") {
+      const resumeId = Number(quickAction.dataset.resumeId);
+      if (!resumeId) {
+        showBanner($("global-banner"), "No resume available to export yet.", "info");
+        return;
+      }
+      await withButtonLoading(quickAction, "Exporting...", async () => {
+        await exportResume(resumeId);
+        showBanner($("global-banner"), "Latest resume exported as PDF.", "success");
+      }).catch((error) => showBanner($("global-banner"), error.message || "Export failed.", "error"));
+      return;
+    }
+  }
+
   const button = event.target.closest(".dash-action");
   if (!button) return;
   const action = button.dataset.action;
