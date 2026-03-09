@@ -410,6 +410,21 @@ a:hover {
   padding: 1.25rem;
 }
 
+.generator-shell {
+  gap: 1rem;
+}
+
+.generator-head {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 0.1rem;
+}
+
+.generator-subtitle {
+  margin: 0;
+  color: var(--muted);
+}
+
 #generator-form {
   gap: 1rem;
 }
@@ -422,6 +437,12 @@ a:hover {
 
 #generator-view fieldset {
   position: relative;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
+}
+
+#generator-view fieldset:hover {
+  border-color: var(--surface-border-strong);
+  box-shadow: var(--glass-sheen), var(--shadow-md);
 }
 
 #generator-view label {
@@ -445,12 +466,18 @@ a:hover {
   box-shadow: 0 14px 32px rgba(17, 83, 213, 0.34), 0 0 22px rgba(88, 155, 255, 0.24);
 }
 
+.generator-feedback {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.2rem;
+}
+
 #generator-banner {
-  margin-top: 0.3rem;
+  margin-top: 0.15rem;
 }
 
 #generator-actions {
-  margin-top: 0.1rem;
+  margin-top: 0;
   gap: 0.55rem;
 }
 

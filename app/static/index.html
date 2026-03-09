@@ -177,8 +177,12 @@
     </section>
 
     <section class="view" data-route="/generator" id="generator-view" hidden>
-      <div class="card">
-        <h2>Generator</h2>
+      <div class="card generator-shell">
+        <div class="generator-head">
+          <p class="dash-eyebrow">Portfolio Studio</p>
+          <h2>Generator</h2>
+          <p class="generator-subtitle">Create polished, role-focused portfolio output from your profile signals.</p>
+        </div>
         <form id="generator-form" class="stack" novalidate>
           <fieldset>
             <legend>Basic Info</legend>
@@ -240,12 +244,14 @@
           <button id="generate-btn" class="btn btn-primary" type="submit">Generate Portfolio</button>
           <p class="form-note">Note: * indicates a mandatory field. Any field marked with * must be filled.</p>
         </form>
-        <div id="generator-banner" class="banner" hidden></div>
-        <div id="generator-actions" class="actions-row" hidden>
-          <button id="export-html-btn" class="btn btn-secondary" type="button" disabled>Export HTML</button>
-          <button id="export-pdf-btn" class="btn btn-secondary" type="button" disabled>Export PDF</button>
-          <button id="export-zip-btn" class="btn btn-secondary" type="button" disabled>Export ZIP</button>
-        </div>
+        <section class="generator-feedback" aria-live="polite">
+          <div id="generator-banner" class="banner" hidden></div>
+          <div id="generator-actions" class="actions-row" hidden>
+            <button id="export-html-btn" class="btn btn-secondary" type="button" disabled>Export HTML</button>
+            <button id="export-pdf-btn" class="btn btn-secondary" type="button" disabled>Export PDF</button>
+            <button id="export-zip-btn" class="btn btn-secondary" type="button" disabled>Export ZIP</button>
+          </div>
+        </section>
         <div id="generator-result" class="result-preview" hidden></div>
       </div>
     </section>
