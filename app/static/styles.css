@@ -108,13 +108,13 @@ a:hover {
 }
 
 .container {
-  width: min(1280px, calc(100% - 2rem));
+  width: min(1360px, calc(100% - 1.6rem));
   margin: 0 auto;
 }
 
-@media (min-width: 1440px) {
+@media (min-width: 1536px) {
   .container {
-    width: min(1360px, calc(100% - 2.5rem));
+    width: min(1440px, calc(100% - 2rem));
   }
 }
 
@@ -462,13 +462,22 @@ a:hover {
 #landing-view {
   display: grid;
   gap: 1.05rem;
+  padding-inline: 0.1rem;
+}
+
+#landing-view .card {
+  border-color: rgba(160, 187, 224, 0.6);
+}
+
+#landing-view .hero {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(248, 252, 255, 0.72));
 }
 
 #landing-view .hero p,
 #landing-view #how-it-works p,
 #landing-view #how-it-works li,
 #landing-view .card > p {
-  max-width: 68ch;
+  max-width: 72ch;
 }
 
 .landing-section {
@@ -1474,13 +1483,13 @@ summary {
 
 @media (max-width: 1024px) {
   .container {
-    width: min(1280px, calc(100% - 1.5rem));
+    width: min(1360px, calc(100% - 1.35rem));
   }
 }
 
 @media (max-width: 640px) {
   .container {
-    width: min(1280px, calc(100% - 1rem));
+    width: min(1360px, calc(100% - 0.9rem));
   }
 
   .page-shell {
