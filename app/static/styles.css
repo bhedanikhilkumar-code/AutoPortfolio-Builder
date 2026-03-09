@@ -406,6 +406,77 @@ a:hover {
   display: none !important;
 }
 
+#generator-view .card {
+  padding: 1.25rem;
+}
+
+#generator-form {
+  gap: 1rem;
+}
+
+/* === Phase 4: Generator Page Polish === */
+#generator-view h2 {
+  margin: 0 0 0.9rem;
+  color: var(--text-strong);
+}
+
+#generator-view fieldset {
+  position: relative;
+}
+
+#generator-view label {
+  gap: 0.4rem;
+}
+
+#generator-view input,
+#generator-view select {
+  min-height: 42px;
+}
+
+#generate-btn {
+  width: 100%;
+  min-height: 46px;
+  font-size: 0.98rem;
+  letter-spacing: 0.01em;
+  box-shadow: 0 12px 28px rgba(17, 83, 213, 0.28), 0 0 18px rgba(88, 155, 255, 0.18);
+}
+
+#generate-btn:hover {
+  box-shadow: 0 14px 32px rgba(17, 83, 213, 0.34), 0 0 22px rgba(88, 155, 255, 0.24);
+}
+
+#generator-banner {
+  margin-top: 0.3rem;
+}
+
+#generator-actions {
+  margin-top: 0.1rem;
+  gap: 0.55rem;
+}
+
+#generator-actions .btn {
+  min-height: 40px;
+  border-radius: var(--radius-sm);
+}
+
+#generator-result {
+  margin-top: 0.2rem;
+}
+
+@media (min-width: 900px) {
+  #generator-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  #generator-form > fieldset,
+  #generator-form > details,
+  #generator-form > #generate-btn,
+  #generator-form > .form-note {
+    grid-column: 1 / -1;
+  }
+}
+
 /* === Phase 1: Reusable Card Styles === */
 .card,
 .ui-card,
@@ -513,35 +584,41 @@ input[type="radio"] {
 
 fieldset {
   border: 1px solid var(--surface-border);
-  border-radius: var(--radius-sm);
-  padding: 0.8rem;
+  border-radius: var(--radius-md);
+  padding: 1rem;
   display: grid;
-  gap: 0.65rem;
-  background: var(--surface-glass);
+  gap: 0.75rem;
+  background: rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(var(--blur-soft));
   -webkit-backdrop-filter: blur(var(--blur-soft));
-  box-shadow: var(--glass-sheen);
+  box-shadow: var(--glass-sheen), var(--shadow-sm);
 }
 
 legend {
   font-weight: 700;
   padding: 0 0.25rem;
+  color: var(--text-strong);
+  letter-spacing: 0.01em;
 }
 
 .form-note {
-  margin: 0.2rem 0 0;
+  margin: 0.15rem 0 0;
   font-size: 0.85rem;
   color: var(--muted);
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(173, 196, 228, 0.45);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.6rem;
 }
 
 details {
   border: 1px solid var(--surface-border);
-  border-radius: var(--radius-sm);
-  padding: 0.6rem 0.8rem;
-  background: rgba(249, 252, 255, 0.74);
+  border-radius: var(--radius-md);
+  padding: 0.72rem 0.9rem;
+  background: rgba(251, 253, 255, 0.78);
   backdrop-filter: blur(var(--blur-soft));
   -webkit-backdrop-filter: blur(var(--blur-soft));
-  box-shadow: var(--glass-sheen);
+  box-shadow: var(--glass-sheen), var(--shadow-sm);
 }
 
 details label {
@@ -550,6 +627,8 @@ details label {
 
 summary {
   cursor: pointer;
+  font-weight: 700;
+  color: var(--text-strong);
 }
 
 /* === Phase 1: Reusable Button Styles === */
@@ -634,12 +713,12 @@ summary {
 }
 
 .banner {
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   border: 1px solid var(--surface-border);
-  padding: 0.65rem 0.8rem;
+  padding: 0.7rem 0.85rem;
   margin-bottom: 1rem;
   background: rgba(247, 251, 255, 0.88);
-  box-shadow: var(--glass-sheen);
+  box-shadow: var(--glass-sheen), var(--shadow-sm);
 }
 
 .banner.success {
