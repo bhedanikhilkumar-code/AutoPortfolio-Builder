@@ -28,6 +28,10 @@
       </a>
       <nav id="main-nav" class="nav-links">
         <a href="/">Home</a>
+        <a href="#features" data-guest-only hidden>Features</a>
+        <a href="#how-it-works" data-guest-only hidden>How it works</a>
+        <a href="/login" data-guest-only hidden>Login</a>
+        <a href="/signup" data-guest-only hidden>Get Started</a>
         <a href="/generator" data-auth-only hidden>Generate Portfolio</a>
         <a href="/dashboard" data-auth-only hidden>Dashboard</a>
       </nav>
@@ -87,46 +91,50 @@
 
     <section class="view" data-route="/" id="landing-view" hidden>
       <section class="hero card">
-        <h1>Build your portfolio from your dev profile</h1>
-        <p>Generate role-focused content, review drafts, and export polished resumes in minutes.</p>
-        <button id="build-portfolio-btn" class="btn btn-primary" type="button">Build Portfolio</button>
+        <h1>Build a portfolio that looks like a product, not a template.</h1>
+        <p>AutoPortfolio Builder turns your developer profile into a clean, role-focused portfolio you can publish and export in minutes.</p>
+        <div class="actions-row">
+          <a href="/signup" class="btn btn-primary">Get Started</a>
+          <a href="/login" class="btn btn-secondary">Login to Continue</a>
+        </div>
       </section>
 
-      <section class="card">
+      <section id="features" class="card">
         <h2>Features</h2>
         <div class="grid three-col">
           <article>
-            <h3>Profile synthesis</h3>
-            <p>Combines GitHub and LinkedIn public profile signals.</p>
+            <h3>Profile-powered content</h3>
+            <p>Pulls useful signals from your GitHub and LinkedIn profile to generate meaningful sections.</p>
           </article>
           <article>
-            <h3>Role targeting</h3>
-            <p>Adapts output by frontend, backend, fullstack, data, or AI roles.</p>
+            <h3>Role-focused output</h3>
+            <p>Tailor your portfolio for frontend, backend, fullstack, data, or AI opportunities.</p>
           </article>
           <article>
-            <h3>Admin oversight</h3>
-            <p>Role-gated controls for stats, activity, and CSV exports.</p>
+            <h3>Export-ready formats</h3>
+            <p>Review, refine, and export your final portfolio in professional formats quickly.</p>
           </article>
         </div>
       </section>
 
-      <section class="card">
+      <section id="how-it-works" class="card">
         <h2>How it works</h2>
         <ol class="steps">
-          <li>Sign up or log in.</li>
-          <li>Provide profile links and generation options.</li>
-          <li>Generate and manage portfolio output from your dashboard.</li>
+          <li>Sign in to your account.</li>
+          <li>Add your developer profile details and preferences.</li>
+          <li>Generate, refine, and export your portfolio.</li>
         </ol>
       </section>
 
       <section class="card">
         <h2>Get Started</h2>
-        <p>Ready to build a polished, role-targeted portfolio in minutes?</p>
+        <p>Ready to create a polished portfolio that is tailored to your next role?</p>
         <a href="/signup" class="btn btn-primary">Create Your Portfolio</a>
       </section>
 
       <footer class="footer card">
         <p>© 2026 AutoPortfolio Builder</p>
+        <p><a href="/">Home</a> · <a href="/login">Login</a> · <a href="/signup">Get Started</a></p>
       </footer>
     </section>
 
