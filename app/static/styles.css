@@ -108,13 +108,13 @@ a:hover {
 }
 
 .container {
-  width: min(1240px, calc(100% - 2.5rem));
+  width: min(1280px, calc(100% - 2rem));
   margin: 0 auto;
 }
 
-@media (min-width: 1400px) {
+@media (min-width: 1440px) {
   .container {
-    width: min(1320px, calc(100% - 3rem));
+    width: min(1360px, calc(100% - 2.5rem));
   }
 }
 
@@ -455,7 +455,7 @@ a:hover {
 
 #generator-form {
   gap: 1.05rem;
-  max-width: 1000px;
+  max-width: 1160px;
 }
 
 /* === Phase B: Section Layout Balance === */
@@ -1474,13 +1474,13 @@ summary {
 
 @media (max-width: 1024px) {
   .container {
-    width: min(1240px, calc(100% - 1.75rem));
+    width: min(1280px, calc(100% - 1.5rem));
   }
 }
 
 @media (max-width: 640px) {
   .container {
-    width: min(1240px, calc(100% - 1.1rem));
+    width: min(1280px, calc(100% - 1rem));
   }
 
   .page-shell {
