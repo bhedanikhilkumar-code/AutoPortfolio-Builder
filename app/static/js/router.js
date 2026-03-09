@@ -41,17 +41,20 @@ export function navigate(route, { replace = false } = {}) {
 
 function applyNavVisibility() {
   const authReady = Boolean(state.authReady);
+  const route = currentRoute();
+  const onLanding = route === "/";
+
   document.querySelectorAll("[data-auth-only]").forEach((node) => {
-    node.hidden = !authReady || !isAuthenticated();
+    node.hidden = !authReady || !isAuthenticated() || onLanding;
   });
   document.querySelectorAll("[data-admin-only]").forEach((node) => {
-    node.hidden = !authReady || !isAuthenticated() || !isAdmin();
+    node.hidden = !authReady || !isAuthenticated() || !isAdmin() || onLanding;
   });
   document.querySelectorAll("[data-guest-only]").forEach((node) => {
-    node.hidden = !authReady || isAuthenticated();
+    node.hidden = !authReady || (!onLanding && isAuthenticated());
   });
   const accountMenu = $("account-menu");
-  if (accountMenu) accountMenu.hidden = !authReady || !isAuthenticated();
+  if (accountMenu) accountMenu.hidden = !authReady || !isAuthenticated() || onLanding;
 }
 
 function routeGuard(route) {
