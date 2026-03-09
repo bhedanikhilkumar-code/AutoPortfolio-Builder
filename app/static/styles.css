@@ -67,6 +67,7 @@ body {
   min-height: 100vh;
   position: relative;
   isolation: isolate;
+  overflow-x: hidden;
   font-family: "Source Sans 3", sans-serif;
   color: var(--text);
   line-height: 1.45;
@@ -486,7 +487,7 @@ a:hover {
   top: 0.3rem;
   bottom: 0.3rem;
   left: 50%;
-  width: min(100vw, 1400px);
+  width: min(100%, 1400px);
   transform: translateX(-50%);
   border-radius: 20px;
   z-index: -1;
@@ -662,6 +663,8 @@ a:hover {
 .card,
 .ui-card,
 .glass-card {
+  width: 100%;
+  max-width: 100%;
   background: var(--surface-glass);
   border: 1px solid var(--surface-border);
   border-radius: var(--radius-md);
@@ -1427,10 +1430,13 @@ summary {
 
   .nav-links {
     width: 100%;
-    overflow: auto;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
     order: 3;
     padding-bottom: 0.2rem;
     justify-content: flex-start;
+    -webkit-overflow-scrolling: touch;
   }
 
   .account-menu {
@@ -1468,13 +1474,13 @@ summary {
 
 @media (max-width: 1024px) {
   .container {
-    width: min(1240px, calc(100% - 2rem));
+    width: min(1240px, calc(100% - 1.75rem));
   }
 }
 
 @media (max-width: 640px) {
   .container {
-    width: min(1240px, calc(100% - 1rem));
+    width: min(1240px, calc(100% - 1.1rem));
   }
 
   .page-shell {
