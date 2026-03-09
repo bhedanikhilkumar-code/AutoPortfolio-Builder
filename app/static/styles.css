@@ -456,6 +456,46 @@ a:hover {
   gap: 1.05rem;
 }
 
+/* === Phase B: Section Layout Balance === */
+#landing-view {
+  display: grid;
+  gap: 1.05rem;
+}
+
+.landing-section {
+  padding: clamp(1rem, 2vw, 1.45rem);
+}
+
+.landing-band {
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+}
+
+.landing-band::before {
+  content: "";
+  position: absolute;
+  top: 0.3rem;
+  bottom: 0.3rem;
+  left: 50%;
+  width: min(100vw, 1400px);
+  transform: translateX(-50%);
+  border-radius: 20px;
+  z-index: -1;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(245, 250, 255, 0.22));
+  border: 1px solid rgba(174, 197, 228, 0.34);
+}
+
+#dashboard-view,
+#generator-view {
+  width: 100%;
+}
+
+#dashboard-content,
+#generator-view .generator-shell {
+  width: 100%;
+}
+
 /* === Phase 4: Generator Page Polish === */
 #generator-view h2 {
   margin: 0 0 0.95rem;
@@ -1451,6 +1491,13 @@ summary {
 
   .dash-hero-copy h3 {
     font-size: 1.2rem;
+  }
+
+  .landing-band::before {
+    left: 0;
+    width: 100%;
+    transform: none;
+    border-radius: 16px;
   }
 }
 
