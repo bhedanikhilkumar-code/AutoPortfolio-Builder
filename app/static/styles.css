@@ -454,12 +454,20 @@ a:hover {
 
 #generator-form {
   gap: 1.05rem;
+  max-width: 1000px;
 }
 
 /* === Phase B: Section Layout Balance === */
 #landing-view {
   display: grid;
   gap: 1.05rem;
+}
+
+#landing-view .hero p,
+#landing-view #how-it-works p,
+#landing-view #how-it-works li,
+#landing-view .card > p {
+  max-width: 68ch;
 }
 
 .landing-section {
@@ -657,7 +665,7 @@ a:hover {
   background: var(--surface-glass);
   border: 1px solid var(--surface-border);
   border-radius: var(--radius-md);
-  padding: 1.05rem;
+  padding: clamp(1rem, 1.25vw, 1.28rem);
   box-shadow: var(--glass-edge-glow), var(--glass-sheen);
   backdrop-filter: blur(var(--blur-soft));
   -webkit-backdrop-filter: blur(var(--blur-soft));
@@ -684,6 +692,23 @@ a:hover {
 
 .three-col {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+}
+
+#features .three-col {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+#features .three-col article {
+  border: 1px solid rgba(165, 191, 225, 0.58);
+  border-radius: var(--radius-md);
+  padding: clamp(0.85rem, 1vw, 1rem);
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: var(--glass-sheen), var(--shadow-sm);
+}
+
+#features .three-col article p {
+  max-width: 34ch;
 }
 
 .steps {
@@ -958,8 +983,8 @@ summary {
 
 .dash-grid {
   display: grid;
-  gap: 0.8rem;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.85rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
 .dash-item-card {
@@ -1327,7 +1352,7 @@ summary {
 
 .dash-layout-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.65fr) minmax(260px, 1fr);
+  grid-template-columns: minmax(0, 1.72fr) minmax(320px, 1fr);
   gap: 1rem;
   align-items: start;
 }
