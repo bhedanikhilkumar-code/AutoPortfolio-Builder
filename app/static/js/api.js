@@ -47,6 +47,15 @@ export async function resendVerificationEmail(payload) {
   return parseResponse(response, "Failed to send verification email.");
 }
 
+export async function verificationStatus(payload) {
+  const response = await fetch("/api/auth/verification/status", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return parseResponse(response, "Failed to check verification status.");
+}
+
 export async function logout() {
   const response = await fetch("/api/auth/logout", {
     method: "POST",

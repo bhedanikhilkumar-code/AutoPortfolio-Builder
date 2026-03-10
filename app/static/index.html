@@ -149,6 +149,11 @@
           <input id="login-password" type="password" autocomplete="current-password" placeholder="At least 8 characters">
         </label>
         <button id="login-btn" class="btn btn-primary" type="button">Login</button>
+        <div id="login-verification-box" class="banner info" hidden>
+          <p id="login-verification-message" style="margin:0 0 0.5rem 0;">Please verify your email before continuing.</p>
+          <p id="login-verification-status" style="margin:0 0 0.5rem 0;font-weight:700;">Status: Not Verified</p>
+          <button id="login-resend-verification-btn" class="btn btn-secondary" type="button">Resend Verification Email</button>
+        </div>
         <div class="auth-alt">
           <button id="google-login-btn" class="btn btn-secondary" type="button">Continue with Google</button>
           <button id="github-login-btn" class="btn btn-secondary" type="button">Sign in with GitHub</button>

@@ -1,4 +1,4 @@
-import { getDashboard, githubStart, googleAccessTokenLogin, googleConfig, login, logout, register, resendVerificationEmail } from "./api.js";
+import { getDashboard, githubStart, googleAccessTokenLogin, googleConfig, login, logout, register, resendVerificationEmail, verificationStatus } from "./api.js";
 import { defaultAfterLoginRoute, navigate, refreshRouterUI } from "./router.js";
 import { clearClientAuthState, setState, setToken, state } from "./state.js";
 import { $, showBanner, validEmail, withButtonLoading } from "./utils.js";
@@ -158,6 +158,8 @@ export async function switchAccount() {
 
 let signupVerificationEmail = "";
 let signupResendCooldownUntil = 0;
+let loginVerificationEmail = "";
+let loginResendCooldownUntil = 0;
 
 function updateSignupVerificationUI(message = "") {
   const box = $("signup-verification-box");
@@ -185,11 +187,63 @@ function hideSignupVerificationUI() {
   if (box) box.hidden = true;
 }
 
+function updateLoginVerificationUI({ message = "", verified = false, show = true } = {}) {
+  const box = $("login-verification-box");
+  const messageEl = $("login-verification-message");
+  const statusEl = $("login-verification-status");
+  const resendBtn = $("login-resend-verification-btn");
+  if (!box || !messageEl || !statusEl || !resendBtn) return;
+
+  if (!show) {
+    box.hidden = true;
+    return;
+  }
+
+  const now = Date.now();
+  const remainingSec = Math.max(0, Math.ceil((loginResendCooldownUntil - now) / 1000));
+  if (remainingSec > 0) {
+    resendBtn.disabled = true;
+    resendBtn.textContent = `Resend in ${remainingSec}s`;
+    window.setTimeout(() => updateLoginVerificationUI({ message: messageEl.textContent, verified, show: true }), 1000);
+  } else {
+    resendBtn.disabled = verified;
+    resendBtn.textContent = verified ? "Resend Verification Email" : "Resend Verification Email";
+  }
+
+  if (message) messageEl.textContent = message;
+  statusEl.textContent = `Status: ${verified ? "Verified" : "Not Verified"}`;
+  resendBtn.hidden = verified;
+  box.hidden = false;
+}
+
+function hideLoginVerificationUI() {
+  const box = $("login-verification-box");
+  if (box) box.hidden = true;
+}
+
+async function checkLoginVerificationStatus() {
+  const email = $("login-email")?.value.trim() || "";
+  if (!validEmail(email)) {
+    hideLoginVerificationUI();
+    return;
+  }
+  const payload = await verificationStatus({ email });
+  loginVerificationEmail = email;
+  if (payload?.email_verified) {
+    updateLoginVerificationUI({ verified: true, message: "Email is verified.", show: true });
+  } else {
+    updateLoginVerificationUI({ verified: false, message: "Please verify your email before continuing.", show: true });
+  }
+}
+
 function bindEmailPasswordAuth() {
   hideSignupVerificationUI();
+  hideLoginVerificationUI();
   const loginBtn = $("login-btn");
+  const loginEmailInput = $("login-email");
   const registerBtn = $("register-btn");
   const signupResendBtn = $("signup-resend-verification-btn");
+  const loginResendBtn = $("login-resend-verification-btn");
 
   loginBtn?.addEventListener("click", () =>
     withButtonLoading(loginBtn, "Logging in...", async () => {
@@ -197,9 +251,22 @@ function bindEmailPasswordAuth() {
       const password = $("login-password")?.value || "";
       ensureCredentials(email, password);
       const payload = await login({ email, password });
+      loginVerificationEmail = email;
+
+      if (payload?.email_verified === false) {
+        updateLoginVerificationUI({
+          verified: false,
+          message: payload?.message || "Please verify your email before continuing.",
+          show: true,
+        });
+        showBanner(globalBanner(), payload?.message || "Please verify your email before continuing.", "info");
+        return;
+      }
+
+      hideLoginVerificationUI();
       setToken(payload.access_token);
       await syncUserFromToken();
-      showBanner(globalBanner(), payload?.message || "Login successful.", payload?.email_verified === false ? "info" : "success");
+      showBanner(globalBanner(), payload?.message || "Login successful.", "success");
       navigate(defaultAfterLoginRoute(), { replace: true });
     }).catch((error) => showBanner(globalBanner(), error.message, "error"))
   );
@@ -238,6 +305,28 @@ function bindEmailPasswordAuth() {
       signupVerificationEmail = email;
       signupResendCooldownUntil = Date.now() + 60_000;
       updateSignupVerificationUI(payload?.message || "Verification email sent successfully.");
+      showBanner(globalBanner(), payload?.message || "Verification email sent successfully.", payload?.ok === false ? "error" : "success");
+    }).catch((error) => showBanner(globalBanner(), error.message, "error"))
+  );
+
+  loginEmailInput?.addEventListener("blur", () => {
+    checkLoginVerificationStatus().catch(() => {
+      // keep login UX non-blocking
+    });
+  });
+
+  loginResendBtn?.addEventListener("click", () =>
+    withButtonLoading(loginResendBtn, "Sending...", async () => {
+      const email = loginVerificationEmail || $("login-email")?.value.trim() || "";
+      if (!validEmail(email)) throw new Error("Enter your login email to resend verification.");
+      const payload = await resendVerificationEmail({ email });
+      loginVerificationEmail = email;
+      loginResendCooldownUntil = Date.now() + 60_000;
+      updateLoginVerificationUI({
+        verified: false,
+        message: payload?.message || "Verification email sent successfully.",
+        show: true,
+      });
       showBanner(globalBanner(), payload?.message || "Verification email sent successfully.", payload?.ok === false ? "error" : "success");
     }).catch((error) => showBanner(globalBanner(), error.message, "error"))
   );
