@@ -115,6 +115,15 @@ def ensure_user_for_google(email: str, name: str | None = None, avatar_url: str 
         conn.close()
 
 
+def set_custom_avatar(user_id: int, custom_avatar_url: str | None) -> None:
+    conn = get_connection()
+    try:
+        conn.execute("UPDATE users SET custom_avatar_url = ? WHERE id = ?", (custom_avatar_url, int(user_id)))
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def _create_session_row(conn, user_id: int) -> str:
     raw_token = secrets.token_urlsafe(32)
     token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
@@ -150,7 +159,7 @@ def resolve_user_from_token(token: str) -> dict:
     try:
         row = conn.execute(
             """
-            SELECT u.id, u.name, u.email, u.avatar_url, u.is_admin, u.is_active, u.created_at, s.expires_at
+            SELECT u.id, u.name, u.email, u.avatar_url, u.custom_avatar_url, u.is_admin, u.is_active, u.created_at, s.expires_at
             FROM sessions s
             JOIN users u ON u.id = s.user_id
             WHERE s.token_hash = ?
@@ -168,11 +177,16 @@ def resolve_user_from_token(token: str) -> dict:
         if not bool(int(row["is_active"])):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is suspended.")
 
+        social_avatar_url = row["avatar_url"]
+        custom_avatar_url = row["custom_avatar_url"]
+        resolved_avatar_url = custom_avatar_url or social_avatar_url
         return {
             "id": int(row["id"]),
             "name": row["name"],
             "email": row["email"],
-            "avatar_url": row["avatar_url"],
+            "avatar_url": resolved_avatar_url,
+            "social_avatar_url": social_avatar_url,
+            "custom_avatar_url": custom_avatar_url,
             "is_admin": bool(int(row["is_admin"])),
             "is_active": bool(int(row["is_active"])),
             "created_at": row["created_at"],

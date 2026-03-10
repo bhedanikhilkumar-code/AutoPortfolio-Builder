@@ -1,4 +1,5 @@
-import { performLogout, switchAccount } from "./auth.js";
+import { performLogout, refreshAuthUser, switchAccount } from "./auth.js";
+import { removeAccountAvatar, uploadAccountAvatar } from "./api.js";
 import { navigate } from "./router.js";
 import { state, subscribe } from "./state.js";
 import { $, showBanner, withButtonLoading } from "./utils.js";
@@ -19,7 +20,15 @@ function initialsFromUser(user) {
 }
 
 function resolveUserPhoto(user) {
-  return user?.photoURL || user?.providerData?.find((p) => p?.photoURL)?.photoURL || user?.avatar_url || user?.photo_url || null;
+  return (
+    user?.custom_avatar_url ||
+    user?.photoURL ||
+    user?.providerData?.find((p) => p?.photoURL)?.photoURL ||
+    user?.social_avatar_url ||
+    user?.avatar_url ||
+    user?.photo_url ||
+    null
+  );
 }
 
 function getMenuElements() {
@@ -84,11 +93,13 @@ function renderAccountMenu(nextState = state) {
   const panelEmail = $("account-panel-email");
   const panelLabel = $("account-panel-label");
   const adminItem = $("account-admin-link");
+  const avatarRemoveBtn = $("account-avatar-remove-btn");
 
   if (panelName) panelName.textContent = user?.name || "Account";
   if (panelEmail) panelEmail.textContent = user?.email || "";
   if (panelLabel) panelLabel.textContent = user?.is_admin ? "Admin account" : "Personal account";
   if (adminItem) adminItem.hidden = !Boolean(user?.is_admin);
+  if (avatarRemoveBtn) avatarRemoveBtn.hidden = !Boolean(user?.custom_avatar_url);
 
   const avatarUrl = resolveUserPhoto(user);
   const hasPhoto = Boolean(avatarUrl);
@@ -122,6 +133,9 @@ export function initAccountMenu() {
   const settingsLink = $("account-settings-link");
   const adminLink = $("account-admin-link");
   const switchBtn = $("account-switch-btn");
+  const avatarUploadBtn = $("account-avatar-upload-btn");
+  const avatarRemoveBtn = $("account-avatar-remove-btn");
+  const avatarInput = $("account-avatar-input");
   const logoutBtn = $("account-logout-btn");
 
   if (!trigger || !dropdown) return;
@@ -166,6 +180,42 @@ export function initAccountMenu() {
       closeMenu();
       await switchAccount();
     })
+  );
+
+  avatarUploadBtn?.addEventListener("click", () => {
+    avatarInput?.click();
+  });
+
+  avatarInput?.addEventListener("change", async (event) => {
+    const file = event?.target?.files?.[0];
+    if (!file) return;
+    const allowed = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowed.includes(file.type)) {
+      showBanner($("global-banner"), "Invalid format. Use JPG, JPEG, PNG, or WEBP.", "error");
+      avatarInput.value = "";
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      showBanner($("global-banner"), "Image too large. Max size is 2MB.", "error");
+      avatarInput.value = "";
+      return;
+    }
+
+    await withButtonLoading(avatarUploadBtn, "Uploading...", async () => {
+      await uploadAccountAvatar(file);
+      await refreshAuthUser();
+      showBanner($("global-banner"), "Profile photo updated.", "success");
+    }).catch((error) => showBanner($("global-banner"), error.message || "Avatar upload failed.", "error"));
+
+    avatarInput.value = "";
+  });
+
+  avatarRemoveBtn?.addEventListener("click", () =>
+    withButtonLoading(avatarRemoveBtn, "Removing...", async () => {
+      await removeAccountAvatar();
+      await refreshAuthUser();
+      showBanner($("global-banner"), "Custom profile photo removed.", "success");
+    }).catch((error) => showBanner($("global-banner"), error.message || "Failed to remove photo.", "error"))
   );
 
   logoutBtn?.addEventListener("click", () =>

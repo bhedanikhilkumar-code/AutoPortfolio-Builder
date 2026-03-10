@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+import base64
 import logging
 import os
 import secrets
 import time
 
 import httpx
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, status
+from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, Request, UploadFile, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -20,6 +21,7 @@ from app.schemas import (
     AdminUsersResponse,
     AnalyticsSummary,
     AuthResponse,
+    AvatarResponse,
     BrandingSettingsRequest,
     BrandingSettingsResponse,
     DashboardResponse,
@@ -70,7 +72,7 @@ from app.auth.google import (
     verify_google_access_token,
     verify_google_id_token,
 )
-from app.auth.service import create_session, create_session_for_user, ensure_user_for_google, register_user, resolve_user_from_token, revoke_session
+from app.auth.service import create_session, create_session_for_user, ensure_user_for_google, register_user, resolve_user_from_token, revoke_session, set_custom_avatar
 from app.branding.service import get_branding, upsert_branding
 from app.core.db import init_db
 from app.dashboard.service import add_generation_history, build_dashboard, save_resume_snapshot
@@ -94,6 +96,26 @@ SHARED_PORTFOLIOS: dict[str, PortfolioResponse] = {}
 GITHUB_OAUTH_STATES: dict[str, float] = {}
 GOOGLE_OAUTH_STATES: dict[str, float] = {}
 logger = logging.getLogger("autoporfolio_builder")
+MAX_AVATAR_BYTES = 2 * 1024 * 1024
+ALLOWED_AVATAR_TYPES = {"jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp"}
+
+
+def _detect_avatar_type(data: bytes) -> str | None:
+    if data.startswith(b"\xff\xd8\xff"):
+        return "jpeg"
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "png"
+    if data.startswith(b"RIFF") and len(data) >= 12 and data[8:12] == b"WEBP":
+        return "webp"
+    return None
+
+
+def _serialize_avatar(user: dict) -> AvatarResponse:
+    return AvatarResponse(
+        avatar_url=user.get("avatar_url"),
+        social_avatar_url=user.get("social_avatar_url"),
+        custom_avatar_url=user.get("custom_avatar_url"),
+    )
 
 
 def get_github_service() -> GitHubService:
@@ -327,6 +349,31 @@ def create_app() -> FastAPI:
         payload = build_dashboard(user)
         payload.analytics = get_analytics_for_user(user["id"])
         return payload
+
+    @app.post("/api/account/avatar", response_model=AvatarResponse)
+    async def upload_account_avatar(file: UploadFile = File(...), user: dict = Depends(get_current_user)) -> AvatarResponse:
+        data = await file.read()
+        if not data:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Please choose an image file.")
+        if len(data) > MAX_AVATAR_BYTES:
+            raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="Image too large. Max size is 2MB.")
+
+        detected = _detect_avatar_type(data)
+        if detected not in ALLOWED_AVATAR_TYPES:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid image format. Use JPG, JPEG, PNG, or WEBP.")
+
+        mime = ALLOWED_AVATAR_TYPES[detected]
+        encoded = base64.b64encode(data).decode("ascii")
+        custom_avatar_url = f"data:{mime};base64,{encoded}"
+        set_custom_avatar(user["id"], custom_avatar_url)
+        updated_user = {**user, "custom_avatar_url": custom_avatar_url, "avatar_url": custom_avatar_url}
+        return _serialize_avatar(updated_user)
+
+    @app.delete("/api/account/avatar", response_model=AvatarResponse)
+    async def remove_account_avatar(user: dict = Depends(get_current_user)) -> AvatarResponse:
+        set_custom_avatar(user["id"], None)
+        updated_user = {**user, "custom_avatar_url": None, "avatar_url": user.get("social_avatar_url")}
+        return _serialize_avatar(updated_user)
 
     @app.post("/api/dashboard/resumes", response_model=SaveResumeResponse)
     async def save_resume(payload: SaveResumeRequest, user: dict = Depends(get_current_user)) -> SaveResumeResponse:

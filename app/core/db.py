@@ -25,6 +25,7 @@ def init_db() -> None:
                 name TEXT,
                 email TEXT NOT NULL UNIQUE,
                 avatar_url TEXT,
+                custom_avatar_url TEXT,
                 password_hash TEXT NOT NULL,
                 password_salt TEXT NOT NULL,
                 is_admin INTEGER NOT NULL DEFAULT 0,
@@ -112,6 +113,8 @@ def init_db() -> None:
             conn.execute("ALTER TABLE users ADD COLUMN name TEXT")
         if "avatar_url" not in user_columns:
             conn.execute("ALTER TABLE users ADD COLUMN avatar_url TEXT")
+        if "custom_avatar_url" not in user_columns:
+            conn.execute("ALTER TABLE users ADD COLUMN custom_avatar_url TEXT")
         if "is_admin" not in user_columns:
             conn.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0")
         if "is_active" not in user_columns:

@@ -127,6 +127,25 @@ export async function exportAdminCsv(path) {
   return response;
 }
 
+export async function uploadAccountAvatar(file) {
+  const form = new FormData();
+  form.append("file", file);
+  const response = await fetch("/api/account/avatar", {
+    method: "POST",
+    headers: { ...authHeaders() },
+    body: form,
+  });
+  return parseResponse(response, "Avatar upload failed.");
+}
+
+export async function removeAccountAvatar() {
+  const response = await fetch("/api/account/avatar", {
+    method: "DELETE",
+    headers: { ...authHeaders() },
+  });
+  return parseResponse(response, "Failed to remove avatar.");
+}
+
 export async function saveResume(payload) {
   const response = await fetch("/api/dashboard/resumes", {
     method: "POST",
