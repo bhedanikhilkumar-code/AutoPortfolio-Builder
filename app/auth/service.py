@@ -10,6 +10,8 @@ from fastapi import HTTPException, status
 from app.core.db import get_connection
 
 SESSION_HOURS = 24
+VERIFY_TOKEN_HOURS = 24
+VERIFY_RESEND_COOLDOWN_SECONDS = 60
 
 
 def _hash_password(password: str, salt: str) -> str:
@@ -85,7 +87,7 @@ def ensure_user_for_google(email: str, name: str | None = None, avatar_url: str 
 
     conn = get_connection()
     try:
-        row = conn.execute("SELECT id, name, avatar_url FROM users WHERE email = ?", (email_norm,)).fetchone()
+        row = conn.execute("SELECT id, name, avatar_url, email_verified FROM users WHERE email = ?", (email_norm,)).fetchone()
         if row:
             updates = []
             params: list[object] = []
@@ -95,6 +97,8 @@ def ensure_user_for_google(email: str, name: str | None = None, avatar_url: str 
             if avatar_clean and avatar_clean != (row["avatar_url"] or ""):
                 updates.append("avatar_url = ?")
                 params.append(avatar_clean)
+            if not bool(int(row["email_verified"])):
+                updates.append("email_verified = 1")
             if updates:
                 params.append(int(row["id"]))
                 conn.execute(f"UPDATE users SET {', '.join(updates)} WHERE id = ?", tuple(params))
@@ -106,11 +110,75 @@ def ensure_user_for_google(email: str, name: str | None = None, avatar_url: str 
         password_hash = _hash_password(random_password, salt)
         is_admin = 1 if _is_admin_email(email_norm) else 0
         cursor = conn.execute(
-            "INSERT INTO users(name, email, avatar_url, password_hash, password_salt, is_admin) VALUES(?, ?, ?, ?, ?, ?)",
+            "INSERT INTO users(name, email, avatar_url, email_verified, password_hash, password_salt, is_admin) VALUES(?, ?, ?, 1, ?, ?, ?)",
             (display_name, email_norm, avatar_clean, password_hash, salt, is_admin),
         )
         conn.commit()
         return int(cursor.lastrowid)
+    finally:
+        conn.close()
+
+
+def create_email_verification_token(user_id: int) -> tuple[str, str, bool]:
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            "SELECT email, email_verified, email_verify_last_sent_at FROM users WHERE id = ?",
+            (int(user_id),),
+        ).fetchone()
+        if not row:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+        if bool(int(row["email_verified"])):
+            return "", row["email"], True
+
+        now = datetime.now(timezone.utc)
+        last_sent_at = row["email_verify_last_sent_at"]
+        if last_sent_at:
+            last_dt = datetime.fromisoformat(str(last_sent_at).replace("Z", ""))
+            if last_dt.tzinfo is None:
+                last_dt = last_dt.replace(tzinfo=timezone.utc)
+            if (now - last_dt).total_seconds() < VERIFY_RESEND_COOLDOWN_SECONDS:
+                raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Please wait before requesting another verification email.")
+
+        token = secrets.token_urlsafe(32)
+        expires_at = (now + timedelta(hours=VERIFY_TOKEN_HOURS)).isoformat()
+        conn.execute(
+            "UPDATE users SET email_verify_token = ?, email_verify_expires_at = ?, email_verify_last_sent_at = ? WHERE id = ?",
+            (token, expires_at, now.isoformat(), int(user_id)),
+        )
+        conn.commit()
+        return token, row["email"], False
+    finally:
+        conn.close()
+
+
+def verify_email_token(token: str) -> bool:
+    token_clean = (token or "").strip()
+    if not token_clean:
+        return False
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            "SELECT id, email_verify_expires_at FROM users WHERE email_verify_token = ?",
+            (token_clean,),
+        ).fetchone()
+        if not row:
+            return False
+        expires_at_raw = row["email_verify_expires_at"]
+        if not expires_at_raw:
+            return False
+        expires_at = datetime.fromisoformat(str(expires_at_raw).replace("Z", ""))
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if expires_at < datetime.now(timezone.utc):
+            return False
+
+        conn.execute(
+            "UPDATE users SET email_verified = 1, email_verify_token = NULL, email_verify_expires_at = NULL WHERE id = ?",
+            (int(row["id"]),),
+        )
+        conn.commit()
+        return True
     finally:
         conn.close()
 
@@ -159,7 +227,7 @@ def resolve_user_from_token(token: str) -> dict:
     try:
         row = conn.execute(
             """
-            SELECT u.id, u.name, u.email, u.avatar_url, u.custom_avatar_url, u.is_admin, u.is_active, u.created_at, s.expires_at
+            SELECT u.id, u.name, u.email, u.avatar_url, u.custom_avatar_url, u.email_verified, u.is_admin, u.is_active, u.created_at, s.expires_at
             FROM sessions s
             JOIN users u ON u.id = s.user_id
             WHERE s.token_hash = ?
@@ -187,6 +255,7 @@ def resolve_user_from_token(token: str) -> dict:
             "avatar_url": resolved_avatar_url,
             "social_avatar_url": social_avatar_url,
             "custom_avatar_url": custom_avatar_url,
+            "email_verified": bool(int(row["email_verified"])),
             "is_admin": bool(int(row["is_admin"])),
             "is_active": bool(int(row["is_active"])),
             "created_at": row["created_at"],

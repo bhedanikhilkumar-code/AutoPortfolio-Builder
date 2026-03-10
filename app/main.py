@@ -50,6 +50,9 @@ from app.schemas import (
     ShareRequest,
     ShareResponse,
     ResumeVersionsResponse,
+    VerificationRequest,
+    VerificationResponse,
+    VerificationStatusResponse,
 )
 from app.admin.service import (
     delete_resume_admin,
@@ -72,7 +75,17 @@ from app.auth.google import (
     verify_google_access_token,
     verify_google_id_token,
 )
-from app.auth.service import create_session, create_session_for_user, ensure_user_for_google, register_user, resolve_user_from_token, revoke_session, set_custom_avatar
+from app.auth.service import (
+    create_email_verification_token,
+    create_session,
+    create_session_for_user,
+    ensure_user_for_google,
+    register_user,
+    resolve_user_from_token,
+    revoke_session,
+    set_custom_avatar,
+    verify_email_token,
+)
 from app.branding.service import get_branding, upsert_branding
 from app.core.db import init_db
 from app.dashboard.service import add_generation_history, build_dashboard, save_resume_snapshot
@@ -118,6 +131,43 @@ def _serialize_avatar(user: dict) -> AvatarResponse:
     )
 
 
+def _send_verification_email(email: str, token: str) -> None:
+    smtp_host = os.getenv("SMTP_HOST", "").strip()
+    smtp_user = os.getenv("SMTP_USER", "").strip()
+    smtp_pass = os.getenv("SMTP_PASS", "").strip()
+    smtp_from = os.getenv("SMTP_FROM", smtp_user).strip()
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    if not smtp_host or not smtp_from:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Email service not configured.")
+
+    verify_url = os.getenv("APP_BASE_URL", "").strip().rstrip("/")
+    if not verify_url:
+        verify_url = "http://localhost:8000"
+    verify_url = f"{verify_url}/api/auth/verify-email?token={token}"
+
+    from email.message import EmailMessage
+    import smtplib
+
+    message = EmailMessage()
+    message["Subject"] = "Verify your AutoPortfolio account"
+    message["From"] = smtp_from
+    message["To"] = email
+    message.set_content(
+        "Welcome to AutoPortfolio Builder!\n\n"
+        f"Please verify your email by clicking this link:\n{verify_url}\n\n"
+        "This link expires in 24 hours."
+    )
+
+    try:
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as server:
+            server.starttls()
+            if smtp_user:
+                server.login(smtp_user, smtp_pass)
+            server.send_message(message)
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Failed to send verification email.") from exc
+
+
 def get_github_service() -> GitHubService:
     return GitHubService()
 
@@ -138,6 +188,12 @@ def get_current_user(authorization: str | None = Header(default=None)) -> dict:
 def require_admin(user: dict = Depends(get_current_user)) -> dict:
     if not user.get("is_admin"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required.")
+    return user
+
+
+def require_verified_user(user: dict = Depends(get_current_user)) -> dict:
+    if not bool(user.get("email_verified", False)):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Please verify your email before continuing.")
     return user
 
 
@@ -219,14 +275,26 @@ def create_app() -> FastAPI:
 
     @app.post("/api/auth/register", response_model=AuthResponse)
     async def auth_register(payload: RegisterRequest) -> AuthResponse:
-        register_user(payload.name, payload.email, payload.password)
+        user_id = register_user(payload.name, payload.email, payload.password)
         token, _ = create_session(payload.email, payload.password)
-        return AuthResponse(access_token=token)
+        verify_token, verify_email, already_verified = create_email_verification_token(user_id)
+        message = "Please verify your email before continuing."
+        if not already_verified and verify_token:
+            try:
+                _send_verification_email(verify_email, verify_token)
+                message = "Verification email sent. Please verify your email before continuing."
+            except HTTPException as exc:
+                logger.warning("verification_email_send_failed register email=%s detail=%s", verify_email, exc.detail)
+                message = "Account created. Verification email could not be sent right now. Please use resend verification."
+        return AuthResponse(access_token=token, email_verified=False, message=message)
 
     @app.post("/api/auth/login", response_model=AuthResponse)
     async def auth_login(payload: LoginRequest) -> AuthResponse:
         token, _ = create_session(payload.email, payload.password)
-        return AuthResponse(access_token=token)
+        user = resolve_user_from_token(token)
+        if not bool(user.get("email_verified", False)):
+            return AuthResponse(access_token=token, email_verified=False, message="Please verify your email before continuing.")
+        return AuthResponse(access_token=token, email_verified=True)
 
     @app.post("/api/auth/logout", response_model=AuthResponse)
     async def auth_logout(user: dict = Depends(get_current_user), authorization: str | None = Header(default=None)) -> AuthResponse:
@@ -296,7 +364,57 @@ def create_app() -> FastAPI:
         google_user = await verify_google_access_token(payload.access_token)
         user_id = ensure_user_for_google(google_user["email"], google_user.get("name"), google_user.get("avatar_url"))
         token = create_session_for_user(user_id)
-        return AuthResponse(access_token=token)
+        return AuthResponse(access_token=token, email_verified=True)
+
+    @app.post("/api/auth/verification/resend", response_model=VerificationResponse)
+    async def resend_verification(payload: VerificationRequest) -> VerificationResponse:
+        email = (payload.email or "").strip().lower()
+        if not email:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Email is required.")
+        from app.core.db import get_connection
+
+        conn = get_connection()
+        try:
+            row = conn.execute("SELECT id, email_verified FROM users WHERE email = ?", (email,)).fetchone()
+        finally:
+            conn.close()
+
+        if not row:
+            return VerificationResponse(ok=True, message="If this email exists, a verification link has been sent.")
+        if bool(int(row["email_verified"])):
+            return VerificationResponse(ok=True, message="Email already verified.")
+
+        token, target_email, _ = create_email_verification_token(int(row["id"]))
+        try:
+            _send_verification_email(target_email, token)
+            return VerificationResponse(ok=True, message="Verification email sent successfully.")
+        except HTTPException as exc:
+            logger.warning("verification_email_send_failed resend email=%s detail=%s", target_email, exc.detail)
+            return VerificationResponse(ok=False, message="Failed to send verification email.")
+
+    @app.post("/api/auth/verification/status", response_model=VerificationStatusResponse)
+    async def verification_status(payload: VerificationRequest) -> VerificationStatusResponse:
+        email = (payload.email or "").strip().lower()
+        if not email:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Email is required.")
+        from app.core.db import get_connection
+
+        conn = get_connection()
+        try:
+            row = conn.execute("SELECT email_verified FROM users WHERE email = ?", (email,)).fetchone()
+        finally:
+            conn.close()
+
+        return VerificationStatusResponse(email=email, email_verified=bool(int(row["email_verified"])) if row else False)
+
+    @app.get("/api/auth/verify-email", include_in_schema=False)
+    async def verify_email(token: str | None = None) -> Response:
+        ok = verify_email_token(token or "")
+        if ok:
+            html = """<!doctype html><html><body><h3>Email verified successfully.</h3><p>You can return to login now.</p><script>setTimeout(()=>window.location.href='/login?verified=1',1200)</script></body></html>"""
+            return Response(content=html, media_type="text/html")
+        html = """<!doctype html><html><body><h3>Verification link is invalid or expired.</h3><p>Please request a new verification email.</p><script>setTimeout(()=>window.location.href='/login?verified=0',1600)</script></body></html>"""
+        return Response(content=html, media_type="text/html", status_code=400)
 
     @app.get("/api/auth/github/start", response_model=GitHubAuthStartResponse)
     async def auth_github_start(request: Request) -> GitHubAuthStartResponse:

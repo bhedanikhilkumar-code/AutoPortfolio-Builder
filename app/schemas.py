@@ -164,6 +164,22 @@ class GitHubAuthStartResponse(BaseModel):
 class AuthResponse(BaseModel):
     access_token: str
     token_type: Literal["bearer"] = "bearer"
+    email_verified: bool = True
+    message: str | None = None
+
+
+class VerificationRequest(BaseModel):
+    email: str
+
+
+class VerificationResponse(BaseModel):
+    ok: bool = True
+    message: str
+
+
+class VerificationStatusResponse(BaseModel):
+    email: str
+    email_verified: bool
 
 
 class AvatarResponse(BaseModel):
@@ -179,6 +195,7 @@ class UserSummary(BaseModel):
     avatar_url: str | None = None
     social_avatar_url: str | None = None
     custom_avatar_url: str | None = None
+    email_verified: bool = False
     is_admin: bool = False
     is_active: bool = True
     created_at: datetime

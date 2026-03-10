@@ -79,6 +79,7 @@ def build_dashboard(user: dict) -> DashboardResponse:
                 avatar_url=user.get("avatar_url"),
                 social_avatar_url=user.get("social_avatar_url"),
                 custom_avatar_url=user.get("custom_avatar_url"),
+                email_verified=bool(user.get("email_verified", False)),
                 is_admin=bool(user.get("is_admin", False)),
                 is_active=bool(user.get("is_active", True)),
                 created_at=datetime.fromisoformat(str(user["created_at"]).replace("Z", "")),

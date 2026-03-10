@@ -26,6 +26,10 @@ def init_db() -> None:
                 email TEXT NOT NULL UNIQUE,
                 avatar_url TEXT,
                 custom_avatar_url TEXT,
+                email_verified INTEGER NOT NULL DEFAULT 0,
+                email_verify_token TEXT,
+                email_verify_expires_at TEXT,
+                email_verify_last_sent_at TEXT,
                 password_hash TEXT NOT NULL,
                 password_salt TEXT NOT NULL,
                 is_admin INTEGER NOT NULL DEFAULT 0,
@@ -115,6 +119,14 @@ def init_db() -> None:
             conn.execute("ALTER TABLE users ADD COLUMN avatar_url TEXT")
         if "custom_avatar_url" not in user_columns:
             conn.execute("ALTER TABLE users ADD COLUMN custom_avatar_url TEXT")
+        if "email_verified" not in user_columns:
+            conn.execute("ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0")
+        if "email_verify_token" not in user_columns:
+            conn.execute("ALTER TABLE users ADD COLUMN email_verify_token TEXT")
+        if "email_verify_expires_at" not in user_columns:
+            conn.execute("ALTER TABLE users ADD COLUMN email_verify_expires_at TEXT")
+        if "email_verify_last_sent_at" not in user_columns:
+            conn.execute("ALTER TABLE users ADD COLUMN email_verify_last_sent_at TEXT")
         if "is_admin" not in user_columns:
             conn.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0")
         if "is_active" not in user_columns:
