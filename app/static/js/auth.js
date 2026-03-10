@@ -1,4 +1,4 @@
-import { getDashboard, githubStart, googleAccessTokenLogin, googleConfig, login, logout, register } from "./api.js";
+import { getDashboard, githubStart, googleAccessTokenLogin, googleConfig, login, logout, register, resendVerificationEmail } from "./api.js";
 import { defaultAfterLoginRoute, navigate, refreshRouterUI } from "./router.js";
 import { clearClientAuthState, setState, setToken, state } from "./state.js";
 import { $, showBanner, validEmail, withButtonLoading } from "./utils.js";
@@ -156,9 +156,40 @@ export async function switchAccount() {
   showBanner(globalBanner(), "Signed out. Choose another account to continue.", "info");
 }
 
+let signupVerificationEmail = "";
+let signupResendCooldownUntil = 0;
+
+function updateSignupVerificationUI(message = "") {
+  const box = $("signup-verification-box");
+  const messageEl = $("signup-verification-message");
+  const resendBtn = $("signup-resend-verification-btn");
+  if (!box || !messageEl || !resendBtn) return;
+
+  const now = Date.now();
+  const remainingSec = Math.max(0, Math.ceil((signupResendCooldownUntil - now) / 1000));
+  if (remainingSec > 0) {
+    resendBtn.disabled = true;
+    resendBtn.textContent = `Resend in ${remainingSec}s`;
+    window.setTimeout(() => updateSignupVerificationUI(messageEl.textContent), 1000);
+  } else {
+    resendBtn.disabled = false;
+    resendBtn.textContent = "Resend Verification Email";
+  }
+
+  if (message) messageEl.textContent = message;
+  box.hidden = false;
+}
+
+function hideSignupVerificationUI() {
+  const box = $("signup-verification-box");
+  if (box) box.hidden = true;
+}
+
 function bindEmailPasswordAuth() {
+  hideSignupVerificationUI();
   const loginBtn = $("login-btn");
   const registerBtn = $("register-btn");
+  const signupResendBtn = $("signup-resend-verification-btn");
 
   loginBtn?.addEventListener("click", () =>
     withButtonLoading(loginBtn, "Logging in...", async () => {
@@ -168,7 +199,7 @@ function bindEmailPasswordAuth() {
       const payload = await login({ email, password });
       setToken(payload.access_token);
       await syncUserFromToken();
-      showBanner(globalBanner(), "Login successful.", "success");
+      showBanner(globalBanner(), payload?.message || "Login successful.", payload?.email_verified === false ? "info" : "success");
       navigate(defaultAfterLoginRoute(), { replace: true });
     }).catch((error) => showBanner(globalBanner(), error.message, "error"))
   );
@@ -180,11 +211,34 @@ function bindEmailPasswordAuth() {
       const password = $("signup-password")?.value || "";
       if (!name || name.length < 2) throw new Error("Enter your name.");
       ensureCredentials(email, password);
+
       const payload = await register({ name, email, password });
+      signupVerificationEmail = email;
+
+      if (payload?.email_verified === false) {
+        const message = payload?.message || "Verification email sent. Please check your inbox.";
+        updateSignupVerificationUI(message);
+        showBanner(globalBanner(), message, message.toLowerCase().includes("could not be sent") ? "error" : "success");
+        return;
+      }
+
+      hideSignupVerificationUI();
       setToken(payload.access_token);
       await syncUserFromToken();
       showBanner(globalBanner(), "Registration successful.", "success");
       navigate(defaultAfterLoginRoute(), { replace: true });
+    }).catch((error) => showBanner(globalBanner(), error.message, "error"))
+  );
+
+  signupResendBtn?.addEventListener("click", () =>
+    withButtonLoading(signupResendBtn, "Sending...", async () => {
+      const email = signupVerificationEmail || $("signup-email")?.value.trim() || "";
+      if (!validEmail(email)) throw new Error("Enter the signup email to resend verification.");
+      const payload = await resendVerificationEmail({ email });
+      signupVerificationEmail = email;
+      signupResendCooldownUntil = Date.now() + 60_000;
+      updateSignupVerificationUI(payload?.message || "Verification email sent successfully.");
+      showBanner(globalBanner(), payload?.message || "Verification email sent successfully.", payload?.ok === false ? "error" : "success");
     }).catch((error) => showBanner(globalBanner(), error.message, "error"))
   );
 }

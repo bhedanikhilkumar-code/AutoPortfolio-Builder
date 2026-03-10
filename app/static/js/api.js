@@ -38,6 +38,15 @@ export async function login(payload) {
   return parseResponse(response, "Login failed.");
 }
 
+export async function resendVerificationEmail(payload) {
+  const response = await fetch("/api/auth/verification/resend", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return parseResponse(response, "Failed to send verification email.");
+}
+
 export async function logout() {
   const response = await fetch("/api/auth/logout", {
     method: "POST",
