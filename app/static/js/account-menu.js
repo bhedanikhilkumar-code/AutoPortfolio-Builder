@@ -82,6 +82,46 @@ function navigateFromMenu(path, message = "") {
   if (message) showBanner($("global-banner"), message, "info");
 }
 
+function ensureAvatarControls() {
+  const settingsBtn = $("account-settings-link");
+  if (!settingsBtn) return;
+  const accountSection = settingsBtn.closest(".account-section");
+  if (!accountSection) return;
+
+  let uploadBtn = $("account-avatar-upload-btn");
+  if (!uploadBtn) {
+    uploadBtn = document.createElement("button");
+    uploadBtn.id = "account-avatar-upload-btn";
+    uploadBtn.className = "account-item";
+    uploadBtn.type = "button";
+    uploadBtn.setAttribute("role", "menuitem");
+    uploadBtn.innerHTML = '<span class="account-item-icon">🖼️</span><span>Upload Photo</span>';
+    accountSection.insertBefore(uploadBtn, settingsBtn.nextSibling);
+  }
+
+  let removeBtn = $("account-avatar-remove-btn");
+  if (!removeBtn) {
+    removeBtn = document.createElement("button");
+    removeBtn.id = "account-avatar-remove-btn";
+    removeBtn.className = "account-item";
+    removeBtn.type = "button";
+    removeBtn.setAttribute("role", "menuitem");
+    removeBtn.hidden = true;
+    removeBtn.innerHTML = '<span class="account-item-icon">🗑️</span><span>Remove Photo</span>';
+    accountSection.insertBefore(removeBtn, uploadBtn.nextSibling);
+  }
+
+  let fileInput = $("account-avatar-input");
+  if (!fileInput) {
+    fileInput = document.createElement("input");
+    fileInput.id = "account-avatar-input";
+    fileInput.type = "file";
+    fileInput.hidden = true;
+    fileInput.setAttribute("accept", ".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp");
+    accountSection.appendChild(fileInput);
+  }
+}
+
 function renderAccountMenu(nextState = state) {
   const user = nextState.user;
   const initials = initialsFromUser(user);
@@ -299,6 +339,8 @@ function bindCropEvents() {
 }
 
 export function initAccountMenu() {
+  ensureAvatarControls();
+
   const trigger = $("account-menu-trigger");
   const dropdown = $("account-dropdown");
   const dashboardLink = $("account-dashboard-link");

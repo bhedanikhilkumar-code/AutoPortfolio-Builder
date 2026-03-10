@@ -318,6 +318,9 @@ a:hover {
   opacity: 0;
   transform: translateY(-6px) scale(0.985);
   transition: opacity 140ms ease, transform 140ms ease, box-shadow var(--transition-fast);
+  background: rgba(251, 253, 255, 0.97);
+  border-color: rgba(145, 173, 214, 0.9);
+  box-shadow: 0 20px 42px rgba(23, 44, 82, 0.22), 0 0 12px rgba(99, 162, 255, 0.12);
 }
 
 .account-dropdown.is-open {
