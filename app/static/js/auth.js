@@ -192,7 +192,8 @@ function updateLoginVerificationUI({ message = "", verified = false, show = true
   const messageEl = $("login-verification-message");
   const statusEl = $("login-verification-status");
   const resendBtn = $("login-resend-verification-btn");
-  if (!box || !messageEl || !statusEl || !resendBtn) return;
+  const refreshBtn = $("login-refresh-verification-btn");
+  if (!box || !messageEl || !statusEl || !resendBtn || !refreshBtn) return;
 
   if (!show) {
     box.hidden = true;
@@ -213,6 +214,7 @@ function updateLoginVerificationUI({ message = "", verified = false, show = true
   if (message) messageEl.textContent = message;
   statusEl.textContent = `Status: ${verified ? "Verified" : "Not Verified"}`;
   resendBtn.hidden = verified;
+  refreshBtn.hidden = false;
   box.hidden = false;
 }
 
@@ -244,6 +246,7 @@ function bindEmailPasswordAuth() {
   const registerBtn = $("register-btn");
   const signupResendBtn = $("signup-resend-verification-btn");
   const loginResendBtn = $("login-resend-verification-btn");
+  const loginRefreshBtn = $("login-refresh-verification-btn");
 
   loginBtn?.addEventListener("click", () =>
     withButtonLoading(loginBtn, "Logging in...", async () => {
@@ -254,6 +257,8 @@ function bindEmailPasswordAuth() {
       loginVerificationEmail = email;
 
       if (payload?.email_verified === false) {
+        setToken(payload.access_token);
+        await syncUserFromToken();
         updateLoginVerificationUI({
           verified: false,
           message: payload?.message || "Please verify your email before continuing.",
@@ -314,6 +319,28 @@ function bindEmailPasswordAuth() {
       // keep login UX non-blocking
     });
   });
+
+  loginRefreshBtn?.addEventListener("click", () =>
+    withButtonLoading(loginRefreshBtn, "Checking...", async () => {
+      const email = loginVerificationEmail || $("login-email")?.value.trim() || "";
+      if (!validEmail(email)) throw new Error("Enter your login email first.");
+      const status = await verificationStatus({ email });
+      if (!status?.email_verified) {
+        updateLoginVerificationUI({
+          verified: false,
+          message: "Email is still not verified. Please check your inbox and click the verification link.",
+          show: true,
+        });
+        showBanner(globalBanner(), "Email is still not verified.", "info");
+        return;
+      }
+
+      await syncUserFromToken();
+      hideLoginVerificationUI();
+      showBanner(globalBanner(), "Email verified successfully. You can continue now.", "success");
+      navigate(defaultAfterLoginRoute(), { replace: true });
+    }).catch((error) => showBanner(globalBanner(), error.message, "error"))
+  );
 
   loginResendBtn?.addEventListener("click", () =>
     withButtonLoading(loginResendBtn, "Sending...", async () => {

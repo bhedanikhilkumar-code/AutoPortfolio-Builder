@@ -70,7 +70,7 @@ function routeGuard(route) {
     showBanner($("global-banner"), "Please verify your email before continuing.", "info");
     return false;
   }
-  if (PUBLIC_ONLY_ROUTES.has(route) && isAuthenticated()) {
+  if (PUBLIC_ONLY_ROUTES.has(route) && isAuthenticated() && state.user?.email_verified !== false) {
     navigate("/dashboard", { replace: true });
     showBanner($("global-banner"), "You are already logged in.", "info");
     return false;
