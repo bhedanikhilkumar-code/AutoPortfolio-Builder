@@ -43,18 +43,19 @@ function applyNavVisibility() {
   const authReady = Boolean(state.authReady);
   const route = currentRoute();
   const onLanding = route === "/";
+  const isVerifiedUser = Boolean(state.user?.email_verified !== false);
 
   document.querySelectorAll("[data-auth-only]").forEach((node) => {
-    node.hidden = !authReady || !isAuthenticated() || onLanding;
+    node.hidden = !authReady || !isAuthenticated() || !isVerifiedUser || onLanding;
   });
   document.querySelectorAll("[data-admin-only]").forEach((node) => {
-    node.hidden = !authReady || !isAuthenticated() || !isAdmin() || onLanding;
+    node.hidden = !authReady || !isAuthenticated() || !isVerifiedUser || !isAdmin() || onLanding;
   });
   document.querySelectorAll("[data-guest-only]").forEach((node) => {
-    node.hidden = !authReady || (!onLanding && isAuthenticated());
+    node.hidden = !authReady || (!onLanding && isAuthenticated() && isVerifiedUser);
   });
   const accountMenu = $("account-menu");
-  if (accountMenu) accountMenu.hidden = !authReady || !isAuthenticated() || onLanding;
+  if (accountMenu) accountMenu.hidden = !authReady || !isAuthenticated() || !isVerifiedUser || onLanding;
 }
 
 function routeGuard(route) {
@@ -62,6 +63,11 @@ function routeGuard(route) {
     state.pendingRoute = route;
     navigate("/login", { replace: true });
     showBanner($("global-banner"), "Login required to access that page.", "info");
+    return false;
+  }
+  if (PRIVATE_ROUTES.has(route) && isAuthenticated() && state.user?.email_verified === false) {
+    navigate("/login", { replace: true });
+    showBanner($("global-banner"), "Please verify your email before continuing.", "info");
     return false;
   }
   if (PUBLIC_ONLY_ROUTES.has(route) && isAuthenticated()) {
