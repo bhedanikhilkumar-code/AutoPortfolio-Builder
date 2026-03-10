@@ -9,6 +9,22 @@ export function showBanner(element, message, level = "info") {
   element.hidden = false;
 }
 
+export function showToast(message, level = "info", timeoutMs = 2600) {
+  if (!message) return;
+  let stack = document.getElementById("toast-stack");
+  if (!stack) {
+    stack = document.createElement("div");
+    stack.id = "toast-stack";
+    stack.className = "toast-stack";
+    document.body.appendChild(stack);
+  }
+  const toast = document.createElement("div");
+  toast.className = `toast ${level}`;
+  toast.textContent = message;
+  stack.appendChild(toast);
+  window.setTimeout(() => toast.remove(), timeoutMs);
+}
+
 export function hideBanner(element) {
   if (!element) return;
   element.hidden = true;

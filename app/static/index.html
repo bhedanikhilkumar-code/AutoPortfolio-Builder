@@ -277,7 +277,28 @@
     </section>
   </main>
 
+  <div id="avatar-crop-backdrop" class="modal-backdrop" hidden></div>
+  <div id="avatar-crop-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="avatar-crop-title" hidden>
+    <div class="modal-header">
+      <h3 id="avatar-crop-title" class="modal-title">Crop profile photo</h3>
+      <button id="avatar-crop-close" class="modal-close" type="button" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="dash-meta">Drag to reposition. Use zoom for a clean circular avatar preview.</p>
+      <div class="avatar-crop-wrap">
+        <canvas id="avatar-crop-canvas" width="320" height="320" aria-label="Avatar crop canvas"></canvas>
+      </div>
+      <label>Zoom
+        <input id="avatar-crop-zoom" type="range" min="1" max="3" step="0.01" value="1">
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button id="avatar-crop-cancel" class="btn btn-secondary" type="button">Cancel</button>
+      <button id="avatar-crop-save" class="btn btn-primary" type="button">Save Photo</button>
+    </div>
+  </div>
+
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script type="module" src="/static/js/main.js?v=20260307i"></script>
+  <script type="module" src="/static/js/main.js?v=20260310a"></script>
 </body>
 </html>

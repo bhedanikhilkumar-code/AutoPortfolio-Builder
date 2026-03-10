@@ -1569,6 +1569,52 @@ summary {
   }
 }
 
+.avatar-crop-wrap {
+  position: relative;
+  width: min(100%, 320px);
+  margin: 0 auto;
+  border-radius: 16px;
+  border: 1px solid rgba(160, 186, 224, 0.75);
+  background: rgba(255, 255, 255, 0.8);
+  overflow: hidden;
+}
+
+#avatar-crop-canvas {
+  width: 100%;
+  height: auto;
+  display: block;
+  touch-action: none;
+  cursor: grab;
+}
+
+#avatar-crop-canvas.dragging {
+  cursor: grabbing;
+}
+
+.toast-stack {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  display: grid;
+  gap: 0.55rem;
+  z-index: 120;
+}
+
+.toast {
+  min-width: 220px;
+  max-width: min(92vw, 340px);
+  padding: 0.62rem 0.78rem;
+  border-radius: 12px;
+  border: 1px solid rgba(163, 188, 224, 0.78);
+  background: rgba(251, 253, 255, 0.95);
+  box-shadow: 0 12px 24px rgba(24, 45, 80, 0.14);
+  font-weight: 600;
+}
+
+.toast.success { border-color: rgba(152, 209, 181, 0.85); color: #1a6446; }
+.toast.error { border-color: rgba(223, 151, 151, 0.78); color: #953434; }
+.toast.info { border-color: rgba(165, 188, 230, 0.88); color: #173a71; }
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

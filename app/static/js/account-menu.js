@@ -2,10 +2,25 @@ import { performLogout, refreshAuthUser, switchAccount } from "./auth.js";
 import { removeAccountAvatar, uploadAccountAvatar } from "./api.js";
 import { navigate } from "./router.js";
 import { state, subscribe } from "./state.js";
-import { $, showBanner, withButtonLoading } from "./utils.js";
+import { $, showBanner, showToast, withButtonLoading } from "./utils.js";
 
 const CLOSE_ANIMATION_MS = 140;
+const MAX_FILE_SIZE = 2 * 1024 * 1024;
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 let closeTimer = null;
+
+const cropState = {
+  image: null,
+  zoom: 1,
+  minZoom: 1,
+  x: 160,
+  y: 160,
+  dragging: false,
+  dragStartX: 0,
+  dragStartY: 0,
+  imageStartX: 160,
+  imageStartY: 160,
+};
 
 function initialsFromUser(user) {
   const name = (user?.name || "").trim();
@@ -20,22 +35,11 @@ function initialsFromUser(user) {
 }
 
 function resolveUserPhoto(user) {
-  return (
-    user?.custom_avatar_url ||
-    user?.photoURL ||
-    user?.providerData?.find((p) => p?.photoURL)?.photoURL ||
-    user?.social_avatar_url ||
-    user?.avatar_url ||
-    user?.photo_url ||
-    null
-  );
+  return user?.custom_avatar_url || user?.photoURL || user?.providerData?.find((p) => p?.photoURL)?.photoURL || user?.social_avatar_url || user?.avatar_url || user?.photo_url || null;
 }
 
 function getMenuElements() {
-  return {
-    menu: $("account-dropdown"),
-    trigger: $("account-menu-trigger"),
-  };
+  return { menu: $("account-dropdown"), trigger: $("account-menu-trigger") };
 }
 
 function openMenu() {
@@ -45,7 +49,6 @@ function openMenu() {
     clearTimeout(closeTimer);
     closeTimer = null;
   }
-
   menu.hidden = false;
   menu.classList.remove("is-closing");
   requestAnimationFrame(() => menu.classList.add("is-open"));
@@ -55,11 +58,9 @@ function openMenu() {
 function closeMenu() {
   const { menu, trigger } = getMenuElements();
   if (!menu || !trigger || menu.hidden) return;
-
   menu.classList.remove("is-open");
   menu.classList.add("is-closing");
   trigger.setAttribute("aria-expanded", "false");
-
   if (closeTimer) clearTimeout(closeTimer);
   closeTimer = window.setTimeout(() => {
     menu.hidden = true;
@@ -84,7 +85,6 @@ function navigateFromMenu(path, message = "") {
 function renderAccountMenu(nextState = state) {
   const user = nextState.user;
   const initials = initialsFromUser(user);
-
   const triggerFallback = $("account-avatar-fallback");
   const triggerImage = $("account-avatar-img");
   const panelFallback = $("account-panel-avatar-fallback");
@@ -103,7 +103,6 @@ function renderAccountMenu(nextState = state) {
 
   const avatarUrl = resolveUserPhoto(user);
   const hasPhoto = Boolean(avatarUrl);
-
   if (triggerFallback) triggerFallback.textContent = initials;
   if (panelFallback) panelFallback.textContent = initials;
 
@@ -117,15 +116,191 @@ function renderAccountMenu(nextState = state) {
     if (hasPhoto) panelImage.src = avatarUrl;
     else panelImage.removeAttribute("src");
   }
-
   if (triggerFallback) triggerFallback.hidden = hasPhoto;
   if (panelFallback) panelFallback.hidden = hasPhoto;
+}
+
+function getCropEls() {
+  return {
+    modal: $("avatar-crop-modal"),
+    backdrop: $("avatar-crop-backdrop"),
+    canvas: $("avatar-crop-canvas"),
+    zoom: $("avatar-crop-zoom"),
+    save: $("avatar-crop-save"),
+    close: $("avatar-crop-close"),
+    cancel: $("avatar-crop-cancel"),
+  };
+}
+
+function drawCropper() {
+  const { canvas } = getCropEls();
+  if (!canvas || !cropState.image) return;
+  const ctx = canvas.getContext("2d");
+  const { width, height } = canvas;
+  const radius = width / 2;
+  const drawW = cropState.image.width * cropState.zoom;
+  const drawH = cropState.image.height * cropState.zoom;
+
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = "#f4f8ff";
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(radius, radius, radius - 2, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.drawImage(cropState.image, cropState.x - drawW / 2, cropState.y - drawH / 2, drawW, drawH);
+  ctx.restore();
+
+  ctx.beginPath();
+  ctx.arc(radius, radius, radius - 1, 0, Math.PI * 2);
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "rgba(18,64,145,0.7)";
+  ctx.stroke();
+}
+
+function openCropModal() {
+  const { modal, backdrop } = getCropEls();
+  if (!modal || !backdrop) return;
+  modal.hidden = false;
+  backdrop.hidden = false;
+  requestAnimationFrame(() => {
+    modal.classList.add("is-open");
+    backdrop.classList.add("is-open");
+  });
+  drawCropper();
+}
+
+function closeCropModal() {
+  const { modal, backdrop, zoom } = getCropEls();
+  if (!modal || !backdrop) return;
+  modal.classList.remove("is-open");
+  backdrop.classList.remove("is-open");
+  window.setTimeout(() => {
+    modal.hidden = true;
+    backdrop.hidden = true;
+  }, 120);
+  cropState.image = null;
+  cropState.zoom = 1;
+  if (zoom) zoom.value = "1";
+}
+
+function clampImagePosition() {
+  const { canvas } = getCropEls();
+  if (!canvas || !cropState.image) return;
+  const halfW = (cropState.image.width * cropState.zoom) / 2;
+  const halfH = (cropState.image.height * cropState.zoom) / 2;
+  const r = canvas.width / 2;
+  cropState.x = Math.min(halfW, Math.max(canvas.width - halfW, cropState.x));
+  cropState.y = Math.min(halfH, Math.max(canvas.height - halfH, cropState.y));
+
+  if (halfW < r) cropState.x = canvas.width / 2;
+  if (halfH < r) cropState.y = canvas.height / 2;
+}
+
+async function fileToImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("Could not load image."));
+      img.src = reader.result;
+    };
+    reader.onerror = () => reject(new Error("Could not read image file."));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function startCropFlow(file) {
+  const { zoom } = getCropEls();
+  const image = await fileToImage(file);
+  cropState.image = image;
+  cropState.zoom = 1;
+  cropState.minZoom = Math.max(320 / image.width, 320 / image.height, 1);
+  cropState.zoom = cropState.minZoom;
+  cropState.x = 160;
+  cropState.y = 160;
+  if (zoom) {
+    zoom.min = String(cropState.minZoom);
+    zoom.max = "4";
+    zoom.value = String(cropState.zoom);
+  }
+  drawCropper();
+  openCropModal();
+}
+
+async function canvasToBlob() {
+  const { canvas } = getCropEls();
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) return reject(new Error("Could not prepare cropped image."));
+      resolve(blob);
+    }, "image/png", 0.92);
+  });
+}
+
+function bindCropEvents() {
+  const { canvas, zoom, save, close, cancel, backdrop } = getCropEls();
+  if (!canvas || !zoom || !save) return;
+
+  zoom.addEventListener("input", () => {
+    cropState.zoom = Number(zoom.value || cropState.minZoom);
+    clampImagePosition();
+    drawCropper();
+  });
+
+  const startDrag = (x, y) => {
+    cropState.dragging = true;
+    cropState.dragStartX = x;
+    cropState.dragStartY = y;
+    cropState.imageStartX = cropState.x;
+    cropState.imageStartY = cropState.y;
+    canvas.classList.add("dragging");
+  };
+
+  const moveDrag = (x, y) => {
+    if (!cropState.dragging) return;
+    cropState.x = cropState.imageStartX + (x - cropState.dragStartX);
+    cropState.y = cropState.imageStartY + (y - cropState.dragStartY);
+    clampImagePosition();
+    drawCropper();
+  };
+
+  const endDrag = () => {
+    cropState.dragging = false;
+    canvas.classList.remove("dragging");
+  };
+
+  canvas.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    startDrag(e.clientX, e.clientY);
+  });
+  window.addEventListener("pointermove", (e) => moveDrag(e.clientX, e.clientY));
+  window.addEventListener("pointerup", endDrag);
+
+  save.addEventListener("click", () =>
+    withButtonLoading(save, "Saving...", async () => {
+      const blob = await canvasToBlob();
+      const croppedFile = new File([blob], "avatar.png", { type: "image/png" });
+      await uploadAccountAvatar(croppedFile);
+      await refreshAuthUser();
+      showBanner($("global-banner"), "Profile photo updated.", "success");
+      showToast("Photo updated", "success");
+      closeCropModal();
+      closeMenu();
+    }).catch((error) => {
+      showBanner($("global-banner"), error.message || "Avatar upload failed.", "error");
+      showToast(error.message || "Avatar upload failed.", "error");
+    })
+  );
+
+  [close, cancel, backdrop].forEach((el) => el?.addEventListener("click", closeCropModal));
 }
 
 export function initAccountMenu() {
   const trigger = $("account-menu-trigger");
   const dropdown = $("account-dropdown");
-
   const dashboardLink = $("account-dashboard-link");
   const generateLink = $("account-generate-link");
   const resumesLink = $("account-resumes-link");
@@ -149,27 +324,22 @@ export function initAccountMenu() {
     event.preventDefault();
     navigateFromMenu("/dashboard");
   });
-
   generateLink?.addEventListener("click", (event) => {
     event.preventDefault();
     navigateFromMenu("/generator");
   });
-
   resumesLink?.addEventListener("click", (event) => {
     event.preventDefault();
     navigateFromMenu("/dashboard", "Tip: Use your dashboard to manage resumes.");
   });
-
   draftsLink?.addEventListener("click", (event) => {
     event.preventDefault();
     navigateFromMenu("/dashboard", "Tip: Saved drafts are available in dashboard.");
   });
-
   settingsLink?.addEventListener("click", (event) => {
     event.preventDefault();
     navigateFromMenu("/dashboard", "Account settings are available in dashboard.");
   });
-
   adminLink?.addEventListener("click", (event) => {
     event.preventDefault();
     navigateFromMenu("/admin");
@@ -182,32 +352,28 @@ export function initAccountMenu() {
     })
   );
 
-  avatarUploadBtn?.addEventListener("click", () => {
-    avatarInput?.click();
-  });
+  avatarUploadBtn?.addEventListener("click", () => avatarInput?.click());
 
   avatarInput?.addEventListener("change", async (event) => {
     const file = event?.target?.files?.[0];
-    if (!file) return;
-    const allowed = ["image/jpeg", "image/png", "image/webp"];
-    if (!allowed.includes(file.type)) {
-      showBanner($("global-banner"), "Invalid format. Use JPG, JPEG, PNG, or WEBP.", "error");
-      avatarInput.value = "";
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      showBanner($("global-banner"), "Image too large. Max size is 2MB.", "error");
-      avatarInput.value = "";
-      return;
-    }
-
-    await withButtonLoading(avatarUploadBtn, "Uploading...", async () => {
-      await uploadAccountAvatar(file);
-      await refreshAuthUser();
-      showBanner($("global-banner"), "Profile photo updated.", "success");
-    }).catch((error) => showBanner($("global-banner"), error.message || "Avatar upload failed.", "error"));
-
     avatarInput.value = "";
+    if (!file) return;
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      showBanner($("global-banner"), "Invalid format. Use JPG, JPEG, PNG, or WEBP.", "error");
+      showToast("Invalid file type", "error");
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      showBanner($("global-banner"), "Image too large. Max size is 2MB.", "error");
+      showToast("File too large (max 2MB)", "error");
+      return;
+    }
+    try {
+      await startCropFlow(file);
+    } catch (error) {
+      showBanner($("global-banner"), error.message || "Could not open cropper.", "error");
+      showToast(error.message || "Could not open cropper.", "error");
+    }
   });
 
   avatarRemoveBtn?.addEventListener("click", () =>
@@ -215,7 +381,12 @@ export function initAccountMenu() {
       await removeAccountAvatar();
       await refreshAuthUser();
       showBanner($("global-banner"), "Custom profile photo removed.", "success");
-    }).catch((error) => showBanner($("global-banner"), error.message || "Failed to remove photo.", "error"))
+      showToast("Custom photo removed", "success");
+      closeMenu();
+    }).catch((error) => {
+      showBanner($("global-banner"), error.message || "Failed to remove photo.", "error");
+      showToast(error.message || "Failed to remove photo.", "error");
+    })
   );
 
   logoutBtn?.addEventListener("click", () =>
@@ -225,6 +396,8 @@ export function initAccountMenu() {
     })
   );
 
+  bindCropEvents();
+
   document.addEventListener("click", (event) => {
     const root = $("account-menu");
     if (!root || root.hidden) return;
@@ -233,7 +406,10 @@ export function initAccountMenu() {
   });
 
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") closeMenu();
+    if (event.key === "Escape") {
+      closeMenu();
+      closeCropModal();
+    }
   });
 
   subscribe((nextState) => {
