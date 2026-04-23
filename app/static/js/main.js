@@ -4,7 +4,7 @@ import { initAuth } from "./auth.js";
 import { initDashboard, loadDashboardData } from "./dashboard.js";
 import { initGenerator } from "./generator.js";
 import { initRouter, navigate } from "./router.js";
-import { isAuthenticated, isAdmin } from "./state.js";
+import { isAuthenticated, isAdmin, setState } from "./state.js";
 import { $, showBanner, withButtonLoading } from "./utils.js";
 
 function initBuildPortfolioButton() {
@@ -13,12 +13,13 @@ function initBuildPortfolioButton() {
 
   buildBtn.addEventListener("click", () =>
     withButtonLoading(buildBtn, "Opening...", async () => {
+      setState({ generatorResult: null });
       if (!isAuthenticated()) {
         navigate("/generator");
         return;
       }
       navigate("/generator");
-      showBanner($("global-banner"), "Generator ready.", "success");
+      showBanner($("global-banner"), "Generator ready for a new portfolio.", "info");
     }).catch((error) => showBanner($("global-banner"), error.message, "error"))
   );
 }

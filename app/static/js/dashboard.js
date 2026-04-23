@@ -258,7 +258,9 @@ async function handleDashboardAction(event) {
     const action = quickAction.dataset.dashAction;
 
     if (action === "go-generator") {
+      setState({ generatorResult: null });
       navigate("/generator");
+      showBanner($("global-banner"), "Generator ready for a new portfolio.", "info");
       return;
     }
 
