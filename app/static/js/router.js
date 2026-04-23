@@ -66,6 +66,7 @@ function routeGuard(route) {
     return false;
   }
   if (PRIVATE_ROUTES.has(route) && isAuthenticated() && state.user?.email_verified === false) {
+    state.pendingRoute = route;
     navigate("/login", { replace: true });
     showBanner($("global-banner"), "Please verify your email before continuing.", "info");
     return false;
