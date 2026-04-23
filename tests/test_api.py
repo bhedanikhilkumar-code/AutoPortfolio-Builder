@@ -8,6 +8,8 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from app.main import app, get_github_service, get_linkedin_service
+from app.auth.service import resolve_user_from_token
+from app.core.db import get_connection
 from app.schemas import GenerateRequest, GitHubProfile, LinkedInProfile, ProfileResponse, RepoSummary
 from app.services.github import GitHubService, normalize_github_username
 from app.services.portfolio import generate_portfolio
@@ -630,5 +632,71 @@ def test_full_profile_generate_edit_export_flow() -> None:
     assert "hello@example.dev" in export_response.text
 
 
+def test_login_returns_unverified_message_until_email_is_verified() -> None:
+    email = f"login-{uuid4().hex[:8]}@testmail.com"
+    register = client.post(
+        "/api/auth/register",
+        json={"name": "Login User", "email": email, "password": "StrongPass@123"},
+    )
+    assert register.status_code == 200
 
+    login_before_verify = client.post(
+        "/api/auth/login",
+        json={"email": email, "password": "StrongPass@123"},
+    )
+    assert login_before_verify.status_code == 200
+    assert login_before_verify.json()["email_verified"] is False
+    assert "verify your email" in login_before_verify.json()["message"].lower()
+
+    user = resolve_user_from_token(register.json()["access_token"])
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            "SELECT email_verify_token FROM users WHERE id = ?",
+            (user["id"],),
+        ).fetchone()
+    finally:
+        conn.close()
+
+    assert row is not None
+    assert row["email_verify_token"]
+
+    verify_response = client.get(f"/api/auth/verify-email?token={row['email_verify_token']}")
+    assert verify_response.status_code == 200
+    assert "Email verified successfully." in verify_response.text
+
+    login_after_verify = client.post(
+        "/api/auth/login",
+        json={"email": email, "password": "StrongPass@123"},
+    )
+    assert login_after_verify.status_code == 200
+    assert login_after_verify.json()["email_verified"] is True
+
+
+def test_verify_email_rejects_invalid_token() -> None:
+    response = client.get("/api/auth/verify-email?token=invalid-token")
+
+    assert response.status_code == 400
+    assert "invalid or expired" in response.text.lower()
+
+
+def test_deploy_export_returns_preview_url_for_authenticated_user() -> None:
+    headers = make_auth_headers()
+    profile_payload = client.post(
+        "/api/profile",
+        json={"username": "octocat", "linkedin_username": "octocat"},
+        headers=headers,
+    ).json()
+    portfolio_payload = client.post("/api/generate", json=profile_payload, headers=headers).json()
+
+    response = client.post(
+        "/api/deploy/export",
+        headers=headers,
+        json={"portfolio": portfolio_payload, "provider": "vercel", "filename": "ada-portfolio"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["provider"] == "vercel"
+    assert payload["preview_url"].endswith("/resume/ada-portfolio")
 
