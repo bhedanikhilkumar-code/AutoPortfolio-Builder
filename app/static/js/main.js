@@ -14,8 +14,7 @@ function initBuildPortfolioButton() {
   buildBtn.addEventListener("click", () =>
     withButtonLoading(buildBtn, "Opening...", async () => {
       if (!isAuthenticated()) {
-        showBanner($("global-banner"), "Please log in to build your portfolio.", "info");
-        navigate("/login");
+        navigate("/generator");
         return;
       }
       navigate("/generator");
