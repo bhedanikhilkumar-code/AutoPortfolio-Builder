@@ -1,19 +1,28 @@
 # AutoPortfolio Builder
 
-FastAPI application that turns profile data into portfolio-ready content with authentication, admin tools, and export-oriented workflows.
+<p align="left">
+  <a href="https://github.com/bhedanikhilkumar-code/AutoPortfolio-Builder"><img src="https://img.shields.io/badge/Repo-GitHub-111827?style=for-the-badge&logo=github&logoColor=white" alt="Repo" /></a>
+  <a href="https://autoporfolio-builder.onrender.com"><img src="https://img.shields.io/badge/Live%20Demo-Render-0A66C2?style=for-the-badge&logo=render&logoColor=white" alt="Live Demo" /></a>
+  <img src="https://img.shields.io/badge/Backend-FastAPI-111827?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
+</p>
 
-## Overview
-AutoPortfolio Builder is a web application built to help users generate professional portfolio content from structured inputs such as GitHub and LinkedIn profile data. The project combines a FastAPI backend with a lightweight frontend and includes authentication flows, dashboard views, admin reporting, and content generation workflows.
+FastAPI portfolio generator that turns profile inputs into portfolio-ready content with authentication, admin tools, and export workflows.
 
-It is especially useful as a portfolio/productivity project because it blends profile ingestion, content generation, user management, and export features in one system.
+## What This Project Solves
+Creating portfolio content manually can be repetitive, inconsistent, and time-consuming.
 
-## Highlights
-- Generate portfolio-ready content from developer profile inputs
-- Authentication flow with protected dashboard routes
-- Admin panel with activity and export visibility
-- GitHub and LinkedIn input handling
-- Clean frontend route separation using hash-based navigation
-- CSV export support for admin workflows
+AutoPortfolio Builder is designed to reduce that friction by taking structured inputs such as GitHub and LinkedIn data, processing them through a web workflow, and generating portfolio-oriented output in a more streamlined way.
+
+## Demo
+- **Live app:** https://autoporfolio-builder.onrender.com
+
+## Key Capabilities
+- Accept GitHub and LinkedIn-oriented profile inputs
+- Generate portfolio-ready content from structured user data
+- Provide authentication and protected user flows
+- Include admin views for usage tracking and exports
+- Support CSV exports for users, resumes, and activity data
+- Add validation and guardrails around core input flows
 
 ## Tech Stack
 ### Backend
@@ -48,7 +57,7 @@ AutoPortfolio-Builder/
 └── render.yaml
 ```
 
-## Core Workflows
+## Workflow Overview
 ### User Flow
 - Register or log in
 - Access dashboard and portfolio generator
@@ -60,7 +69,7 @@ AutoPortfolio-Builder/
 - View users and generated resume records
 - Export users, resumes, and activity as CSV
 
-### Validation and Guardrails
+### Validation & Guardrails
 - Input validation for email, GitHub, and LinkedIn fields
 - Route guards for authenticated and admin-only areas
 - Protected backend admin dependencies
@@ -95,7 +104,7 @@ AutoPortfolio-Builder/
 - `GET /api/admin/export/resumes.csv`
 - `GET /api/admin/export/activity.csv`
 
-## Local Development
+## Getting Started
 ### Prerequisites
 - Python 3.10+
 - pip
@@ -118,16 +127,14 @@ http://127.0.0.1:8000/
 pytest
 ```
 
+## Why This Project Stands Out
+AutoPortfolio Builder shows practical product thinking around a clear use case: transforming structured profile data into usable portfolio content while supporting authentication, admin tooling, validation, and exports.
+
 ## Deployment
 This repository includes deployment-oriented files such as:
 - `render.yaml`
 - `Procfile`
 - `runtime.txt`
-
-These make it easier to adapt the project for hosted environments.
-
-## Why This Project Matters
-AutoPortfolio Builder shows practical product thinking: structured input validation, authenticated UX, admin tooling, export flows, and service-oriented backend design around a clear use case.
 
 ## License
 Licensed under the MIT License. See `LICENSE` for details.
