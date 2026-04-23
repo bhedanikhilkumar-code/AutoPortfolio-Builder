@@ -196,6 +196,20 @@ function clearResult() {
   result.innerHTML = "";
 }
 
+function syncGeneratorPreview(portfolio) {
+  const hasResult = Boolean(portfolio);
+  setExportButtonsVisible(hasResult);
+  setExportButtonsEnabled(hasResult);
+
+  if (!hasResult) {
+    clearResult();
+    return;
+  }
+
+  const linkedinUrl = portfolio?.linkedin?.url || portfolio?.profile?.linkedin_url || "";
+  renderResult(portfolio, "Preview ready. Continue editing or export your portfolio.", linkedinUrl);
+}
+
 function mapServerErrorToField(message) {
   const text = (message || "").toLowerCase();
   if (text.includes("email")) return { email: "Enter a valid email." };
@@ -259,9 +273,7 @@ export function initGenerator() {
   );
 
   updateSubmitDisabled();
-  const hasResult = Boolean(state.generatorResult);
-  setExportButtonsVisible(hasResult);
-  setExportButtonsEnabled(hasResult);
+  syncGeneratorPreview(state.generatorResult);
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -315,9 +327,9 @@ export function initGenerator() {
       });
 
       setState({ generatorResult: portfolio });
+      renderResult(portfolio, saved.message, validation.linkedinUrl);
       setExportButtonsVisible(true);
       setExportButtonsEnabled(true);
-      renderResult(portfolio, saved.message, validation.linkedinUrl);
       showBanner(generatorBanner(), "Portfolio generated successfully. Preview ready below.", "success");
       showBanner($("global-banner"), "Portfolio generated successfully.", "success");
     })
@@ -337,5 +349,9 @@ export function initGenerator() {
       .finally(() => {
         updateSubmitDisabled();
       });
+  });
+
+  subscribe((nextState) => {
+    syncGeneratorPreview(nextState.generatorResult);
   });
 }
