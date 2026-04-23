@@ -139,3 +139,9 @@ export function refreshRouterUI() {
 export function defaultAfterLoginRoute() {
   return state.pendingRoute && PRIVATE_ROUTES.has(state.pendingRoute) ? state.pendingRoute : "/dashboard";
 }
+
+export function consumeAfterLoginRoute() {
+  const target = defaultAfterLoginRoute();
+  state.pendingRoute = "/";
+  return target;
+}

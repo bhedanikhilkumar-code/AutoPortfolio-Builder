@@ -1,5 +1,5 @@
 import { getDashboard, githubStart, googleAccessTokenLogin, googleConfig, login, logout, register, resendVerificationEmail, verificationStatus } from "./api.js";
-import { defaultAfterLoginRoute, navigate, refreshRouterUI } from "./router.js";
+import { consumeAfterLoginRoute, navigate, refreshRouterUI } from "./router.js";
 import { clearClientAuthState, setState, setToken, state } from "./state.js";
 import { $, showBanner, validEmail, withButtonLoading } from "./utils.js";
 
@@ -124,15 +124,22 @@ async function startGoogleChooser(prompt = "select_account") {
 }
 
 export async function performLogout({ redirectTo = "/login", announce = true } = {}) {
-  if (state.token) {
-    await logout();
+  let logoutWarning = "";
+  try {
+    if (state.token) {
+      await logout();
+    }
+  } catch (error) {
+    logoutWarning = error?.message || "Session cleanup on the server could not be confirmed.";
+  } finally {
+    disableGoogleAutoSignIn();
+    clearClientAuthState();
+    clearTransientInputState();
+    refreshRouterUI();
   }
-  disableGoogleAutoSignIn();
-  clearClientAuthState();
-  clearTransientInputState();
-  refreshRouterUI();
+
   if (announce) {
-    showBanner(globalBanner(), "Logged out. Please sign in manually next time.", "success");
+    showBanner(globalBanner(), logoutWarning || "Logged out. Please sign in manually next time.", logoutWarning ? "info" : "success");
   }
   if (redirectTo) {
     navigate(redirectTo);
@@ -272,7 +279,7 @@ function bindEmailPasswordAuth() {
       setToken(payload.access_token);
       await syncUserFromToken();
       showBanner(globalBanner(), payload?.message || "Login successful.", "success");
-      navigate(defaultAfterLoginRoute(), { replace: true });
+      navigate(consumeAfterLoginRoute(), { replace: true });
     }).catch((error) => showBanner(globalBanner(), error.message, "error"))
   );
 
@@ -298,7 +305,7 @@ function bindEmailPasswordAuth() {
       setToken(payload.access_token);
       await syncUserFromToken();
       showBanner(globalBanner(), "Registration successful.", "success");
-      navigate(defaultAfterLoginRoute(), { replace: true });
+      navigate(consumeAfterLoginRoute(), { replace: true });
     }).catch((error) => showBanner(globalBanner(), error.message, "error"))
   );
 
@@ -338,7 +345,7 @@ function bindEmailPasswordAuth() {
       await syncUserFromToken();
       hideLoginVerificationUI();
       showBanner(globalBanner(), "Email verified successfully. You can continue now.", "success");
-      navigate(defaultAfterLoginRoute(), { replace: true });
+      navigate(consumeAfterLoginRoute(), { replace: true });
     }).catch((error) => showBanner(globalBanner(), error.message, "error"))
   );
 
@@ -368,7 +375,7 @@ function initGoogleButtons() {
       const started = await startGoogleChooser("select_account");
       if (!started) throw new Error("Google login is not configured.");
       showBanner(globalBanner(), "Signed in with Google.", "success");
-      navigate(defaultAfterLoginRoute(), { replace: true });
+      navigate(consumeAfterLoginRoute(), { replace: true });
     }).catch((error) => showBanner(globalBanner(), error.message, "error"));
   };
 
