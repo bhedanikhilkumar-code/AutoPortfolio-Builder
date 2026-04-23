@@ -1,7 +1,7 @@
 import { performLogout, refreshAuthUser, switchAccount } from "./auth.js";
 import { removeAccountAvatar, uploadAccountAvatar } from "./api.js";
 import { navigate } from "./router.js";
-import { state, subscribe } from "./state.js";
+import { setState, state, subscribe } from "./state.js";
 import { $, showBanner, showToast, withButtonLoading } from "./utils.js";
 
 const CLOSE_ANIMATION_MS = 140;
@@ -368,7 +368,8 @@ export function initAccountMenu() {
   });
   generateLink?.addEventListener("click", (event) => {
     event.preventDefault();
-    navigateFromMenu("/generator");
+    setState({ generatorResult: null });
+    navigateFromMenu("/generator", "Generator ready for a new portfolio.");
   });
   resumesLink?.addEventListener("click", (event) => {
     event.preventDefault();
