@@ -167,6 +167,22 @@ let signupVerificationEmail = "";
 let signupResendCooldownUntil = 0;
 let loginVerificationEmail = "";
 let loginResendCooldownUntil = 0;
+let signupVerificationTimer = 0;
+let loginVerificationTimer = 0;
+
+function clearSignupVerificationTimer() {
+  if (signupVerificationTimer) {
+    window.clearTimeout(signupVerificationTimer);
+    signupVerificationTimer = 0;
+  }
+}
+
+function clearLoginVerificationTimer() {
+  if (loginVerificationTimer) {
+    window.clearTimeout(loginVerificationTimer);
+    loginVerificationTimer = 0;
+  }
+}
 
 function updateSignupVerificationUI(message = "") {
   const box = $("signup-verification-box");
@@ -174,12 +190,14 @@ function updateSignupVerificationUI(message = "") {
   const resendBtn = $("signup-resend-verification-btn");
   if (!box || !messageEl || !resendBtn) return;
 
+  clearSignupVerificationTimer();
+
   const now = Date.now();
   const remainingSec = Math.max(0, Math.ceil((signupResendCooldownUntil - now) / 1000));
   if (remainingSec > 0) {
     resendBtn.disabled = true;
     resendBtn.textContent = `Resend in ${remainingSec}s`;
-    window.setTimeout(() => updateSignupVerificationUI(messageEl.textContent), 1000);
+    signupVerificationTimer = window.setTimeout(() => updateSignupVerificationUI(messageEl.textContent), 1000);
   } else {
     resendBtn.disabled = false;
     resendBtn.textContent = "Resend Verification Email";
@@ -190,6 +208,7 @@ function updateSignupVerificationUI(message = "") {
 }
 
 function hideSignupVerificationUI() {
+  clearSignupVerificationTimer();
   const box = $("signup-verification-box");
   if (box) box.hidden = true;
 }
@@ -202,6 +221,8 @@ function updateLoginVerificationUI({ message = "", verified = false, show = true
   const refreshBtn = $("login-refresh-verification-btn");
   if (!box || !messageEl || !statusEl || !resendBtn || !refreshBtn) return;
 
+  clearLoginVerificationTimer();
+
   if (!show) {
     box.hidden = true;
     return;
@@ -212,10 +233,10 @@ function updateLoginVerificationUI({ message = "", verified = false, show = true
   if (remainingSec > 0) {
     resendBtn.disabled = true;
     resendBtn.textContent = `Resend in ${remainingSec}s`;
-    window.setTimeout(() => updateLoginVerificationUI({ message: messageEl.textContent, verified, show: true }), 1000);
+    loginVerificationTimer = window.setTimeout(() => updateLoginVerificationUI({ message: messageEl.textContent, verified, show: true }), 1000);
   } else {
     resendBtn.disabled = verified;
-    resendBtn.textContent = verified ? "Resend Verification Email" : "Resend Verification Email";
+    resendBtn.textContent = "Resend Verification Email";
   }
 
   if (message) messageEl.textContent = message;
@@ -226,6 +247,7 @@ function updateLoginVerificationUI({ message = "", verified = false, show = true
 }
 
 function hideLoginVerificationUI() {
+  clearLoginVerificationTimer();
   const box = $("login-verification-box");
   if (box) box.hidden = true;
 }
