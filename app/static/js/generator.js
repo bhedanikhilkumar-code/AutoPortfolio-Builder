@@ -98,9 +98,6 @@ function validateForm(values) {
     errors.github = "Enter a valid GitHub username or URL.";
   }
 
-  if (!values.linkedinRaw) {
-    errors.linkedin = "Enter a valid LinkedIn username or URL.";
-  }
   const linkedin = normalizeLinkedInInput(values.linkedinRaw);
   if (!linkedin.ok) {
     errors.linkedin = "Enter a valid LinkedIn username or URL.";
