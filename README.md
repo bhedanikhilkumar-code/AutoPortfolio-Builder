@@ -1,34 +1,92 @@
 # AutoPortfolio Builder
 
-AutoPortfolio Builder is a FastAPI + vanilla JS app that generates portfolio content from GitHub/LinkedIn profile data, with authenticated dashboard and admin workflows.
+FastAPI application that turns profile data into portfolio-ready content with authentication, admin tools, and export-oriented workflows.
 
-## Route Map (Frontend)
-- `#/` landing page only: hero, features, how-it-works, footer
-- `#/login` login page (email/password + social auth buttons)
-- `#/signup` signup page (email/password + social auth buttons)
-- `#/dashboard` authenticated user dashboard
-- `#/generator` authenticated portfolio generator
-- `#/admin` authenticated admin-only panel
+## Overview
+AutoPortfolio Builder is a web application built to help users generate professional portfolio content from structured inputs such as GitHub and LinkedIn profile data. The project combines a FastAPI backend with a lightweight frontend and includes authentication flows, dashboard views, admin reporting, and content generation workflows.
 
-The app is served from `/`, and uses hash routing for clean static frontend route separation.
+It is especially useful as a portfolio/productivity project because it blends profile ingestion, content generation, user management, and export features in one system.
 
-## Auth and Guard Flow
-- Unauthenticated users are redirected from `#/dashboard`, `#/generator`, and `#/admin` to `#/login`.
-- `Logout` is shown only when logged in.
-- Dashboard nav entry is hidden when logged out.
-- Social login buttons are rendered only in login/signup views.
-- Admin route and admin navigation are shown only when `user.is_admin == true`.
-- Admin CSV actions are blocked in non-admin UI state and still protected server-side by admin dependencies.
+## Highlights
+- Generate portfolio-ready content from developer profile inputs
+- Authentication flow with protected dashboard routes
+- Admin panel with activity and export visibility
+- GitHub and LinkedIn input handling
+- Clean frontend route separation using hash-based navigation
+- CSV export support for admin workflows
 
-## Key API Endpoints
+## Tech Stack
+### Backend
+- FastAPI
+- Pydantic
+- Uvicorn
+- HTTPX
+
+### Frontend
+- Vanilla JavaScript
+- HTML / CSS
+- Hash-based routing
+
+### Supporting Features
+- PDF generation via `fpdf2`
+- Multipart form handling
+- Pytest-based tests
+
+## Repository Structure
+```text
+AutoPortfolio-Builder/
+├── app/
+│   ├── auth/
+│   ├── dashboard/
+│   ├── admin/
+│   ├── services/
+│   ├── static/
+│   └── main.py
+├── templates/
+├── tests/
+├── requirements.txt
+└── render.yaml
+```
+
+## Core Workflows
+### User Flow
+- Register or log in
+- Access dashboard and portfolio generator
+- Submit GitHub / LinkedIn profile inputs
+- Generate portfolio content
+
+### Admin Flow
+- Review usage and activity data
+- View users and generated resume records
+- Export users, resumes, and activity as CSV
+
+### Validation and Guardrails
+- Input validation for email, GitHub, and LinkedIn fields
+- Route guards for authenticated and admin-only areas
+- Protected backend admin dependencies
+
+## Frontend Routes
+- `#/` landing page
+- `#/login` login view
+- `#/signup` signup view
+- `#/dashboard` authenticated dashboard
+- `#/generator` portfolio generation flow
+- `#/admin` admin-only panel
+
+## Key Backend Endpoints
+### Authentication
 - `POST /api/auth/register`
 - `POST /api/auth/login`
 - `POST /api/auth/logout`
 - `POST /api/auth/google`
 - `GET /api/auth/github/start`
+
+### Product Features
 - `GET /api/dashboard`
 - `POST /api/profile`
 - `POST /api/generate`
+
+### Admin
 - `GET /api/admin/stats`
 - `GET /api/admin/users`
 - `GET /api/admin/resumes`
@@ -37,35 +95,39 @@ The app is served from `/`, and uses hash routing for clean static frontend rout
 - `GET /api/admin/export/resumes.csv`
 - `GET /api/admin/export/activity.csv`
 
-## Frontend Modules
-- `app/static/js/state.js`
-- `app/static/js/utils.js`
-- `app/static/js/api.js`
-- `app/static/js/router.js`
-- `app/static/js/auth.js`
-- `app/static/js/generator.js`
-- `app/static/js/dashboard.js`
-- `app/static/js/admin.js`
-- `app/static/js/main.js`
+## Local Development
+### Prerequisites
+- Python 3.10+
+- pip
 
-## Local Run
-1. Install dependencies:
+### Setup
 ```bash
+git clone https://github.com/bhedanikhilkumar-code/AutoPortfolio-Builder.git
+cd AutoPortfolio-Builder
 pip install -r requirements.txt
-```
-2. Start server:
-```bash
 uvicorn app.main:app --reload
 ```
-3. Open `http://127.0.0.1:8000/`.
 
-## Test
-Run:
+Then open:
+```text
+http://127.0.0.1:8000/
+```
+
+## Testing
 ```bash
 pytest
 ```
 
-## Notes
-- Backend admin endpoints are protected using `require_admin` dependency checks.
-- Generator validates email, GitHub input (username/profile URL), and LinkedIn input (username/profile URL).
-- Buttons use loading/disabled states and show clear success/error messaging across auth, generator, dashboard, and admin actions.
+## Deployment
+This repository includes deployment-oriented files such as:
+- `render.yaml`
+- `Procfile`
+- `runtime.txt`
+
+These make it easier to adapt the project for hosted environments.
+
+## Why This Project Matters
+AutoPortfolio Builder shows practical product thinking: structured input validation, authenticated UX, admin tooling, export flows, and service-oriented backend design around a clear use case.
+
+## License
+Licensed under the MIT License. See `LICENSE` for details.
