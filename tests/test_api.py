@@ -132,6 +132,13 @@ def test_frontend_route_map_is_present() -> None:
     assert "data-route=\"/admin\"" in body
 
 
+def test_spa_entry_routes_return_index_shell() -> None:
+    for route in ("/", "/login", "/signup", "/dashboard", "/generator", "/admin"):
+        response = client.get(route)
+        assert response.status_code == 200
+        assert "data-route=\"/dashboard\"" in response.text
+
+
 def test_google_auth_config_endpoint() -> None:
     response = client.get("/api/auth/google/config")
 
@@ -596,6 +603,13 @@ def test_shared_resume_endpoint_renders_portfolio(monkeypatch) -> None:
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/html")
     assert "Ada Lovelace builds software that ships." in response.text
+
+
+def test_shared_resume_endpoint_returns_404_for_missing_share() -> None:
+    response = client.get("/resume/missing-share-id")
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "not_found"
 
 
 def test_export_endpoint_validates_filename() -> None:
