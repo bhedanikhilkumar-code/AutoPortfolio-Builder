@@ -2,7 +2,7 @@
 
 <p align="left">
   <a href="https://github.com/bhedanikhilkumar-code/AutoPortfolio-Builder"><img src="https://img.shields.io/badge/Repo-GitHub-111827?style=for-the-badge&logo=github&logoColor=white" alt="Repo" /></a>
-  <a href="https://autoporfolio-builder.onrender.com"><img src="https://img.shields.io/badge/Live%20Demo-Render-0A66C2?style=for-the-badge&logo=render&logoColor=white" alt="Live Demo" /></a>
+  <a href="https://autoportfolio-builder.onrender.com"><img src="https://img.shields.io/badge/Live%20Demo-Render-0A66C2?style=for-the-badge&logo=render&logoColor=white" alt="Live Demo" /></a>
   <img src="https://img.shields.io/badge/Backend-FastAPI-111827?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
 </p>
 
@@ -14,7 +14,7 @@ Creating portfolio content manually can be repetitive, inconsistent, and time-co
 AutoPortfolio Builder is designed to reduce that friction by taking structured inputs such as GitHub and LinkedIn data, processing them through a web workflow, and generating portfolio-oriented output in a more streamlined way.
 
 ## Demo
-- **Live app:** https://autoporfolio-builder.onrender.com
+- **Live app:** https://autoportfolio-builder.onrender.com
 
 ## Key Capabilities
 - Accept GitHub and LinkedIn-oriented profile inputs
