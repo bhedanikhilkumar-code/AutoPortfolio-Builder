@@ -496,3 +496,55 @@ class MultiThemePreviewRequest(BaseModel):
 
 class MultiThemePreviewResponse(BaseModel):
     previews: dict[str, str]
+
+
+# PDF Template schemas
+class PDFTemplateListResponse(BaseModel):
+    templates: list[dict[str, str]]
+
+
+class PDFExportRequest(BaseModel):
+    portfolio: PortfolioResponse
+    template: Literal["modern", "classic", "minimal", "creative", "executive", "gradient"] = "modern"
+    include_seo: bool = True
+
+
+class PDFExportResponse(BaseModel):
+    success: bool
+    message: str
+
+
+# Project Manager schemas
+class ReorderProjectsRequest(BaseModel):
+    portfolio: PortfolioResponse
+    new_order: list[str]
+
+
+class FilterProjectsRequest(BaseModel):
+    portfolio: PortfolioResponse
+    language: str
+
+
+class AddProjectRequest(BaseModel):
+    portfolio: PortfolioResponse
+    project: dict[str, Any]
+
+
+class UpdateProjectRequest(BaseModel):
+    portfolio: PortfolioResponse
+    project_name: str
+    updates: dict[str, Any]
+
+
+class ProjectsSummaryResponse(BaseModel):
+    total_projects: int
+    total_stars: int
+    total_forks: int
+    languages: dict[str, int]
+    most_starred: str
+
+
+# Notifications schemas
+class NotificationListResponse(BaseModel):
+    notifications: list[dict[str, Any]]
+    unread_count: int

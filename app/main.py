@@ -143,6 +143,27 @@ from app.preview.service import (
     get_preview_html,
     get_multi_theme_preview,
 )
+from app.pdf_templates.service import (
+    list_pdf_templates,
+    render_pdf_template,
+)
+from app.project_manager.service import (
+    reorder_projects,
+    sort_projects_by_stars,
+    sort_projects_by_name,
+    filter_projects_by_language,
+    remove_project,
+    add_project,
+    update_project,
+    get_projects_summary,
+)
+from app.notifications.service import (
+    get_user_notifications,
+    mark_as_read,
+    mark_all_read,
+    delete_notification,
+    get_unread_count,
+)
 from app.schemas import (
     SEOAnalysisRequest,
     SEOAnalysisResponse,
@@ -151,6 +172,15 @@ from app.schemas import (
     PreviewResponse,
     MultiThemePreviewRequest,
     MultiThemePreviewResponse,
+    PDFTemplateListResponse,
+    PDFExportRequest,
+    PDFExportResponse,
+    ReorderProjectsRequest,
+    FilterProjectsRequest,
+    AddProjectRequest,
+    UpdateProjectRequest,
+    ProjectsSummaryResponse,
+    NotificationListResponse,
 )
 
 
@@ -1032,6 +1062,91 @@ def create_app() -> FastAPI:
             payload.theme_ids,
         )
         return MultiThemePreviewResponse(previews=previews)
+
+    # ====== PDF Templates ======
+    @app.get("/api/pdf/templates", response_model=PDFTemplateListResponse)
+    async def list_pdf_templates_endpoint() -> PDFTemplateListResponse:
+        templates = list_pdf_templates()
+        return PDFTemplateListResponse(templates=templates)
+
+    @app.post("/api/pdf/export")
+    async def export_pdf(payload: PDFExportRequest) -> Response:
+        try:
+            pdf_bytes = render_pdf_template(
+                payload.portfolio,
+                payload.template,
+                payload.include_seo,
+            )
+            return Response(
+                content=pdf_bytes,
+                media_type="application/pdf",
+                headers={
+                    "Content-Disposition": f"attachment; filename=portfolio-{payload.template}.pdf"
+                },
+            )
+        except ImportError:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="PDF generation not available. Install fpdf2: pip install fpdf2",
+            )
+
+    # ====== Project Manager ======
+    @app.post("/api/portfolio/projects/reorder")
+    async def reorder_projects_endpoint(payload: ReorderProjectsRequest):
+        reordered = reorder_projects(payload.portfolio, payload.new_order)
+        return {"portfolio": reordered}
+
+    @app.post("/api/portfolio/projects/sort/stars")
+    async def sort_projects_stars_endpoint(payload: ReorderProjectsRequest):
+        sorted_portfolio = sort_projects_by_stars(payload.portfolio)
+        return {"portfolio": sorted_portfolio}
+
+    @app.post("/api/portfolio/projects/sort/name")
+    async def sort_projects_name_endpoint(payload: ReorderProjectsRequest):
+        sorted_portfolio = sort_projects_by_name(payload.portfolio)
+        return {"portfolio": sorted_portfolio}
+
+    @app.post("/api/portfolio/projects/filter")
+    async def filter_projects_endpoint(payload: FilterProjectsRequest):
+        filtered = filter_projects_by_language(payload.portfolio, payload.language)
+        return {"portfolio": filtered}
+
+    @app.post("/api/portfolio/projects/add")
+    async def add_project_endpoint(payload: AddProjectRequest):
+        updated = add_project(payload.portfolio, payload.project)
+        return {"portfolio": updated}
+
+    @app.post("/api/portfolio/projects/update")
+    async def update_project_endpoint(payload: UpdateProjectRequest):
+        updated = update_project(payload.portfolio, payload.project_name, payload.updates)
+        return {"portfolio": updated}
+
+    @app.post("/api/portfolio/projects/summary")
+    async def projects_summary_endpoint(payload: ReorderProjectsRequest):
+        summary = get_projects_summary(payload.portfolio)
+        return summary
+
+    # ====== Notifications ======
+    @app.get("/api/notifications", response_model=NotificationListResponse)
+    async def get_notifications(user: dict = Depends(get_current_user)) -> NotificationListResponse:
+        notifications = get_user_notifications(user["id"])
+        unread_count = get_unread_count(user["id"])
+        return NotificationListResponse(notifications=notifications, unread_count=unread_count)
+
+    @app.post("/api/notifications/{notification_id}/read")
+    async def mark_notification_read(notification_id: str, user: dict = Depends(get_current_user)):
+        mark_as_read(notification_id, user["id"])
+        return {"ok": True}
+
+    @app.post("/api/notifications/read-all")
+    async def mark_all_notifications_read(user: dict = Depends(get_current_user)):
+        count = mark_all_read(user["id"])
+        return {"ok": True, "marked_count": count}
+
+    @app.delete("/api/notifications/{notification_id}")
+    async def delete_notification_endpoint(notification_id: str, user: dict = Depends(get_current_user)):
+        delete_notification(notification_id, user["id"])
+        return {"ok": True}
 
     return app
 
