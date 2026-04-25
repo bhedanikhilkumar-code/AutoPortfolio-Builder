@@ -548,3 +548,138 @@ class ProjectsSummaryResponse(BaseModel):
 class NotificationListResponse(BaseModel):
     notifications: list[dict[str, Any]]
     unread_count: int
+
+
+# Interview Prep schemas
+class InterviewQuestionsRequest(BaseModel):
+    portfolio: PortfolioResponse
+    role: Literal["general", "frontend", "backend", "fullstack", "data", "ai"] = "general"
+
+
+class InterviewQuestionsResponse(BaseModel):
+    questions: list[str]
+    count: int
+    estimated_duration_minutes: int
+
+
+class MockInterviewResponse(BaseModel):
+    questions: list[dict[str, str]]
+
+
+class AnswerSuggestionsRequest(BaseModel):
+    portfolio: PortfolioResponse
+    question: str
+
+
+class AnswerSuggestionsResponse(BaseModel):
+    suggestions: list[str]
+
+
+# Portfolio Analytics schemas
+class TrackViewRequest(BaseModel):
+    portfolio_id: int
+    viewer_ip: str | None = None
+    referrer: str | None = None
+
+
+class PortfolioStatsResponse(BaseModel):
+    total_views: int
+    views_over_time: list[dict[str, Any]]
+    top_referrers: list[dict[str, Any]]
+    avg_daily_views: float
+
+
+# Auto Deploy schemas
+class DeployConfigRequest(BaseModel):
+    provider: Literal["github", "vercel", "netlify"]
+    username: str | None = None
+    custom_domain: str | None = None
+
+
+class DeployConfigResponse(BaseModel):
+    yaml: str | None = None
+    toml: str | None = None
+    json: dict | None = None
+    script: str | None = None
+    provider: str
+
+
+# i18n schemas
+class LanguageListResponse(BaseModel):
+    languages: list[dict[str, str]]
+
+
+class TranslateRequest(BaseModel):
+    portfolio: PortfolioResponse
+    target_lang: str
+
+
+class TranslateResponse(BaseModel):
+    original_language: str
+    translated_language: str
+    translated_content: dict
+    note: str
+
+
+# Cover Letter schemas
+class CoverLetterRequest(BaseModel):
+    portfolio: PortfolioResponse
+    company_name: str = "the hiring team"
+    position: str = "the position"
+    job_description: str | None = None
+
+
+class CoverLetterResponse(BaseModel):
+    subject: str
+    body: str
+    name: str
+    email: str
+
+
+# Job Tracker schemas
+class JobApplicationRequest(BaseModel):
+    company: str
+    position: str
+    portfolio_url: str | None = None
+
+
+class JobApplicationResponse(BaseModel):
+    id: str
+    company: str
+    position: str
+    status: str
+    portfolio_url: str | None = None
+
+
+class JobStatsResponse(BaseModel):
+    total_applications: int
+    by_status: dict[str, int]
+    response_rate: float
+
+
+# GitHub README schemas
+class GitHubReadmeRequest(BaseModel):
+    portfolio: PortfolioResponse
+
+
+class GitHubReadmeResponse(BaseModel):
+    readme: str
+
+
+# QR Code & vCard schemas
+class QRCodeRequest(BaseModel):
+    portfolio_url: str
+    size: int = 300
+
+
+class QRCodeResponse(BaseModel):
+    qr_url: str
+    data: str
+
+
+class VCardRequest(BaseModel):
+    portfolio: PortfolioResponse
+
+
+class VCardResponse(BaseModel):
+    vcard: str

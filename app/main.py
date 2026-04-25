@@ -164,6 +164,49 @@ from app.notifications.service import (
     delete_notification,
     get_unread_count,
 )
+from app.interview_prep.service import (
+    generate_interview_questions,
+    generate_mock_interview,
+    generate_answer_suggestions,
+)
+from app.portfolio_analytics.service import (
+    get_portfolio_stats,
+    track_portfolio_view,
+    track_project_click,
+    get_project_click_stats,
+)
+from app.auto_deploy.service import (
+    generate_github_pages_yaml,
+    generate_vercel_config,
+    generate_netlify_toml,
+    generate_deploy_script,
+    get_deploy_provider_config,
+)
+from app.i18n.service import (
+    get_supported_languages,
+    translate_portfolio_content,
+    generate_language_switcher_html,
+)
+from app.cover_letter.service import (
+    generate_cover_letter,
+    generate_cover_letter_formal,
+)
+from app.github_readme.service import (
+    generate_github_readme,
+    get_readme_sections,
+)
+from app.job_tracker.service import (
+    create_job_application,
+    get_user_applications,
+    update_application_status,
+    get_application_stats,
+    delete_application,
+)
+from app.qr_code.service import (
+    get_qr_code_url,
+    generate_vcard,
+    generate_linktree_alternative,
+)
 from app.schemas import (
     SEOAnalysisRequest,
     SEOAnalysisResponse,
@@ -181,6 +224,27 @@ from app.schemas import (
     UpdateProjectRequest,
     ProjectsSummaryResponse,
     NotificationListResponse,
+    InterviewQuestionsRequest,
+    InterviewQuestionsResponse,
+    MockInterviewResponse,
+    AnswerSuggestionsRequest,
+    AnswerSuggestionsResponse,
+    DeployConfigRequest,
+    DeployConfigResponse,
+    LanguageListResponse,
+    TranslateRequest,
+    TranslateResponse,
+    CoverLetterRequest,
+    CoverLetterResponse,
+    JobApplicationRequest,
+    JobApplicationResponse,
+    JobStatsResponse,
+    GitHubReadmeRequest,
+    GitHubReadmeResponse,
+    QRCodeRequest,
+    QRCodeResponse,
+    VCardRequest,
+    VCardResponse,
 )
 
 
@@ -1147,6 +1211,121 @@ def create_app() -> FastAPI:
     async def delete_notification_endpoint(notification_id: str, user: dict = Depends(get_current_user)):
         delete_notification(notification_id, user["id"])
         return {"ok": True}
+
+    # ====== Interview Prep ======
+    @app.post("/api/interview/questions", response_model=InterviewQuestionsResponse)
+    async def get_interview_questions(payload: InterviewQuestionsRequest) -> InterviewQuestionsResponse:
+        result = generate_interview_questions(payload.portfolio, payload.role)
+        return InterviewQuestionsResponse(
+            questions=result["questions"],
+            count=result["count"],
+            estimated_duration_minutes=result["estimated_duration_minutes"],
+        )
+
+    @app.post("/api/interview/mock", response_model=MockInterviewResponse)
+    async def get_mock_interview(payload: InterviewQuestionsRequest) -> MockInterviewResponse:
+        questions = generate_mock_interview(payload.portfolio)
+        return MockInterviewResponse(questions=questions)
+
+    @app.post("/api/interview/answers", response_model=AnswerSuggestionsResponse)
+    async def get_answer_suggestions(payload: AnswerSuggestionsRequest) -> AnswerSuggestionsResponse:
+        suggestions = generate_answer_suggestions(payload.portfolio, payload.question)
+        return AnswerSuggestionsResponse(suggestions=suggestions)
+
+    # ====== Portfolio Analytics ======
+    @app.get("/api/analytics/portfolio/{portfolio_id}", response_model=PortfolioStatsResponse)
+    async def get_portfolio_analytics(portfolio_id: int) -> PortfolioStatsResponse:
+        stats = get_portfolio_stats(portfolio_id)
+        return PortfolioStatsResponse(
+            total_views=stats["total_views"],
+            views_over_time=stats["views_over_time"],
+            top_referrers=stats["top_referrers"],
+            avg_daily_views=stats["avg_daily_views"],
+        )
+
+    @app.post("/api/analytics/track-view")
+    async def track_view_endpoint(payload: TrackViewRequest):
+        track_portfolio_view(payload.portfolio_id, {"ip": payload.viewer_ip, "referrer": payload.referrer})
+        return {"ok": True}
+
+    # ====== Auto Deploy ======
+    @app.get("/api/deploy/providers")
+    async def list_deploy_providers():
+        return {"providers": ["github", "vercel", "netlify"]}
+
+    @app.post("/api/deploy/config", response_model=DeployConfigResponse)
+    async def get_deploy_config(payload: DeployConfigRequest) -> DeployConfigResponse:
+        if payload.provider == "github":
+            yaml = generate_github_pages_yaml(payload.username or "username")
+            return DeployConfigResponse(yaml=yaml, provider="github")
+        elif payload.provider == "vercel":
+            config = generate_vercel_config(payload.custom_domain)
+            return DeployConfigResponse(json=config, provider="vercel")
+        elif payload.provider == "netlify":
+            toml = generate_netlify_toml()
+            return DeployConfigResponse(toml=toml, provider="netlify")
+        return DeployConfigResponse(provider=payload.provider)
+
+    @app.get("/api/deploy/providers/{provider}")
+    async def get_provider_info(provider: str):
+        return get_deploy_provider_config(provider)
+
+    # ====== i18n ======
+    @app.get("/api/i18n/languages", response_model=LanguageListResponse)
+    async def list_languages() -> LanguageListResponse:
+        return LanguageListResponse(languages=get_supported_languages())
+
+    @app.post("/api/i18n/translate", response_model=TranslateResponse)
+    async def translate_portfolio(payload: TranslateRequest) -> TranslateResponse:
+        result = translate_portfolio_content(payload.portfolio.model_dump(), payload.target_lang)
+        return TranslateResponse(**result)
+
+    # ====== Cover Letter ======
+    @app.post("/api/cover-letter/generate", response_model=CoverLetterResponse)
+    async def generate_cover_letter_endpoint(payload: CoverLetterRequest) -> CoverLetterResponse:
+        result = generate_cover_letter(payload.portfolio, payload.job_description, payload.company_name, payload.position)
+        return CoverLetterResponse(**result)
+
+    # ====== GitHub README ======
+    @app.post("/api/github/readme", response_model=GitHubReadmeResponse)
+    async def generate_readme_endpoint(payload: GitHubReadmeRequest) -> GitHubReadmeResponse:
+        readme = generate_github_readme(payload.portfolio)
+        return GitHubReadmeResponse(readme=readme)
+
+    @app.get("/api/github/readme/sections")
+    async def list_readme_sections():
+        return {"sections": get_readme_sections()}
+
+    # ====== Job Tracker ======
+    @app.post("/api/jobs/apply", response_model=JobApplicationResponse)
+    async def create_application(payload: JobApplicationRequest, user: dict = Depends(get_current_user)) -> JobApplicationResponse:
+        app_id = create_job_application(user["id"], payload.company, payload.position, payload.portfolio_url)
+        return JobApplicationResponse(id=app_id, company=payload.company, position=payload.position, status="applied", portfolio_url=payload.portfolio_url)
+
+    @app.get("/api/jobs")
+    async def list_applications(user: dict = Depends(get_current_user)):
+        return {"applications": get_user_applications(user["id"])}
+
+    @app.get("/api/jobs/stats", response_model=JobStatsResponse)
+    async def get_job_stats(user: dict = Depends(get_current_user)) -> JobStatsResponse:
+        stats = get_application_stats(user["id"])
+        return JobStatsResponse(**stats)
+
+    @app.put("/api/jobs/{app_id}/status")
+    async def update_job_status(app_id: str, status_update: dict, user: dict = Depends(get_current_user)):
+        update_application_status(app_id, user["id"], status_update.get("status", "applied"), status_update.get("notes"))
+        return {"ok": True}
+
+    # ====== QR Code & vCard ======
+    @app.post("/api/qr-code", response_model=QRCodeResponse)
+    async def generate_qr_code(payload: QRCodeRequest) -> QRCodeResponse:
+        qr_url = get_qr_code_url(payload.portfolio_url, payload.size)
+        return QRCodeResponse(qr_url=qr_url, data=payload.portfolio_url)
+
+    @app.post("/api/vcard", response_model=VCardResponse)
+    async def generate_vcard_endpoint(payload: VCardRequest) -> VCardResponse:
+        vcard = generate_vcard(payload.portfolio.model_dump())
+        return VCardResponse(vcard=vcard)
 
     return app
 
