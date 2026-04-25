@@ -131,11 +131,26 @@ from app.themes.service import (
     generate_custom_css,
     inject_theme,
 )
+from app.seo.service import (
+    analyze_seo_score,
+    inject_seo_tags,
+    generate_meta_tags,
+    generate_opengraph_tags,
+    generate_twitter_card,
+    generate_jsonld,
+)
+from app.preview.service import (
+    get_preview_html,
+    get_multi_theme_preview,
+)
 from app.schemas import (
-    ThemeInfo,
-    ThemeListResponse,
-    ThemeCSSRequest,
-    ThemeCSSResponse,
+    SEOAnalysisRequest,
+    SEOAnalysisResponse,
+    SEOMetaResponse,
+    PreviewRequest,
+    PreviewResponse,
+    MultiThemePreviewRequest,
+    MultiThemePreviewResponse,
 )
 
 
@@ -977,6 +992,46 @@ def create_app() -> FastAPI:
     async def generate_theme_css(payload: ThemeCSSRequest) -> ThemeCSSResponse:
         css = generate_custom_css(payload.theme_id, payload.custom_css, payload.font_family)
         return ThemeCSSResponse(theme_id=payload.theme_id, css=css)
+
+    # ====== SEO Optimization ======
+    @app.post("/api/portfolio/seo/analyze", response_model=SEOAnalysisResponse)
+    async def analyze_portfolio_seo(payload: SEOAnalysisRequest) -> SEOAnalysisResponse:
+        result = analyze_seo_score(payload.portfolio)
+        return SEOAnalysisResponse(
+            score=result["score"],
+            grade=result["grade"],
+            improvements=result["improvements"],
+        )
+
+    @app.post("/api/portfolio/seo/meta", response_model=SEOMetaResponse)
+    async def get_portfolio_seo_meta(payload: SEOAnalysisRequest) -> SEOMetaResponse:
+        meta = generate_meta_tags(payload.portfolio)
+        return SEOMetaResponse(
+            title=meta["title"],
+            description=meta["description"],
+            keywords=meta["keywords"],
+            og_tags=generate_opengraph_tags(payload.portfolio),
+            twitter_tags=generate_twitter_card(payload.portfolio),
+            jsonld=generate_jsonld(payload.portfolio),
+        )
+
+    # ====== Live Preview ======
+    @app.post("/api/portfolio/preview", response_model=PreviewResponse)
+    async def generate_preview(payload: PreviewRequest) -> PreviewResponse:
+        html = get_preview_html(
+            payload.portfolio,
+            payload.theme_id,
+            payload.inject_seo,
+        )
+        return PreviewResponse(html=html)
+
+    @app.post("/api/portfolio/preview/themes", response_model=MultiThemePreviewResponse)
+    async def generate_multi_theme_preview(payload: MultiThemePreviewRequest) -> MultiThemePreviewResponse:
+        previews = get_multi_theme_preview(
+            payload.portfolio,
+            payload.theme_ids,
+        )
+        return MultiThemePreviewResponse(previews=previews)
 
     return app
 

@@ -456,3 +456,43 @@ class ThemeCSSRequest(BaseModel):
 class ThemeCSSResponse(BaseModel):
     theme_id: str
     css: str
+
+
+# SEO schemas
+class SEOAnalysisRequest(BaseModel):
+    portfolio: PortfolioResponse
+
+
+class SEOAnalysisResponse(BaseModel):
+    score: int
+    grade: str
+    improvements: list[str]
+
+
+class SEOMetaResponse(BaseModel):
+    title: str
+    description: str
+    keywords: str
+    og_tags: str
+    twitter_tags: str
+    jsonld: str
+
+
+# Preview schemas
+class PreviewRequest(BaseModel):
+    portfolio: PortfolioResponse
+    theme_id: str = "modern"
+    inject_seo: bool = False
+
+
+class PreviewResponse(BaseModel):
+    html: str
+
+
+class MultiThemePreviewRequest(BaseModel):
+    portfolio: PortfolioResponse
+    theme_ids: list[str]
+
+
+class MultiThemePreviewResponse(BaseModel):
+    previews: dict[str, str]
