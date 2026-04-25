@@ -101,6 +101,31 @@ from app.services.portfolio import (
     render_portfolio_pdf,
     render_portfolio_html,
 )
+from app.deploy_export.service import (
+    build_deploy_package,
+    export_portfolio_markdown,
+    export_portfolio_json,
+    export_portfolio_latex,
+)
+from app.ats_analyzer.service import analyze_ats_score, get_role_recommendations
+from app.api_keys.service import (
+    check_rate_limit,
+    create_api_key,
+    list_api_keys,
+    revoke_api_key,
+    validate_api_key,
+    init_api_keys_db,
+    hash_api_key,
+)
+from app.schemas import (
+    ATSAnalysisRequest,
+    ATSAnalysisResponse,
+    RoleRecommendationResponse,
+    ExportFormatRequest,
+    ExportFormatResponse,
+    APIKeyCreateRequest,
+    APIKeyResponse,
+)
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -206,6 +231,7 @@ def _google_redirect_uri(request: Request) -> str:
 
 def create_app() -> FastAPI:
     init_db()
+    init_api_keys_db()
     app = FastAPI(title="AutoPortfolio Builder", version="0.2.0")
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
@@ -833,6 +859,56 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shared resume not found.")
         html_document = render_portfolio_html(portfolio)
         return Response(content=html_document, media_type="text/html; charset=utf-8")
+
+    # ====== NEW: ATS Analysis & Export Formats ======
+    @app.post("/api/portfolio/analyze", response_model=ATSAnalysisResponse)
+    async def analyze_portfolio_ats(payload: ATSAnalysisRequest) -> ATSAnalysisResponse:
+        result = analyze_ats_score(payload.portfolio)
+        return ATSAnalysisResponse(
+            overall_score=int(result["overall_score"]),
+            keyword_score=result["keyword_score"],
+            format_score=result["format_score"],
+            readability_score=result["readability_score"],
+            completeness_score=result["completeness_score"],
+            improvements=result["improvements"],
+            missing_keywords=result["missing_keywords"],
+            role_scores=result["role_scores"],
+        )
+
+    @app.post("/api/portfolio/recommend-role", response_model=RoleRecommendationResponse)
+    async def recommend_role(payload: ATSAnalysisRequest) -> RoleRecommendationResponse:
+        result = get_role_recommendations(payload.portfolio)
+        return RoleRecommendationResponse(
+            recommended_role=result["recommended_role"],
+            role_scores=result["role_scores"],
+        )
+
+    @app.post("/api/portfolio/export", response_model=ExportFormatResponse)
+    async def export_portfolio(payload: ExportFormatRequest) -> ExportFormatResponse:
+        format_map = {
+            "markdown": (export_portfolio_markdown, "text/markdown"),
+            "json": (export_portfolio_json, "application/json"),
+            "latex": (export_portfolio_latex, "application/x-tex"),
+        }
+        exporter, content_type = format_map.get(payload.format, (export_portfolio_json, "application/json"))
+        content = exporter(payload.portfolio)
+        return ExportFormatResponse(format=payload.format, content=content, content_type=content_type)
+
+    # ====== NEW: API Keys ======
+    @app.post("/api/keys", response_model=APIKeyResponse)
+    async def create_api_key(payload: APIKeyCreateRequest, user: dict = Depends(get_current_user)) -> APIKeyResponse:
+        key_id, key = create_api_key(user["id"], payload.name, payload.rate_limit)
+        return APIKeyResponse(key_id=key_id, key=key, name=payload.name, rate_limit=payload.rate_limit)
+
+    @app.get("/api/keys")
+    async def get_api_keys(user: dict = Depends(get_current_user)):
+        keys = list_api_keys(user["id"])
+        return {"keys": keys}
+
+    @app.delete("/api/keys/{key_id}")
+    async def delete_api_key(key_id: str, user: dict = Depends(get_current_user)):
+        revoke_api_key(key_id, user["id"])
+        return {"ok": True, "message": "API key revoked"}
 
     return app
 

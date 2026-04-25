@@ -363,3 +363,50 @@ class APIError(BaseModel):
 
 class ErrorResponse(BaseModel):
     error: APIError
+
+
+# New schemas - ATS Analysis & Exports
+class ATSAnalysisRequest(BaseModel):
+    portfolio: PortfolioResponse
+    target_role: Literal["frontend", "backend", "fullstack", "data", "ai"] | None = None
+
+
+class ATSAnalysisResponse(BaseModel):
+    overall_score: int
+    keyword_score: int
+    format_score: int
+    readability_score: int
+    completeness_score: int
+    improvements: list[str]
+    missing_keywords: list[str]
+    role_scores: dict[str, int]
+
+
+class RoleRecommendationResponse(BaseModel):
+    recommended_role: str
+    role_scores: dict[str, dict[str, int]]
+
+
+class ExportFormatRequest(BaseModel):
+    portfolio: PortfolioResponse
+    format: Literal["markdown", "json", "latex", "html"]
+
+
+class ExportFormatResponse(BaseModel):
+    format: str
+    content: str
+    content_type: str
+
+
+class APIKeyCreateRequest(BaseModel):
+    name: Annotated[str, Field(min_length=1, max_length=64)]
+    rate_limit: int = Field(default=100, ge=10, le=1000)
+
+
+
+class APIKeyResponse(BaseModel):
+    key_id: str
+    key: str
+    name: str
+    rate_limit: int
+    created_at: datetime
