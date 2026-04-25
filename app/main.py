@@ -117,14 +117,25 @@ from app.api_keys.service import (
     init_api_keys_db,
     hash_api_key,
 )
+from app.webhooks.service import (
+    create_webhook,
+    list_webhooks,
+    delete_webhook,
+    trigger_webhook,
+    WEBHOOK_EVENTS,
+)
+from app.themes.service import (
+    THEMES,
+    get_theme,
+    list_themes,
+    generate_custom_css,
+    inject_theme,
+)
 from app.schemas import (
-    ATSAnalysisRequest,
-    ATSAnalysisResponse,
-    RoleRecommendationResponse,
-    ExportFormatRequest,
-    ExportFormatResponse,
-    APIKeyCreateRequest,
-    APIKeyResponse,
+    ThemeInfo,
+    ThemeListResponse,
+    ThemeCSSRequest,
+    ThemeCSSResponse,
 )
 
 
@@ -909,6 +920,63 @@ def create_app() -> FastAPI:
     async def delete_api_key(key_id: str, user: dict = Depends(get_current_user)):
         revoke_api_key(key_id, user["id"])
         return {"ok": True, "message": "API key revoked"}
+
+    # ====== NEW: Webhooks ======
+    @app.post("/api/webhooks", response_model=WebhookResponse)
+    async def create_webhook_endpoint(
+        payload: WebhookRequest,
+        user: dict = Depends(get_current_user),
+    ) -> WebhookResponse:
+        # Validate events
+        valid_events = [e for e in payload.events if e in WEBHOOK_EVENTS]
+        if not valid_events:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Invalid events. Valid: {WEBHOOK_EVENTS}",
+            )
+        webhook_id, secret = create_webhook(user["id"], payload.url, valid_events, payload.name)
+        return WebhookResponse(
+            webhook_id=webhook_id,
+            secret=secret,
+            name=payload.name,
+            url=payload.url,
+            events=valid_events,
+        )
+
+    @app.get("/api/webhooks", response_model=WebhookListResponse)
+    async def list_webhooks_endpoint(user: dict = Depends(get_current_user)) -> WebhookListResponse:
+        webhooks = list_webhooks(user["id"])
+        return WebhookListResponse(webhooks=webhooks)
+
+    @app.delete("/api/webhooks/{webhook_id}")
+    async def delete_webhook_endpoint(
+        webhook_id: str,
+        user: dict = Depends(get_current_user),
+    ):
+        delete_webhook(webhook_id, user["id"])
+        return {"ok": True, "message": "Webhook deleted"}
+
+    # ====== NEW: Themes ======
+    @app.get("/api/themes", response_model=ThemeListResponse)
+    async def get_themes() -> ThemeListResponse:
+        themes = [
+            ThemeInfo(
+                id=k,
+                name=v["name"],
+                primary=v["primary"],
+                secondary=v["secondary"],
+                background=v["background"],
+                text=v["text"],
+                accent=v["accent"],
+            )
+            for k, v in THEMES.items()
+        ]
+        return ThemeListResponse(themes=themes)
+
+    @app.post("/api/themes/css", response_model=ThemeCSSResponse)
+    async def generate_theme_css(payload: ThemeCSSRequest) -> ThemeCSSResponse:
+        css = generate_custom_css(payload.theme_id, payload.custom_css, payload.font_family)
+        return ThemeCSSResponse(theme_id=payload.theme_id, css=css)
 
     return app
 

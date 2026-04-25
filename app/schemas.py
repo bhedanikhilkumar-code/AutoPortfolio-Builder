@@ -410,3 +410,49 @@ class APIKeyResponse(BaseModel):
     name: str
     rate_limit: int
     created_at: datetime
+
+
+# Webhook schemas
+class WebhookRequest(BaseModel):
+    url: Annotated[str, Field(min_length=10, max_length=512)]
+    events: Annotated[list[str], Field(min_length=1)]
+    name: Annotated[str, Field(max_length=64)] = "default"
+
+
+class WebhookResponse(BaseModel):
+    webhook_id: str
+    secret: str
+    name: str
+    url: str
+    events: list[str]
+    created_at: datetime
+
+
+class WebhookListResponse(BaseModel):
+    webhooks: list[dict[str, Any]]
+
+
+# Theme schemas
+class ThemeInfo(BaseModel):
+    id: str
+    name: str
+    primary: str
+    secondary: str
+    background: str
+    text: str
+    accent: str
+
+
+class ThemeListResponse(BaseModel):
+    themes: list[ThemeInfo]
+
+
+class ThemeCSSRequest(BaseModel):
+    theme_id: str
+    custom_css: str | None = None
+    font_family: str = "Inter"
+
+
+class ThemeCSSResponse(BaseModel):
+    theme_id: str
+    css: str
