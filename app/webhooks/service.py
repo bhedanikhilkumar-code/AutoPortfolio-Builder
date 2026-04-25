@@ -6,7 +6,7 @@ import time
 from typing import Any, Callable
 
 import httpx
-from app.core.db import get_db
+from app.core.db import get_connection as get_db
 
 
 # Webhook storage

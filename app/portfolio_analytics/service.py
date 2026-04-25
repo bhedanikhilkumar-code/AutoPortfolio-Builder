@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from app.core.db import get_db
+from app.core.db import get_connection as get_db
 
 
 def track_portfolio_view(

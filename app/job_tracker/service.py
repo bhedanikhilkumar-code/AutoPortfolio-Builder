@@ -12,7 +12,7 @@ def create_job_application(
     status: str = "applied",
 ) -> str:
     """Create a job application tracker entry."""
-    from app.core.db import get_db
+    from app.core.db import get_connection as get_db
     
     db = get_db()
     db.execute(
@@ -45,7 +45,7 @@ def create_job_application(
 
 def get_user_applications(user_id: int) -> list[dict[str, Any]]:
     """Get all job applications for user."""
-    from app.core.db import get_db
+    from app.core.db import get_connection as get_db
     
     db = get_db()
     rows = db.execute(
@@ -75,7 +75,7 @@ def update_application_status(
     notes: str | None = None,
 ) -> bool:
     """Update job application status."""
-    from app.core.db import get_db
+    from app.core.db import get_connection as get_db
     
     db = get_db()
     
@@ -97,7 +97,7 @@ def update_application_status(
 
 def get_application_stats(user_id: int) -> dict[str, Any]:
     """Get job application statistics."""
-    from app.core.db import get_db
+    from app.core.db import get_connection as get_db
     
     db = get_db()
     
@@ -122,7 +122,7 @@ def get_application_stats(user_id: int) -> dict[str, Any]:
 
 def delete_application(app_id: str, user_id: int) -> bool:
     """Delete a job application."""
-    from app.core.db import get_db
+    from app.core.db import get_connection as get_db
     
     db = get_db()
     db.execute(

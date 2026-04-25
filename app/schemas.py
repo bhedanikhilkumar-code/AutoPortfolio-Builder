@@ -599,7 +599,7 @@ class DeployConfigRequest(BaseModel):
 class DeployConfigResponse(BaseModel):
     yaml: str | None = None
     toml: str | None = None
-    json: dict | None = None
+    config_json: dict | None = None
     script: str | None = None
     provider: str
 

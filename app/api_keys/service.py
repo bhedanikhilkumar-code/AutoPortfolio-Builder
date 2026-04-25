@@ -5,7 +5,7 @@ import secrets
 import time
 from typing import Any
 
-from app.core.db import get_db
+from app.core.db import get_connection as get_db
 
 
 # In-memory rate limit storage (use Redis in production)

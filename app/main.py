@@ -208,6 +208,9 @@ from app.qr_code.service import (
     generate_linktree_alternative,
 )
 from app.schemas import (
+    ATSAnalysisRequest,
+    ATSAnalysisResponse,
+    RoleRecommendationResponse,
     SEOAnalysisRequest,
     SEOAnalysisResponse,
     SEOMetaResponse,
@@ -215,6 +218,17 @@ from app.schemas import (
     PreviewResponse,
     MultiThemePreviewRequest,
     MultiThemePreviewResponse,
+    ExportFormatRequest,
+    ExportFormatResponse,
+    APIKeyCreateRequest,
+    APIKeyResponse,
+    WebhookRequest,
+    WebhookResponse,
+    WebhookListResponse,
+    ThemeInfo,
+    ThemeListResponse,
+    ThemeCSSRequest,
+    ThemeCSSResponse,
     PDFTemplateListResponse,
     PDFExportRequest,
     PDFExportResponse,
@@ -245,6 +259,8 @@ from app.schemas import (
     QRCodeResponse,
     VCardRequest,
     VCardResponse,
+    TrackViewRequest,
+    PortfolioStatsResponse,
 )
 
 
@@ -1260,7 +1276,7 @@ def create_app() -> FastAPI:
             return DeployConfigResponse(yaml=yaml, provider="github")
         elif payload.provider == "vercel":
             config = generate_vercel_config(payload.custom_domain)
-            return DeployConfigResponse(json=config, provider="vercel")
+            return DeployConfigResponse(config_json=config, provider="vercel")
         elif payload.provider == "netlify":
             toml = generate_netlify_toml()
             return DeployConfigResponse(toml=toml, provider="netlify")
