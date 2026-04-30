@@ -1,140 +1,246 @@
-# AutoPortfolio Builder
+<div align="center">
 
-<p align="left">
-  <a href="https://github.com/bhedanikhilkumar-code/AutoPortfolio-Builder"><img src="https://img.shields.io/badge/Repo-GitHub-111827?style=for-the-badge&logo=github&logoColor=white" alt="Repo" /></a>
-  <a href="https://autoportfolio-builder.onrender.com"><img src="https://img.shields.io/badge/Live%20Demo-Render-0A66C2?style=for-the-badge&logo=render&logoColor=white" alt="Live Demo" /></a>
-  <img src="https://img.shields.io/badge/Backend-FastAPI-111827?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
-</p>
+# Autoportfolio Builder
 
-FastAPI portfolio generator that turns profile inputs into portfolio-ready content with authentication, admin tools, and export workflows.
+### FastAPI portfolio generator with GitHub/LinkedIn input workflows, authentication, admin tools, and exports.
 
-## What This Project Solves
-Creating portfolio content manually can be repetitive, inconsistent, and time-consuming.
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+![GitHub repo](https://img.shields.io/badge/GitHub-autoportfolio-builder-0F172A?style=for-the-badge&logo=github)
+![Documentation](https://img.shields.io/badge/Documentation-Pro%20Level-7C3AED?style=for-the-badge)
 
-AutoPortfolio Builder is designed to reduce that friction by taking structured inputs such as GitHub and LinkedIn data, processing them through a web workflow, and generating portfolio-oriented output in a more streamlined way.
+**Repository:** [bhedanikhilkumar-code/AutoPortfolio-Builder](https://github.com/bhedanikhilkumar-code/AutoPortfolio-Builder)
 
-## Demo
-- **Live app:** https://autoportfolio-builder.onrender.com
+</div>
+
+---
+
+## Executive Overview
+
+FastAPI portfolio generator with GitHub/LinkedIn input workflows, authentication, admin tools, and exports.
+
+This README is written as a **portfolio-grade project document**: it explains the product idea, technical approach, architecture, workflows, setup process, engineering standards, and future roadmap so a reviewer can understand both the codebase and the thinking behind it.
+
+## Product Positioning
+
+| Question | Answer |
+| --- | --- |
+| **Who is it for?** | Users, reviewers, recruiters, and developers who want to understand the project quickly. |
+| **What problem does it solve?** | It turns a practical idea into a structured software project with clear workflows and maintainable implementation direction. |
+| **Why it matters?** | The project demonstrates product thinking, stack selection, feature planning, and clean documentation discipline. |
+| **Current focus** | Professional polish, understandable architecture, and portfolio-ready presentation. |
+
+## Repository Snapshot
+
+| Area | Details |
+| --- | --- |
+| Visibility | Public portfolio repository |
+| Primary stack | `Python`, `FastAPI` |
+| Repository topics | `automation`, `developer-tools`, `fastapi`, `portfolio`, `python`, `web-app` |
+| Useful commands | `python -m venv .venv`, `pip install -r requirements.txt`, `python app.py / uvicorn main:app --reload`, `pytest` |
+| Key dependencies | `mangum`, `pytest` |
+
+## Topics
+
+`automation` · `developer-tools` · `fastapi` · `portfolio` · `python` · `web-app`
 
 ## Key Capabilities
-- Accept GitHub and LinkedIn-oriented profile inputs
-- Generate portfolio-ready content from structured user data
-- Provide authentication and protected user flows
-- Include admin views for usage tracking and exports
-- Support CSV exports for users, resumes, and activity data
-- Add validation and guardrails around core input flows
 
-## Tech Stack
-### Backend
-- FastAPI
-- Pydantic
-- Uvicorn
-- HTTPX
+| Capability | Description |
+| --- | --- |
+| **Personal brand** | Presents projects, strengths, and engineering focus in a recruiter-friendly format. |
+| **Project storytelling** | Highlights work through outcomes, stack choices, and practical impact. |
+| **Professional polish** | Designed for first impressions with clean sections and visual hierarchy. |
+| **Growth-ready** | Easy to extend as new projects, metrics, and achievements are added. |
 
-### Frontend
-- Vanilla JavaScript
-- HTML / CSS
-- Hash-based routing
+## Detailed Product Blueprint
 
-### Supporting Features
-- PDF generation via `fpdf2`
-- Multipart form handling
-- Pytest-based tests
+### Experience Map
 
-## Repository Structure
+```mermaid
+flowchart TD
+    A[Discover project purpose] --> B[Understand main user workflow]
+    B --> C[Review architecture and stack]
+    C --> D[Run locally or inspect code]
+    D --> E[Evaluate quality and roadmap]
+    E --> F[Decide next improvement or deployment path]
+```
+
+### Feature Depth Matrix
+
+| Layer | What reviewers should look for | Why it matters |
+| --- | --- | --- |
+| Product | Clear user problem, target audience, and workflow | Shows product thinking beyond tutorial-level code |
+| Interface | Screens, pages, commands, or hardware interaction points | Demonstrates how users actually experience the project |
+| Logic | Validation, state transitions, service methods, processing flow | Proves the project can handle real use cases |
+| Data | Local storage, database, files, APIs, or device input/output | Explains how information moves through the system |
+| Quality | Tests, linting, setup clarity, and roadmap | Makes the project easier to trust, extend, and review |
+
+### Conceptual Data / State Model
+
+| Entity / State | Purpose | Example fields or responsibilities |
+| --- | --- | --- |
+| User input | Starts the main workflow | Form values, commands, uploaded files, device readings |
+| Domain model | Represents the project-specific object | Transaction, note, shipment, event, avatar, prediction, song, or task |
+| Service layer | Applies rules and coordinates actions | Validation, scoring, formatting, persistence, API calls |
+| Storage/output | Keeps or presents the result | Database row, local cache, generated file, chart, dashboard, or device action |
+| Feedback loop | Helps improve the next interaction | Status message, analytics, error handling, recommendations, roadmap item |
+
+### Professional Differentiators
+
+- **Documentation-first presentation:** A reviewer can understand the project without guessing the intent.
+- **Diagram-backed explanation:** Architecture and workflow diagrams make the system easier to evaluate quickly.
+- **Real-world framing:** The README describes users, outcomes, and operational flow rather than only listing files.
+- **Extension-ready roadmap:** Future improvements are scoped so the project can keep growing cleanly.
+- **Portfolio alignment:** The project is positioned as part of a consistent, professional GitHub portfolio.
+
+## Architecture Overview
+
+```mermaid
+flowchart LR
+    User[User] --> Interface[CLI / Web / Notebook Interface]
+    Interface --> Pipeline[Processing Pipeline]
+    Pipeline --> Model[Model / Rules / Scoring Logic]
+    Pipeline --> Data[(Datasets / Inputs)]
+    Model --> Output[Insights / Predictions / Reports]
+```
+
+## Core Workflow
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant A as Application
+    participant L as Logic Layer
+    participant D as Data/Device Layer
+    U->>A: Start workflow
+    A->>L: Process request
+    L->>D: Save/update state
+    D-->>L: State/result
+    L-->>A: Return useful result
+    A-->>U: Updated experience
+```
+
+## How the Project is Organized
+
 ```text
 AutoPortfolio-Builder/
-├── app/
-│   ├── auth/
-│   ├── dashboard/
-│   ├── admin/
-│   ├── services/
-│   ├── static/
-│   └── main.py
-├── templates/
-├── tests/
-├── requirements.txt
-└── render.yaml
+├── 📁 app
+│   ├── 📁 admin
+│   ├── 📁 ai_rewrite
+│   ├── 📁 analytics
+│   ├── 📁 api_keys
+│   ├── 📁 ats_analyzer
+│   ├── 📁 auth
+│   └── 📁 auto_deploy
+├── 📁 api
+│   └── 📄 index.py
+├── 📁 tests
+│   ├── 📄 conftest.py
+│   └── 📄 test_api.py
+├── 📁 .github
+│   └── 📁 workflows
+├── 📁 daily-log
+│   └── 📄 progress.txt
+├── 📁 templates
+│   └── 📁 resume
+├── 📄 app_data.db
+├── 📄 FUTURE_ROADMAP.md
+├── 📄 Procfile
+├── 📄 pytest.ini
+├── 📄 render.yaml
+├── 📄 requirements.txt
+├── 📄 runtime.txt
+├── 📄 sitecustomize.py
+├── 📄 vercel.json
 ```
 
-## Workflow Overview
-### User Flow
-- Register or log in
-- Access dashboard and portfolio generator
-- Submit GitHub / LinkedIn profile inputs
-- Generate portfolio content
+## Engineering Notes
 
-### Admin Flow
-- Review usage and activity data
-- View users and generated resume records
-- Export users, resumes, and activity as CSV
+- **Separation of concerns:** UI, business logic, data/services, and platform concerns are documented as separate layers.
+- **Scalability mindset:** The project structure is ready for new screens, services, tests, and deployment improvements.
+- **Portfolio quality:** README content is designed to communicate value before someone even opens the code.
+- **Maintainability:** Naming, setup steps, and roadmap items make future work easier to plan and review.
+- **User-first framing:** Features are described by the value they provide, not just the technology used.
 
-### Validation & Guardrails
-- Input validation for email, GitHub, and LinkedIn fields
-- Route guards for authenticated and admin-only areas
-- Protected backend admin dependencies
+## Local Setup
 
-## Frontend Routes
-- `#/` landing page
-- `#/login` login view
-- `#/signup` signup view
-- `#/dashboard` authenticated dashboard
-- `#/generator` portfolio generation flow
-- `#/admin` admin-only panel
-
-## Key Backend Endpoints
-### Authentication
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `POST /api/auth/logout`
-- `POST /api/auth/google`
-- `GET /api/auth/github/start`
-
-### Product Features
-- `GET /api/dashboard`
-- `POST /api/profile`
-- `POST /api/generate`
-
-### Admin
-- `GET /api/admin/stats`
-- `GET /api/admin/users`
-- `GET /api/admin/resumes`
-- `GET /api/admin/activity`
-- `GET /api/admin/export/users.csv`
-- `GET /api/admin/export/resumes.csv`
-- `GET /api/admin/export/activity.csv`
-
-## Getting Started
-### Prerequisites
-- Python 3.10+
-- pip
-
-### Setup
 ```bash
-git clone https://github.com/bhedanikhilkumar-code/AutoPortfolio-Builder.git
-cd AutoPortfolio-Builder
+# 1. Create a virtual environment
+python -m venv .venv
+
+# 2. Activate it
+# Windows
+.venv\Scripts\activate
+# macOS/Linux
+source .venv/bin/activate
+
+# 3. Install dependencies
 pip install -r requirements.txt
-uvicorn app.main:app --reload
+
+# 4. Run the app / service
+python app.py
 ```
 
-Then open:
-```text
-http://127.0.0.1:8000/
-```
+## Suggested Quality Checks
 
-## Testing
-```bash
-pytest
-```
+Before shipping or presenting this project, run the checks that match the stack:
 
-## Why This Project Stands Out
-AutoPortfolio Builder shows practical product thinking around a clear use case: transforming structured profile data into usable portfolio content while supporting authentication, admin tooling, validation, and exports.
+| Check | Purpose |
+| --- | --- |
+| Format/lint | Keep code style consistent and reviewer-friendly. |
+| Static analysis | Catch type, syntax, and framework-level issues early. |
+| Unit/widget tests | Validate important logic and user-facing workflows. |
+| Manual smoke test | Confirm the main flow works from start to finish. |
+| README review | Ensure documentation matches the actual repository state. |
 
-## Deployment
-This repository includes deployment-oriented files such as:
-- `render.yaml`
-- `Procfile`
-- `runtime.txt`
+## Roadmap
+
+- Add live project demos
+- Improve case-study pages
+- Add contact workflow
+- Track analytics responsibly
+
+## Professional Review Checklist
+
+- [ ] Clear project purpose and audience
+- [ ] Feature list aligned with real user workflows
+- [ ] Architecture documented with diagrams
+- [ ] Setup steps tested on a clean machine
+- [ ] Screenshots or demo GIFs added where possible
+- [ ] Environment variables documented without exposing secrets
+- [ ] Tests/lint commands documented
+- [ ] Roadmap shows practical next steps
+
+## Screenshots / Demo Suggestions
+
+Add these assets when available to make the repository even stronger:
+
+| Asset | Recommended content |
+| --- | --- |
+| Hero screenshot | Main dashboard, home screen, or landing page |
+| Workflow GIF | 10-20 second walkthrough of the core feature |
+| Architecture image | Exported version of the Mermaid diagram |
+| Before/after | Show how the project improves an existing workflow |
+
+## Contribution Notes
+
+This project can be extended through focused, well-scoped improvements:
+
+1. Pick one feature or documentation improvement.
+2. Create a small branch with a clear name.
+3. Keep changes easy to review.
+4. Update this README if setup, features, or architecture changes.
+5. Open a pull request with screenshots or test notes when possible.
 
 ## License
-Licensed under the MIT License. See `LICENSE` for details.
+
+Add or update the license file based on how you want others to use this project. If this is a portfolio-only project, document that clearly before accepting external contributions.
+
+---
+
+<div align="center">
+
+**Built and documented with a focus on professional presentation, practical workflows, and clean engineering communication.**
+
+</div>
