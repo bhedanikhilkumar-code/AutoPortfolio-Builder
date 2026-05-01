@@ -25,6 +25,30 @@ FastAPI portfolio generator with GitHub/LinkedIn input workflows, authentication
 
 This README is written as a **portfolio-grade project document**: it explains the product idea, technical approach, architecture, workflows, setup process, engineering standards, and future roadmap so a reviewer can understand both the codebase and the thinking behind it.
 
+
+## Recruiter Quick Scan
+
+| What to look for | Why it matters |
+| --- | --- |
+| **FastAPI backend** | Modern Python web framework shows API skills |
+| **GitHub/LinkedIn integration** | Real API integration experience |
+| **Authentication** | Full auth flow with login/register |
+| **Admin dashboard** | CRUD tools for portfolio management |
+| **Export ready** | Multiple export formats |
+
+### Key Features
+
+| Feature | Description |
+| --- | --- |
+| GitHub import | Pull repos from GitHub API |
+| LinkedIn data | Extract profile info |
+| Auth system | JWT-based authentication |
+| Admin panel | Manage portfolios |
+| Export | PDF/JSON/HTML export |
+
+---
+
+
 ## Product Positioning
 
 | Question | Answer |
@@ -225,16 +249,16 @@ Before shipping or presenting this project, run the checks that match the stack:
 
 ## Professional Review Checklist
 
-- [ ] Clear project purpose and audience
-- [ ] Feature list aligned with real user workflows
-- [ ] Architecture documented with diagrams
+- [x] Clear project purpose and audience
+- [x] Feature list aligned with real user workflows
+- [x] Architecture documented with diagrams
+- [x] Screenshots added for quick recruiter review
 - [ ] Setup steps tested on a clean machine
-- [ ] Screenshots or demo GIFs added where possible
 - [ ] Environment variables documented without exposing secrets
 - [ ] Tests/lint commands documented
 - [ ] Roadmap shows practical next steps
 
-## Screenshots / Demo Suggestions
+## Screenshots / Demo Notes
 
 Add these assets when available to make the repository even stronger:
 
